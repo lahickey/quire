@@ -18,6 +18,15 @@ var (
 	FormatPNG = journal.Format{Ext: "png", Type: "image/png", Alpha: true, Lossless: true}
 )
 
+var codecs = []struct {
+	name   string
+	format journal.Format
+}{
+	{"avif", formatAVIF},
+	{"webp", formatWebP},
+	{"jpg", formatJPEG},
+}
+
 func formatsFrom(lossless, alpha bool, offered []journal.Format) []journal.Format {
 	if lossless {
 		return []journal.Format{formatWebPLossless}
@@ -33,15 +42,6 @@ func formatsFrom(lossless, alpha bool, offered []journal.Format) []journal.Forma
 
 func fileName(master string, width int, f journal.Format, codec string) string {
 	return journal.Hash(fmt.Appendf(nil, "%s|%d|%s|%d|%t|%s", master, width, f.Ext, f.Quality, f.Lossless, codec)) + "." + f.Ext
-}
-
-var codecs = []struct {
-	name   string
-	format journal.Format
-}{
-	{"avif", formatAVIF},
-	{"webp", formatWebP},
-	{"jpg", formatJPEG},
 }
 
 func codecNames() []string {

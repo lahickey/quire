@@ -21,6 +21,10 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z]{3,4}$`)
+
+var copyBufs = sync.Pool{New: func() any { b := make([]byte, 256<<10); return &b }}
+
 type loaded struct {
 	records map[string]journal.Record
 	fsys    fs.FS
@@ -45,20 +49,10 @@ type Store struct {
 	maxOf  map[string]model.Slot
 }
 
-func New(memory, memoryLimit int, dev bool, fontID string) *Store {
-	s := &Store{
-		fontID:      fontID,
-		dev:         dev,
-		memoryLimit: memoryLimit,
-		byKey:       map[string]variant{},
-		byName:      map[string]model.Image{},
-		maxOf:       map[string]model.Slot{},
-	}
-	if memory > 0 && memoryLimit > 0 {
-		s.cache = lru.New(memory, func(b []byte) int { return len(b) })
-	}
-	return s
-}
+// writerOnly hides the response's ReadFrom: net's fallback allocates a buffer
+// per response (golang/go#38389), so anything sendfile can't take goes through a
+// pooled one.
+type writerOnly struct{ io.Writer }
 
 func (s *Store) add(j loaded) {
 	s.mu.Lock()
@@ -78,6 +72,39 @@ func (s *Store) add(j loaded) {
 			}
 		}
 	}
+}
+
+func stream(w io.Writer, f fs.File) {
+	if _, ok := f.(syscall.Conn); ok {
+		_, _ = io.Copy(w, f)
+		return
+	}
+	buf := copyBufs.Get().(*[]byte)
+	defer copyBufs.Put(buf)
+	_, _ = io.CopyBuffer(writerOnly{w}, f, *buf)
+}
+
+func (s *Store) headers(h http.Header, v variant, file string) {
+	h.Set("Content-Type", v.format.Type)
+	h.Set("ETag", `"`+file+`"`)
+	if !s.dev {
+		h.Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
+}
+
+func New(memory, memoryLimit int, dev bool, fontID string) *Store {
+	s := &Store{
+		fontID:      fontID,
+		dev:         dev,
+		memoryLimit: memoryLimit,
+		byKey:       map[string]variant{},
+		byName:      map[string]model.Image{},
+		maxOf:       map[string]model.Slot{},
+	}
+	if memory > 0 && memoryLimit > 0 {
+		s.cache = lru.New(memory, func(b []byte) int { return len(b) })
+	}
+	return s
 }
 
 func (s *Store) AddBundle(fsys fs.FS) error {
@@ -182,33 +209,6 @@ func (s *Store) Mount(name string, im model.Image, max model.Slot) {
 	defer s.mu.Unlock()
 	s.byName[name] = im
 	s.maxOf[name] = max
-}
-
-var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z]{3,4}$`)
-
-var copyBufs = sync.Pool{New: func() any { b := make([]byte, 256<<10); return &b }}
-
-// writerOnly hides the response's ReadFrom: net's fallback allocates a buffer
-// per response (golang/go#38389), so anything sendfile can't take goes through a
-// pooled one.
-type writerOnly struct{ io.Writer }
-
-func stream(w io.Writer, f fs.File) {
-	if _, ok := f.(syscall.Conn); ok {
-		_, _ = io.Copy(w, f)
-		return
-	}
-	buf := copyBufs.Get().(*[]byte)
-	defer copyBufs.Put(buf)
-	_, _ = io.CopyBuffer(writerOnly{w}, f, *buf)
-}
-
-func (s *Store) headers(h http.Header, v variant, file string) {
-	h.Set("Content-Type", v.format.Type)
-	h.Set("ETag", `"`+file+`"`)
-	if !s.dev {
-		h.Set("Cache-Control", "public, max-age=31536000, immutable")
-	}
 }
 
 func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {

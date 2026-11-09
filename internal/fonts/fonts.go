@@ -11,6 +11,14 @@ import (
 
 const FontsName = "fonts.json"
 
+const (
+	sansStack = `system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+	monoStack = `ui-monospace, Menlo, Consolas, monospace`
+)
+
+//go:embed web
+var web embed.FS
+
 type Face struct {
 	File   string `json:"file"`
 	Subset string `json:"subset"`
@@ -32,6 +40,13 @@ type FontSet struct {
 	Mono Family `json:"mono"`
 }
 
+func family(name, stack string) string {
+	if name == "" {
+		return stack
+	}
+	return strconv.Quote(name) + ", " + stack
+}
+
 func ReadFontSet(fsys fs.FS) (FontSet, error) {
 	var s FontSet
 	b, err := fs.ReadFile(fsys, FontsName)
@@ -47,27 +62,12 @@ func ReadFontSet(fsys fs.FS) (FontSet, error) {
 	return s, nil
 }
 
-//go:embed web
-var web embed.FS
-
 func Default() fs.FS {
 	sub, err := fs.Sub(web, "web")
 	if err != nil {
 		panic("quire: default fonts: " + err.Error())
 	}
 	return sub
-}
-
-const (
-	sansStack = `system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
-	monoStack = `ui-monospace, Menlo, Consolas, monospace`
-)
-
-func family(name, stack string) string {
-	if name == "" {
-		return stack
-	}
-	return strconv.Quote(name) + ", " + stack
 }
 
 func Faces(set FontSet, fsys fs.FS, serve func(file string, body []byte) string) (css []byte, preload []string) {

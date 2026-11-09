@@ -21,6 +21,98 @@ import (
 
 const htmlType = "text/html; charset=utf-8"
 
+var managed = map[string]bool{
+	"Content-Type": true, "Content-Length": true, "Content-Encoding": true,
+	"Etag": true, "Vary": true, "Cache-Control": true, "Set-Cookie": true,
+}
+
+type Prepared struct {
+	path string
+	c    templ.Component
+	code int
+	v    compress.Variants
+	etag string
+}
+
+type buffer struct {
+	header http.Header
+	code   int
+	body   bytes.Buffer
+	wrote  bool
+}
+
+type entry struct {
+	body []byte
+	hdr  http.Header
+	enc  string
+	etag string
+	ct   string
+	code int
+}
+
+type Pages struct {
+	cache *lru.Cache[*entry]
+	dev   bool
+}
+
+type Loc struct {
+	Path, LastMod string
+}
+
+func ifNoneMatch(inm, etag string) bool {
+	if inm == "" {
+		return false
+	}
+	for part := range strings.SplitSeq(inm, ",") {
+		part = strings.TrimSpace(part)
+		if part == "*" || part == etag {
+			return true
+		}
+	}
+	return false
+}
+
+func replayable(h http.Header) http.Header {
+	var out http.Header
+	for k, v := range h {
+		if managed[k] {
+			continue
+		}
+		if out == nil {
+			out = http.Header{}
+		}
+		out[k] = slices.Clone(v)
+	}
+	return out
+}
+
+func (page *entry) write(w http.ResponseWriter, r *http.Request) {
+	maps.Copy(w.Header(), page.hdr)
+	if page.ct != "" {
+		w.Header().Set("Content-Type", page.ct)
+	}
+	w.Header().Set("Vary", "Accept-Encoding")
+	if page.enc != "" {
+		w.Header().Set("Content-Encoding", page.enc)
+	}
+	w.Header().Set("ETag", page.etag)
+	if page.code/100 == 2 && ifNoneMatch(r.Header.Get("If-None-Match"), page.etag) &&
+		(r.Method == http.MethodGet || r.Method == http.MethodHead) {
+		w.Header().Del("Content-Length")
+		w.Header().Del("Content-Encoding")
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	if len(page.body) > 0 {
+		w.Header().Set("Content-Length", strconv.Itoa(len(page.body)))
+	}
+	w.WriteHeader(page.code)
+	if r.Method == http.MethodHead {
+		return
+	}
+	_, _ = w.Write(page.body)
+}
+
 func Hash(b []byte) string { return journal.Hash(b) }
 
 func FileHash(fsys fs.FS, name string) string {
@@ -62,27 +154,6 @@ func CacheControl(r *http.Request, hashes map[string]string) string {
 	return "no-cache"
 }
 
-func ifNoneMatch(inm, etag string) bool {
-	if inm == "" {
-		return false
-	}
-	for part := range strings.SplitSeq(inm, ",") {
-		part = strings.TrimSpace(part)
-		if part == "*" || part == etag {
-			return true
-		}
-	}
-	return false
-}
-
-type Prepared struct {
-	path string
-	c    templ.Component
-	code int
-	v    compress.Variants
-	etag string
-}
-
 func Prepare(path string, c templ.Component, code int) *Prepared {
 	return &Prepared{path: path, c: c, code: code}
 }
@@ -121,13 +192,6 @@ func (p *Prepared) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type buffer struct {
-	header http.Header
-	code   int
-	body   bytes.Buffer
-	wrote  bool
-}
-
 func (b *buffer) Header() http.Header { return b.header }
 
 func (b *buffer) Write(p []byte) (int, error) {
@@ -143,77 +207,15 @@ func (b *buffer) WriteHeader(code int) {
 	b.code = code
 }
 
-var managed = map[string]bool{
-	"Content-Type": true, "Content-Length": true, "Content-Encoding": true,
-	"Etag": true, "Vary": true, "Cache-Control": true, "Set-Cookie": true,
-}
-
-func replayable(h http.Header) http.Header {
-	var out http.Header
-	for k, v := range h {
-		if managed[k] {
-			continue
-		}
-		if out == nil {
-			out = http.Header{}
-		}
-		out[k] = slices.Clone(v)
-	}
-	return out
-}
-
-type entry struct {
-	body []byte
-	hdr  http.Header
-	enc  string
-	etag string
-	ct   string
-	code int
-}
-
-func (page *entry) write(w http.ResponseWriter, r *http.Request) {
-	maps.Copy(w.Header(), page.hdr)
-	if page.ct != "" {
-		w.Header().Set("Content-Type", page.ct)
-	}
-	w.Header().Set("Vary", "Accept-Encoding")
-	if page.enc != "" {
-		w.Header().Set("Content-Encoding", page.enc)
-	}
-	w.Header().Set("ETag", page.etag)
-	if page.code/100 == 2 && ifNoneMatch(r.Header.Get("If-None-Match"), page.etag) &&
-		(r.Method == http.MethodGet || r.Method == http.MethodHead) {
-		w.Header().Del("Content-Length")
-		w.Header().Del("Content-Encoding")
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	if len(page.body) > 0 {
-		w.Header().Set("Content-Length", strconv.Itoa(len(page.body)))
-	}
-	w.WriteHeader(page.code)
-	if r.Method == http.MethodHead {
-		return
-	}
-	_, _ = w.Write(page.body)
-}
-
-type Pages struct {
-	cache *lru.Cache[*entry]
-	dev   bool
-}
-
 func NewPages(max int, dev bool) *Pages {
 	return &Pages{cache: lru.New(max, func(p *entry) int { return len(p.body) }), dev: dev}
 }
-
-func key(path, coding string) string { return path + "\x00" + coding }
 
 func (p *Pages) Len() int { return p.cache.Len() }
 
 func (p *Pages) Serve(w http.ResponseWriter, r *http.Request, h http.Handler, notFound *Prepared) {
 	coding := compress.Accepted(r, compress.Codings...)
-	k := key(r.URL.Path, coding)
+	k := r.URL.Path + "\x00" + coding
 	if page, ok := p.cache.Get(k); ok {
 		page.write(w, r)
 		return
@@ -240,10 +242,6 @@ func (p *Pages) Serve(w http.ResponseWriter, r *http.Request, h http.Handler, no
 		p.cache.Put(k, page)
 	}
 	page.write(w, r)
-}
-
-type Loc struct {
-	Path, LastMod string
 }
 
 func Sitemap(abs func(string) string, locs []Loc) string {

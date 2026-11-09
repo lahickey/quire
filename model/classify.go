@@ -11,12 +11,31 @@ type Rule struct {
 	needles  []string
 }
 
-func Exact(category string, needles ...string) Rule {
-	return Rule{category: category, needles: needles}
-}
-
 type Classifier struct {
 	rules []Rule
+}
+
+func (c *Classifier) check(values ...string) error {
+	seen := make(map[string]bool)
+	var unknown []string
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" || seen[v] {
+			continue
+		}
+		if _, ok := c.Classify(v); !ok {
+			unknown = append(unknown, v)
+			seen[v] = true
+		}
+	}
+	if len(unknown) > 0 {
+		return fmt.Errorf("unclassified: %s", strings.Join(unknown, ", "))
+	}
+	return nil
+}
+
+func Exact(category string, needles ...string) Rule {
+	return Rule{category: category, needles: needles}
 }
 
 func NewClassifier(rules ...Rule) *Classifier {
@@ -57,23 +76,4 @@ func (c *Classifier) Markers(tags []string) []Marker {
 		}
 	}
 	return out
-}
-
-func (c *Classifier) check(values ...string) error {
-	seen := make(map[string]bool)
-	var unknown []string
-	for _, v := range values {
-		v = strings.TrimSpace(v)
-		if v == "" || seen[v] {
-			continue
-		}
-		if _, ok := c.Classify(v); !ok {
-			unknown = append(unknown, v)
-			seen[v] = true
-		}
-	}
-	if len(unknown) > 0 {
-		return fmt.Errorf("unclassified: %s", strings.Join(unknown, ", "))
-	}
-	return nil
 }

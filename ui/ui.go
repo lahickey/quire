@@ -13,15 +13,6 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-func Render(c templ.Component) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := c.Render(r.Context(), w); err != nil {
-			log.Printf("render: %v", err)
-		}
-	}
-}
-
 func navActive(path, href string) bool {
 	if href == "/" {
 		return path == "/"
@@ -36,6 +27,22 @@ func navClass(path, href string) string {
 	return "nav-link"
 }
 
+func figureClass(slot model.Slot) string {
+	if slot == model.SlotBleed {
+		return "figure figure--bleed"
+	}
+	return "figure"
+}
+
+func Render(c templ.Component) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := c.Render(r.Context(), w); err != nil {
+			log.Printf("render: %v", err)
+		}
+	}
+}
+
 func CurrentYear() string { return strconv.Itoa(time.Now().Year()) }
 
 func ReadingTime(words int) string {
@@ -43,11 +50,4 @@ func ReadingTime(words int) string {
 		return fmt.Sprintf("%d min read", m)
 	}
 	return "1 min read"
-}
-
-func figureClass(slot model.Slot) string {
-	if slot == model.SlotBleed {
-		return "figure figure--bleed"
-	}
-	return "figure"
 }

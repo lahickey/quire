@@ -3,6 +3,7 @@ package quire
 import (
 	"context"
 	"io"
+	"io/fs"
 	"slices"
 	"strings"
 
@@ -14,47 +15,39 @@ import (
 	"github.com/lahickey/quire/ui"
 )
 
-func (e *Engine) sectionNav() []model.NavItem {
-	out := make([]model.NavItem, 0, len(e.navItems))
-	for _, n := range e.navItems {
-		if n.Href != "/" {
-			out = append(out, n)
-		}
-	}
-	return out
-}
-
 const (
 	stylePath  = assetPrefix + "style.css"
 	scriptPath = assetPrefix + "quire.js"
+	javascript = "application/javascript; charset=utf-8"
+	css        = "text/css; charset=utf-8"
 )
 
-func (e *Engine) buildAssets() {
-	if e.linked.built {
-		return
-	}
-	e.linked.built = true
-	p := e.linked.parts
-	p.Scale, p.Palette = e.scale, e.palette
-	p.Fonts, e.fontPreload = fonts.Faces(e.fonts, fonts.Default(), func(file string, body []byte) string {
-		return e.serveBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
-	})
-	e.linked.styles = []string{e.serveBytes(stylePath, css, assets.Stylesheet(p))}
-	e.linked.script = e.serveBytes(scriptPath, javascript, assets.Script())
-	e.linked.modules = []string{e.serveBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+type linked struct {
+	parts   assets.Parts
+	script  string
+	styles  []string
+	modules []string
+	preload []string
 }
 
-func (e *Engine) cardURL(name string) (string, bool) {
-	rec, _ := e.bundle.Record(name)
-	file, ok := rec.File()
-	if !ok {
-		return "", false
+func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
+	for _, n := range names {
+		e.linked.parts.Sheets = append(e.linked.parts.Sheets, assets.Sheet{FS: fsys, Name: n, Layer: layer, At: at})
 	}
-	return model.ImageURL(file), true
+}
+
+func (e *Engine) addAssets() {
+	p := e.linked.parts
+	p.Scale, p.Palette = e.scale, e.palette
+	p.Fonts, e.linked.preload = fonts.Faces(e.fonts, fonts.Default(), func(file string, body []byte) string {
+		return e.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
+	})
+	e.linked.styles = []string{e.addBytes(stylePath, css, assets.Stylesheet(p))}
+	e.linked.script = e.addBytes(scriptPath, javascript, assets.Script())
+	e.linked.modules = []string{e.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
 }
 
 func (e *Engine) buildChrome() model.Chrome {
-	e.buildAssets()
 	c := model.Chrome{
 		Site:        e.site,
 		Theme:       e.theme,
@@ -64,27 +57,22 @@ func (e *Engine) buildChrome() model.Chrome {
 		ModuleURLs:  e.linked.modules,
 		NavEnd:      slices.Clone(e.navEnd),
 		StyleURLs:   e.linked.styles,
-		FontPreload: e.fontPreload,
-		LiveReload:  e.liveReload(),
+		FontPreload: e.linked.preload,
 		Domain:      e.site.Host(),
 		Nav:         slices.Clone(e.navItems),
-		Sections:    e.sectionNav(),
+		Sections:    slices.DeleteFunc(slices.Clone(e.navItems), func(n model.NavItem) bool { return n.Href == "/" }),
+	}
+	if e.mode == Dev {
+		c.LiveReload = model.LiveReload{On: true, BootID: e.bootID, Init: reloadInit}
 	}
 	for _, i := range e.icons {
 		c.Icons = append(c.Icons, i.Icon)
 	}
-	if u, ok := e.cardURL(journal.SiteCard); ok {
-		c.OGImageURL = c.AbsURL(u)
+	rec, _ := e.bundle.Record(journal.SiteCard)
+	if file, ok := rec.File(); ok {
+		c.OGImageURL = c.AbsURL(model.ImageURL(file))
 	}
 	return c
-}
-
-func (e *Engine) currentChrome() model.Chrome {
-	if !e.chromeOK {
-		e.chrome = e.buildChrome()
-		e.chromeOK = true
-	}
-	return e.chrome
 }
 
 func (e *Engine) addNavItem(id string) {
@@ -101,38 +89,19 @@ func (e *Engine) addNavItem(id string) {
 	}
 	if href == "/" {
 		e.navItems = append([]model.NavItem{{Label: label, Href: href}}, e.navItems...)
-		e.chromeOK = false
 		return
 	}
 	e.navItems = append(e.navItems, model.NavItem{Label: label, Href: href})
-	e.chromeOK = false
-}
-
-func (e *Engine) Shell(p model.PageSpec) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return ui.Shell(e.currentChrome(), p).Render(ctx, w)
-	})
 }
 
 func (e *Engine) late(page func(model.Chrome) templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return page(e.currentChrome()).Render(ctx, w)
+		return page(e.chrome).Render(ctx, w)
 	})
 }
 
-type linked struct {
-	parts   assets.Parts
-	script  string
-	styles  []string
-	modules []string
-	hashes  map[string]string
-	built   bool
-}
-
-func (e *Engine) loadFonts() {
-	set, err := fonts.ReadFontSet(fonts.Default())
-	if err != nil {
-		panic("quire: fonts: " + err.Error())
-	}
-	e.fonts = set
+func (e *Engine) Shell(p model.PageSpec) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		return ui.Shell(e.chrome, p).Render(ctx, w)
+	})
 }

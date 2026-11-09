@@ -9,11 +9,11 @@ import (
 	"github.com/lahickey/quire/internal/journal"
 )
 
-type avifEnc struct{ speed int }
-
 // Measured over a whole ladder: 7 costs twice the bake for 14% fewer bytes,
 // below 7 buys nothing, and 9 is 45% bigger.
 const defaultSpeed = 8
+
+type avifEnc struct{ speed int }
 
 func avifEncoder(speed int) avifEnc {
 	if speed == 0 {

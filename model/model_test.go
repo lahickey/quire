@@ -16,6 +16,27 @@ type note struct {
 
 type baked []journal.Document
 
+func apca(t *testing.T, text, bg string) float64 {
+	t.Helper()
+	y := func(hex string) float64 {
+		var r, g, b uint8
+		if _, err := fmt.Sscanf(hex, "#%02x%02x%02x", &r, &g, &b); err != nil {
+			t.Fatalf("%s: %v", hex, err)
+		}
+		c := func(v uint8) float64 { return math.Pow(float64(v)/255, 2.4) }
+		l := 0.2126729*c(r) + 0.7151522*c(g) + 0.0721750*c(b)
+		if l < 0.022 {
+			l += math.Pow(0.022-l, 1.414)
+		}
+		return l
+	}
+	yt, yb := y(text), y(bg)
+	if yb > yt {
+		return ((math.Pow(yb, 0.56)-math.Pow(yt, 0.57))*1.14 - 0.027) * 100
+	}
+	return ((math.Pow(yb, 0.65)-math.Pow(yt, 0.62))*1.14 + 0.027) * 100
+}
+
 func (b baked) Documents(string, map[string]Widget) ([]journal.Document, error) { return b, nil }
 
 func (baked) Image(string, Slot) (Image, error) { return Image{}, nil }
@@ -62,27 +83,6 @@ func TestPalettes(t *testing.T) {
 		}
 	}()
 	Palette{Neutral: "slte"}.Check()
-}
-
-func apca(t *testing.T, text, bg string) float64 {
-	t.Helper()
-	y := func(hex string) float64 {
-		var r, g, b uint8
-		if _, err := fmt.Sscanf(hex, "#%02x%02x%02x", &r, &g, &b); err != nil {
-			t.Fatalf("%s: %v", hex, err)
-		}
-		c := func(v uint8) float64 { return math.Pow(float64(v)/255, 2.4) }
-		l := 0.2126729*c(r) + 0.7151522*c(g) + 0.0721750*c(b)
-		if l < 0.022 {
-			l += math.Pow(0.022-l, 1.414)
-		}
-		return l
-	}
-	yt, yb := y(text), y(bg)
-	if yb > yt {
-		return ((math.Pow(yb, 0.56)-math.Pow(yt, 0.57))*1.14 - 0.027) * 100
-	}
-	return ((math.Pow(yb, 0.65)-math.Pow(yt, 0.62))*1.14 + 0.027) * 100
 }
 
 func TestDuplicateSlugFailsLoad(t *testing.T) {

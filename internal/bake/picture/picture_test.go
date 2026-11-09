@@ -13,32 +13,6 @@ import (
 	"github.com/lahickey/quire/internal/testkit"
 )
 
-func TestVariantNameCoversTheEncode(t *testing.T) {
-	softer := journal.Format{Ext: "jpg", Type: "image/jpeg", Quality: 70}
-	same := fileName("h", 1280, formatJPEG, "c")
-	for what, got := range map[string]string{
-		"quality": fileName("h", 1280, softer, "c"),
-		"width":   fileName("h", 704, formatJPEG, "c"),
-		"master":  fileName("other", 1280, formatJPEG, "c"),
-		"format":  fileName("h", 1280, formatWebP, "c"),
-		"codec":   fileName("h", 1280, formatJPEG, "c@2"),
-	} {
-		if got == same {
-			t.Errorf("%s does not change the variant name", what)
-		}
-	}
-}
-
-func TestFormatsFromDropsJPEGWhenAlpha(t *testing.T) {
-	for _, offered := range [][]journal.Format{{formatJPEG, formatWebP}, {formatAVIF, formatJPEG, formatWebP}} {
-		for _, f := range formatsFrom(false, true, offered) {
-			if !f.Alpha {
-				t.Errorf("offered %s for an image with alpha: %v", f.Ext, formatsFrom(false, true, offered))
-			}
-		}
-	}
-}
-
 func jpegOf(t *testing.T, src []byte) []byte {
 	t.Helper()
 	img, _, err := image.Decode(bytes.NewReader(src))
@@ -82,6 +56,32 @@ func ingested(t *testing.T, name string, src []byte) (journal.MasterMeta, []byte
 		t.Fatal(err)
 	}
 	return m, body
+}
+
+func TestVariantNameCoversTheEncode(t *testing.T) {
+	softer := journal.Format{Ext: "jpg", Type: "image/jpeg", Quality: 70}
+	same := fileName("h", 1280, formatJPEG, "c")
+	for what, got := range map[string]string{
+		"quality": fileName("h", 1280, softer, "c"),
+		"width":   fileName("h", 704, formatJPEG, "c"),
+		"master":  fileName("other", 1280, formatJPEG, "c"),
+		"format":  fileName("h", 1280, formatWebP, "c"),
+		"codec":   fileName("h", 1280, formatJPEG, "c@2"),
+	} {
+		if got == same {
+			t.Errorf("%s does not change the variant name", what)
+		}
+	}
+}
+
+func TestFormatsFromDropsJPEGWhenAlpha(t *testing.T) {
+	for _, offered := range [][]journal.Format{{formatJPEG, formatWebP}, {formatAVIF, formatJPEG, formatWebP}} {
+		for _, f := range formatsFrom(false, true, offered) {
+			if !f.Alpha {
+				t.Errorf("offered %s for an image with alpha: %v", f.Ext, formatsFrom(false, true, offered))
+			}
+		}
+	}
 }
 
 func TestIngestRejectsBadName(t *testing.T) {

@@ -16,7 +16,7 @@ var masterExt = map[string]bool{
 	".gif": true, ".tif": true, ".tiff": true,
 }
 
-func IsMaster(name string) bool { return masterExt[strings.ToLower(path.Ext(name))] }
+type Encoders map[string]encoder
 
 func total(vs journal.Variants) int64 {
 	var n int64
@@ -26,12 +26,32 @@ func total(vs journal.Variants) int64 {
 	return n
 }
 
+func master(name string, src []byte, lossless bool) (journal.MasterMeta, string, []byte, error) {
+	frame, err := Read(name, src, journal.MasterCap)
+	if err != nil {
+		return journal.MasterMeta{}, "", nil, err
+	}
+	m := Describe(frame, src, "")
+
+	mf := formatJPEG
+	if m.Alpha || lossless {
+		mf = formatWebPLossless
+	}
+
+	body, err := builtinEncoders()[mf.Ext].encode(frame, mf)
+	if err != nil {
+		return journal.MasterMeta{}, "", nil, fmt.Errorf("quire/bake: %s: %w", name, err)
+	}
+	m.Hash = journal.Hash(body)
+	return m, mf.Ext, body, nil
+}
+
+func IsMaster(name string) bool { return masterExt[strings.ToLower(path.Ext(name))] }
+
 func Order(fmts []journal.Variants) []journal.Variants {
 	slices.SortStableFunc(fmts[:len(fmts)-1], func(a, b journal.Variants) int { return cmp.Compare(total(a), total(b)) })
 	return fmts
 }
-
-type Encoders map[string]encoder
 
 func NewEncoders(offered []journal.Format, avifSpeed int) Encoders {
 	encs := builtinEncoders()
@@ -70,24 +90,4 @@ func Variants(m journal.MasterMeta, lossless bool, offered []journal.Format, cod
 		out = append(out, vs)
 	}
 	return out
-}
-
-func master(name string, src []byte, lossless bool) (journal.MasterMeta, string, []byte, error) {
-	frame, err := Read(name, src, journal.MasterCap)
-	if err != nil {
-		return journal.MasterMeta{}, "", nil, err
-	}
-	m := Describe(frame, src, "")
-
-	mf := formatJPEG
-	if m.Alpha || lossless {
-		mf = formatWebPLossless
-	}
-
-	body, err := builtinEncoders()[mf.Ext].encode(frame, mf)
-	if err != nil {
-		return journal.MasterMeta{}, "", nil, fmt.Errorf("quire/bake: %s: %w", name, err)
-	}
-	m.Hash = journal.Hash(body)
-	return m, mf.Ext, body, nil
 }

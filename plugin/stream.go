@@ -16,6 +16,11 @@ import (
 	"github.com/a-h/templ"
 )
 
+const (
+	keepalive = 25 * time.Second
+	writeWait = 5 * time.Second
+)
+
 type Stream struct {
 	mu    sync.Mutex
 	w     io.Writer
@@ -27,31 +32,6 @@ type Streams struct {
 	mu    sync.Mutex
 	subs  map[string]map[*Stream]struct{}
 	scope string
-}
-
-func (m *Mount) NewStreams() *Streams {
-	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: m.name}
-}
-
-const (
-	keepalive = 25 * time.Second
-	writeWait = 5 * time.Second
-)
-
-func IsDatastar(r *http.Request) bool {
-	return r.Header.Get("Datastar-Request") != ""
-}
-
-func OpenStream(w http.ResponseWriter) *Stream {
-	h := w.Header()
-	h.Set("Content-Type", "text/event-stream")
-	h.Set("Cache-Control", "no-store")
-	h.Set("Connection", "keep-alive")
-	h.Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
-	s := &Stream{w: w, rc: http.NewResponseController(w)}
-	_ = s.rc.Flush()
-	return s
 }
 
 func (s *Stream) write(payload string) error {
@@ -74,6 +54,44 @@ func (s *Stream) event(name, key, payload string) error {
 	return s.write(b.String())
 }
 
+func (s *Streams) add(topic string, st *Stream) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.subs[topic] == nil {
+		s.subs[topic] = map[*Stream]struct{}{}
+	}
+	s.subs[topic][st] = struct{}{}
+}
+
+func (s *Streams) remove(topic string, st *Stream) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.subs[topic], st)
+	if len(s.subs[topic]) == 0 {
+		delete(s.subs, topic)
+	}
+}
+
+func (m *Mount) NewStreams() *Streams {
+	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: m.name}
+}
+
+func IsDatastar(r *http.Request) bool {
+	return r.Header.Get("Datastar-Request") != ""
+}
+
+func OpenStream(w http.ResponseWriter) *Stream {
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-store")
+	h.Set("Connection", "keep-alive")
+	h.Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	s := &Stream{w: w, rc: http.NewResponseController(w)}
+	_ = s.rc.Flush()
+	return s
+}
+
 func (s *Stream) Signals(v any) error {
 	if s.scope != "" {
 		v = map[string]any{s.scope: v}
@@ -91,24 +109,6 @@ func (s *Stream) Elements(ctx context.Context, c templ.Component) error {
 		return err
 	}
 	return s.event("datastar-patch-elements", "elements", strings.TrimRight(buf.String(), "\n"))
-}
-
-func (s *Streams) add(topic string, st *Stream) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.subs[topic] == nil {
-		s.subs[topic] = map[*Stream]struct{}{}
-	}
-	s.subs[topic][st] = struct{}{}
-}
-
-func (s *Streams) remove(topic string, st *Stream) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.subs[topic], st)
-	if len(s.subs[topic]) == 0 {
-		delete(s.subs, topic)
-	}
 }
 
 func (s *Streams) Publish(topic string, send func(*Stream) error) {

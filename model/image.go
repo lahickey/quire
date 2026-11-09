@@ -27,35 +27,6 @@ const (
 
 const SlotDefault = SlotPage
 
-func (s Slot) String() string {
-	switch s {
-	case SlotThumb:
-		return "thumb"
-	case SlotColumn:
-		return "column"
-	case SlotPage:
-		return "page"
-	case SlotPageWide:
-		return "page-wide"
-	case SlotPageFull:
-		return "page-full"
-	case SlotBleed:
-		return "bleed"
-	}
-	return "slot(" + strconv.Itoa(int(s)) + ")"
-}
-
-func upTo(max Slot) []Slot {
-	if max < SlotThumb {
-		max = SlotDefault
-	}
-	out := make([]Slot, 0, int(max))
-	for s := SlotThumb; s <= max; s++ {
-		out = append(out, s)
-	}
-	return out
-}
-
 type SlotSpec struct {
 	Width int
 	Sizes string
@@ -66,20 +37,6 @@ type imgRef struct {
 	w        int
 	bot, top int
 	sizes    string
-}
-
-func window(rungs []int, bot, top int) []int {
-	lo, hi := 0, len(rungs)-1
-	for i, w := range rungs {
-		if w <= bot {
-			lo = i
-		}
-		if w >= top {
-			hi = i
-			break
-		}
-	}
-	return rungs[min(lo, hi) : hi+1]
 }
 
 type imgKey struct {
@@ -99,12 +56,30 @@ type Image struct {
 	rungs   []int
 }
 
-func imgStem(name string) string {
-	s := path.Base(filepath.ToSlash(name))
-	return strings.TrimSuffix(s, path.Ext(s))
+func upTo(max Slot) []Slot {
+	if max < SlotThumb {
+		max = SlotDefault
+	}
+	out := make([]Slot, 0, int(max))
+	for s := SlotThumb; s <= max; s++ {
+		out = append(out, s)
+	}
+	return out
 }
 
-func ImageURL(file string) string { return ImagePath + file }
+func window(rungs []int, bot, top int) []int {
+	lo, hi := 0, len(rungs)-1
+	for i, w := range rungs {
+		if w <= bot {
+			lo = i
+		}
+		if w >= top {
+			hi = i
+			break
+		}
+	}
+	return rungs[min(lo, hi) : hi+1]
+}
 
 func rungsOf(rec journal.Record) []int {
 	seen := map[int]bool{}
@@ -122,8 +97,96 @@ func rungsOf(rec journal.Record) []int {
 	return rungs
 }
 
+func (im Image) file(ext string, w int) string { return im.files[imgKey{ext, w}] }
+
+func (im Image) last() journal.Format { return im.formats[len(im.formats)-1] }
+
+func (im Image) ext() string { return im.last().Ext }
+
+func (im Image) shareURL() string {
+	if len(im.rungs) == 0 {
+		return ""
+	}
+	w := im.rungs[0]
+	for _, r := range im.rungs {
+		if r <= journal.ShareWidth {
+			w = r
+		}
+	}
+	if f := im.file(im.ext(), w); f != "" {
+		return ImageURL(f)
+	}
+	return ""
+}
+
+func (im Image) ref(slot Slot) (imgRef, bool) {
+	for _, r := range im.refs {
+		if r.slot == slot {
+			return r, true
+		}
+	}
+	return imgRef{}, false
+}
+
+func (im Image) srcSet(slot Slot, f journal.Format) string {
+	r, ok := im.ref(slot)
+	if !ok {
+		return ""
+	}
+	var b strings.Builder
+	for _, w := range window(im.rungs, r.bot, r.top) {
+		name := im.file(f.Ext, w)
+		if name == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "%s %dw", ImageURL(name), w)
+	}
+	return b.String()
+}
+
+func (im Image) attrs(slot Slot, priority bool) templ.Attributes {
+	a := templ.Attributes{
+		"src":      im.URL(slot),
+		"srcset":   im.SrcSet(slot),
+		"sizes":    im.Sizes(slot),
+		"width":    strconv.Itoa(im.Width),
+		"height":   strconv.Itoa(im.Height),
+		"decoding": "async",
+	}
+	if priority {
+		a["fetchpriority"] = "high"
+	} else {
+		a["loading"] = "lazy"
+	}
+	return a
+}
+
+func (s Slot) String() string {
+	switch s {
+	case SlotThumb:
+		return "thumb"
+	case SlotColumn:
+		return "column"
+	case SlotPage:
+		return "page"
+	case SlotPageWide:
+		return "page-wide"
+	case SlotPageFull:
+		return "page-full"
+	case SlotBleed:
+		return "bleed"
+	}
+	return "slot(" + strconv.Itoa(int(s)) + ")"
+}
+
+func ImageURL(file string) string { return ImagePath + file }
+
 func NewImage(rec journal.Record, sc Scale, ceiling Slot, slots map[Slot]SlotSpec) Image {
-	stem := imgStem(rec.Name)
+	base := path.Base(filepath.ToSlash(rec.Name))
+	stem := strings.TrimSuffix(base, path.Ext(base))
 	m := rec.Prep
 	rungs := rungsOf(rec)
 	formats := make([]journal.Format, len(rec.Formats))
@@ -162,37 +225,6 @@ func NewImage(rec journal.Record, sc Scale, ceiling Slot, slots map[Slot]SlotSpe
 	}
 }
 
-func (im Image) file(ext string, w int) string { return im.files[imgKey{ext, w}] }
-
-func (im Image) last() journal.Format { return im.formats[len(im.formats)-1] }
-
-func (im Image) ext() string { return im.last().Ext }
-
-func (im Image) shareURL() string {
-	if len(im.rungs) == 0 {
-		return ""
-	}
-	w := im.rungs[0]
-	for _, r := range im.rungs {
-		if r <= journal.ShareWidth {
-			w = r
-		}
-	}
-	if f := im.file(im.ext(), w); f != "" {
-		return ImageURL(f)
-	}
-	return ""
-}
-
-func (im Image) ref(slot Slot) (imgRef, bool) {
-	for _, r := range im.refs {
-		if r.slot == slot {
-			return r, true
-		}
-	}
-	return imgRef{}, false
-}
-
 func (im Image) URL(slot Slot) string {
 	r, ok := im.ref(slot)
 	if !ok {
@@ -210,25 +242,6 @@ func (im Image) Src() string {
 		return ""
 	}
 	return im.URL(im.refs[len(im.refs)-1].slot)
-}
-
-func (im Image) srcSet(slot Slot, f journal.Format) string {
-	r, ok := im.ref(slot)
-	if !ok {
-		return ""
-	}
-	var b strings.Builder
-	for _, w := range window(im.rungs, r.bot, r.top) {
-		name := im.file(f.Ext, w)
-		if name == "" {
-			continue
-		}
-		if b.Len() > 0 {
-			b.WriteString(", ")
-		}
-		fmt.Fprintf(&b, "%s %dw", ImageURL(name), w)
-	}
-	return b.String()
 }
 
 func (im Image) SrcSet(slot Slot) string { return im.srcSet(slot, im.last()) }
@@ -250,23 +263,6 @@ func (im Image) Sources(slot Slot) []templ.Attributes {
 		})
 	}
 	return out
-}
-
-func (im Image) attrs(slot Slot, priority bool) templ.Attributes {
-	a := templ.Attributes{
-		"src":      im.URL(slot),
-		"srcset":   im.SrcSet(slot),
-		"sizes":    im.Sizes(slot),
-		"width":    strconv.Itoa(im.Width),
-		"height":   strconv.Itoa(im.Height),
-		"decoding": "async",
-	}
-	if priority {
-		a["fetchpriority"] = "high"
-	} else {
-		a["loading"] = "lazy"
-	}
-	return a
 }
 
 func (im Image) Attrs(slot Slot) templ.Attributes {

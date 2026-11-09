@@ -39,29 +39,6 @@ type Meta struct {
 	Tags     []string `yaml:"tag"`
 }
 
-func (m Meta) IsDraft() bool { return m.Draft }
-
-func (m Meta) IsFeatured() bool { return m.Featured }
-
-func (m Meta) Badges() []Marker { return nil }
-
-func (m Meta) DocDate() Date { return m.Date }
-
-func (m Meta) DocTitle() string { return m.Title }
-
-func (m Meta) DocSummary() string { return m.Summary }
-
-func (m Meta) DocTags() []string { return m.Tags }
-
-func (m Meta) DocImage() string { return m.Image }
-
-func (m Meta) LastMod() Date {
-	if !m.Updated.IsZero() {
-		return m.Updated
-	}
-	return m.Date
-}
-
 type Heading = journal.Heading
 
 type Widget = func(info, body string) (string, error)
@@ -75,6 +52,43 @@ type Document[T any] struct {
 	Headings []Heading
 
 	Image Image
+}
+
+type Collection[T Metadata] struct {
+	id     string
+	title  string
+	desc   string
+	docs   []Document[T]
+	bySlug map[string]Document[T]
+	items  bool
+	site   Site
+	kicker func(Document[T]) string
+	tags   *Classifier
+}
+
+type Spec[T Metadata] struct {
+	ID          string
+	Title       string
+	Description string
+	Markdown    string
+	YAML        string
+	Widgets     map[string]Widget
+	Classifier  *Classifier
+	Cmp         func(a, b Document[T]) int
+	Kicker      func(Document[T]) string
+	Index       func(Shell, *Collection[T]) templ.Component
+	Item        func(Shell, *Collection[T], Document[T]) templ.Component
+	ListOnly    bool
+
+	ImageMax Slot
+}
+
+type Basic = Spec[Meta]
+
+type Resolver interface {
+	Documents(pattern string, widgets map[string]Widget) ([]journal.Document, error)
+	Data(name string) ([]byte, error)
+	Image(name string, max Slot) (Image, error)
 }
 
 func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
@@ -96,18 +110,6 @@ func sortByDateDesc[T Metadata](docs []Document[T]) {
 	slices.SortStableFunc(docs, func(a, b Document[T]) int {
 		return b.Meta.DocDate().Compare(a.Meta.DocDate().Time)
 	})
-}
-
-type Collection[T Metadata] struct {
-	id     string
-	title  string
-	desc   string
-	docs   []Document[T]
-	bySlug map[string]Document[T]
-	items  bool
-	site   Site
-	kicker func(Document[T]) string
-	tags   *Classifier
 }
 
 func newCollection[T Metadata](id string, docs []Document[T], items bool) *Collection[T] {
@@ -137,6 +139,60 @@ func modified[T Metadata](m T) string {
 		return mod.ISO()
 	}
 	return ""
+}
+
+func (spec Spec[T]) imageMax() Slot {
+	if spec.ImageMax >= SlotThumb {
+		return spec.ImageMax
+	}
+	if spec.ListOnly {
+		return SlotThumb
+	}
+	return SlotDefault
+}
+
+func images[T Metadata](r Resolver, id string, docs []Document[T], max Slot) error {
+	seen := map[string]Image{}
+	for i, d := range docs {
+		name := d.Meta.DocImage()
+		if name == "" {
+			continue
+		}
+		name = journal.Resolve(d.Path, name)
+		im, ok := seen[name]
+		if !ok {
+			var err error
+			if im, err = r.Image(name, max); err != nil {
+				return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
+			}
+			seen[name] = im
+		}
+		docs[i].Image = im
+	}
+	return nil
+}
+
+func (m Meta) IsDraft() bool { return m.Draft }
+
+func (m Meta) IsFeatured() bool { return m.Featured }
+
+func (m Meta) Badges() []Marker { return nil }
+
+func (m Meta) DocDate() Date { return m.Date }
+
+func (m Meta) DocTitle() string { return m.Title }
+
+func (m Meta) DocSummary() string { return m.Summary }
+
+func (m Meta) DocTags() []string { return m.Tags }
+
+func (m Meta) DocImage() string { return m.Image }
+
+func (m Meta) LastMod() Date {
+	if !m.Updated.IsZero() {
+		return m.Updated
+	}
+	return m.Date
 }
 
 func (c *Collection[T]) Docs() []Document[T] { return c.docs }
@@ -211,65 +267,9 @@ func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
 	return p
 }
 
-type Spec[T Metadata] struct {
-	ID          string
-	Title       string
-	Description string
-	Markdown    string
-	YAML        string
-	Widgets     map[string]Widget
-	Classifier  *Classifier
-	Cmp         func(a, b Document[T]) int
-	Kicker      func(Document[T]) string
-	Index       func(Shell, *Collection[T]) templ.Component
-	Item        func(Shell, *Collection[T], Document[T]) templ.Component
-	ListOnly    bool
-
-	ImageMax Slot
-}
-
-type Basic = Spec[Meta]
-
-func (spec Spec[T]) imageMax() Slot {
-	if spec.ImageMax >= SlotThumb {
-		return spec.ImageMax
-	}
-	if spec.ListOnly {
-		return SlotThumb
-	}
-	return SlotDefault
-}
-
 func (c *Collection[T]) Kicker(d Document[T]) string { return c.kicker(d) }
 
 func (c *Collection[T]) Tags(d Document[T]) []Marker { return c.tags.Markers(d.Meta.DocTags()) }
-
-type Resolver interface {
-	Documents(pattern string, widgets map[string]Widget) ([]journal.Document, error)
-	Data(name string) ([]byte, error)
-	Image(name string, max Slot) (Image, error)
-}
-
-func images[T Metadata](r Resolver, id string, docs []Document[T], max Slot) error {
-	seen := map[string]Image{}
-	for i, d := range docs {
-		name := d.Meta.DocImage()
-		if name == "" {
-			continue
-		}
-		name = journal.Resolve(d.Path, name)
-		im, ok := seen[name]
-		if !ok {
-			var err error
-			if im, err = r.Image(name, max); err != nil {
-				return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
-			}
-			seen[name] = im
-		}
-		docs[i].Image = im
-	}
-	return nil
-}
 
 func Collect[T Metadata](spec Spec[T], r Resolver, site Site, drafts bool) (*Collection[T], error) {
 	if spec.ID == "" {

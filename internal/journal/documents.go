@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const holeMark = "\x00"
+
 var (
 	JSON = Format{Ext: "json", Type: "application/json"}
 	YAML = Format{Ext: "yaml", Type: "application/yaml"}
@@ -44,8 +46,6 @@ func Resolve(doc, ref string) string {
 	}
 	return path.Join(path.Dir(doc), ref)
 }
-
-const holeMark = "\x00"
 
 func Hole(i int) string { return holeMark + strconv.Itoa(i) + holeMark }
 

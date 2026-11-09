@@ -26,6 +26,57 @@ import (
 
 const headerSep = "---"
 
+var kindRawBlock = ast.NewNodeKind("RawBlock")
+
+var kindRawInline = ast.NewNodeKind("RawInline")
+
+var spanSyntax = regexp.MustCompile(`^\[([^\]\n]+)\]\{((?:\s*\.[A-Za-z_][\w-]*)+)\s*\}`)
+
+var calloutKinds = []string{"note", "tip", "important", "warning", "caution"}
+
+var converts atomic.Int64
+
+type embeds struct {
+	list []journal.Embed
+	at   map[journal.Embed]int
+}
+
+type rawBlock struct {
+	ast.BaseBlock
+	html string
+}
+
+type rawInline struct {
+	ast.BaseInline
+	html string
+}
+
+type spanParser struct{}
+
+type rawHTMLRenderer struct{}
+
+type imgTransform struct {
+	src    []byte
+	doc    string
+	embeds *embeds
+}
+
+type imgTarget struct {
+	node  ast.Node
+	img   *ast.Image
+	block bool
+}
+
+type calloutTransform struct{ src []byte }
+
+type Widget = func(info, body string) (string, error)
+
+type fenceTransform struct {
+	src     []byte
+	widgets map[string]Widget
+	err     error
+}
+
 func splitFrontmatter(raw []byte) (header, body []byte, err error) {
 	lines := bytes.Split(bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n")), []byte("\n"))
 	i := 0
@@ -44,11 +95,6 @@ func splitFrontmatter(raw []byte) (header, body []byte, err error) {
 		i++
 	}
 	return nil, nil, fmt.Errorf("missing closing %q frontmatter fence", headerSep)
-}
-
-type embeds struct {
-	list []journal.Embed
-	at   map[journal.Embed]int
 }
 
 func (e *embeds) hole(em journal.Embed) string {
@@ -143,53 +189,6 @@ func standaloneImage(p *ast.Paragraph, src []byte) (*ast.Image, bool) {
 	return img, true
 }
 
-var kindRawBlock = ast.NewNodeKind("RawBlock")
-
-type rawBlock struct {
-	ast.BaseBlock
-	html string
-}
-
-func (n *rawBlock) Dump(source []byte, level int) {
-	ast.DumpHelper(n, source, level, map[string]string{"html": n.html}, nil)
-}
-
-func (n *rawBlock) Kind() ast.NodeKind { return kindRawBlock }
-
-func (n *rawBlock) IsRaw() bool { return true }
-
-var kindRawInline = ast.NewNodeKind("RawInline")
-
-type rawInline struct {
-	ast.BaseInline
-	html string
-}
-
-func (n *rawInline) Dump(source []byte, level int) {
-	ast.DumpHelper(n, source, level, map[string]string{"html": n.html}, nil)
-}
-
-func (n *rawInline) Kind() ast.NodeKind { return kindRawInline }
-
-type spanParser struct{}
-
-var spanSyntax = regexp.MustCompile(`^\[([^\]\n]+)\]\{((?:\s*\.[A-Za-z_][\w-]*)+)\s*\}`)
-
-func (spanParser) Trigger() []byte { return []byte{'['} }
-
-func (spanParser) Parse(_ ast.Node, block text.Reader, _ parser.Context) ast.Node {
-	line, _ := block.PeekLine()
-	m := spanSyntax.FindSubmatch(line)
-	if m == nil {
-		return nil
-	}
-	block.Advance(len(m[0]))
-	classes := strings.ReplaceAll(strings.Join(strings.Fields(string(m[2])), " "), ".", "")
-	return &rawInline{html: `<span class="` + classes + `">` + html.EscapeString(string(m[1])) + "</span>"}
-}
-
-type rawHTMLRenderer struct{}
-
 func renderRawHTML(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
@@ -203,60 +202,10 @@ func renderRawHTML(w util.BufWriter, _ []byte, node ast.Node, entering bool) (as
 	return ast.WalkContinue, nil
 }
 
-func (rawHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(kindRawBlock, renderRawHTML)
-	reg.Register(kindRawInline, renderRawHTML)
-}
-
-type imgTransform struct {
-	src    []byte
-	doc    string
-	embeds *embeds
-}
-
-type imgTarget struct {
-	node  ast.Node
-	img   *ast.Image
-	block bool
-}
-
 func (t *imgTransform) hole(img *ast.Image, block bool) string {
 	alt := nodeText(img, t.src)
 	return t.embeds.hole(journal.Embed{Picture: journal.Resolve(t.doc, string(img.Destination)), Alt: alt, Caption: cmp.Or(string(img.Title), alt), Figure: block})
 }
-
-func (t *imgTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
-	var found []imgTarget
-	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if !entering {
-			return ast.WalkContinue, nil
-		}
-		if para, ok := n.(*ast.Paragraph); ok {
-			img, yes := standaloneImage(para, t.src)
-			if !yes {
-				return ast.WalkContinue, nil
-			}
-			found = append(found, imgTarget{node: para, img: img, block: true})
-			return ast.WalkSkipChildren, nil
-		}
-		img, ok := n.(*ast.Image)
-		if !ok || remoteImage(string(img.Destination)) {
-			return ast.WalkContinue, nil
-		}
-		found = append(found, imgTarget{node: img, img: img})
-		return ast.WalkSkipChildren, nil
-	})
-	for _, f := range found {
-		html := t.hole(f.img, f.block)
-		var repl ast.Node = &rawInline{html: html}
-		if f.block {
-			repl = &rawBlock{html: html}
-		}
-		f.node.Parent().ReplaceChild(f.node.Parent(), f.node, repl)
-	}
-}
-
-var calloutKinds = []string{"note", "tip", "important", "warning", "caution"}
 
 func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
 	var b strings.Builder
@@ -279,45 +228,6 @@ func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
 	}
 	return kind, marker
 }
-
-type calloutTransform struct{ src []byte }
-
-func (t calloutTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
-	var quotes []*ast.Blockquote
-	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if q, ok := n.(*ast.Blockquote); ok && entering {
-			quotes = append(quotes, q)
-		}
-		return ast.WalkContinue, nil
-	})
-	for _, q := range quotes {
-		p, ok := q.FirstChild().(*ast.Paragraph)
-		if !ok {
-			continue
-		}
-		kind, marker := calloutMarker(p, t.src)
-		if kind == "" || (len(marker) == p.ChildCount() && q.ChildCount() == 1) {
-			continue
-		}
-		for _, n := range marker {
-			p.RemoveChild(p, n)
-		}
-		if p.ChildCount() == 0 {
-			q.RemoveChild(q, p)
-		}
-		title := ast.NewParagraph()
-		title.SetAttributeString("class", []byte("callout-title"))
-		title.AppendChild(title, ast.NewString([]byte(strings.ToUpper(kind[:1])+kind[1:])))
-		q.InsertBefore(q, q.FirstChild(), title)
-		q.SetAttributeString("class", []byte("callout callout--"+kind))
-	}
-}
-
-var converts atomic.Int64
-
-func Converts() int64 { return converts.Load() }
-
-type Widget = func(info, body string) (string, error)
 
 func palette(_, body string) (string, error) {
 	var roles []string
@@ -369,11 +279,101 @@ func fenceInfo(b *ast.FencedCodeBlock, src []byte) (name, info string) {
 	return name, strings.TrimSpace(info)
 }
 
-type fenceTransform struct {
-	src     []byte
-	widgets map[string]Widget
-	err     error
+func (n *rawBlock) Dump(source []byte, level int) {
+	ast.DumpHelper(n, source, level, map[string]string{"html": n.html}, nil)
 }
+
+func (n *rawBlock) Kind() ast.NodeKind { return kindRawBlock }
+
+func (n *rawBlock) IsRaw() bool { return true }
+
+func (n *rawInline) Dump(source []byte, level int) {
+	ast.DumpHelper(n, source, level, map[string]string{"html": n.html}, nil)
+}
+
+func (n *rawInline) Kind() ast.NodeKind { return kindRawInline }
+
+func (spanParser) Trigger() []byte { return []byte{'['} }
+
+func (spanParser) Parse(_ ast.Node, block text.Reader, _ parser.Context) ast.Node {
+	line, _ := block.PeekLine()
+	m := spanSyntax.FindSubmatch(line)
+	if m == nil {
+		return nil
+	}
+	block.Advance(len(m[0]))
+	classes := strings.ReplaceAll(strings.Join(strings.Fields(string(m[2])), " "), ".", "")
+	return &rawInline{html: `<span class="` + classes + `">` + html.EscapeString(string(m[1])) + "</span>"}
+}
+
+func (rawHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(kindRawBlock, renderRawHTML)
+	reg.Register(kindRawInline, renderRawHTML)
+}
+
+func (t *imgTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	var found []imgTarget
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if para, ok := n.(*ast.Paragraph); ok {
+			img, yes := standaloneImage(para, t.src)
+			if !yes {
+				return ast.WalkContinue, nil
+			}
+			found = append(found, imgTarget{node: para, img: img, block: true})
+			return ast.WalkSkipChildren, nil
+		}
+		img, ok := n.(*ast.Image)
+		if !ok || remoteImage(string(img.Destination)) {
+			return ast.WalkContinue, nil
+		}
+		found = append(found, imgTarget{node: img, img: img})
+		return ast.WalkSkipChildren, nil
+	})
+	for _, f := range found {
+		html := t.hole(f.img, f.block)
+		var repl ast.Node = &rawInline{html: html}
+		if f.block {
+			repl = &rawBlock{html: html}
+		}
+		f.node.Parent().ReplaceChild(f.node.Parent(), f.node, repl)
+	}
+}
+
+func (t calloutTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	var quotes []*ast.Blockquote
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if q, ok := n.(*ast.Blockquote); ok && entering {
+			quotes = append(quotes, q)
+		}
+		return ast.WalkContinue, nil
+	})
+	for _, q := range quotes {
+		p, ok := q.FirstChild().(*ast.Paragraph)
+		if !ok {
+			continue
+		}
+		kind, marker := calloutMarker(p, t.src)
+		if kind == "" || (len(marker) == p.ChildCount() && q.ChildCount() == 1) {
+			continue
+		}
+		for _, n := range marker {
+			p.RemoveChild(p, n)
+		}
+		if p.ChildCount() == 0 {
+			q.RemoveChild(q, p)
+		}
+		title := ast.NewParagraph()
+		title.SetAttributeString("class", []byte("callout-title"))
+		title.AppendChild(title, ast.NewString([]byte(strings.ToUpper(kind[:1])+kind[1:])))
+		q.InsertBefore(q, q.FirstChild(), title)
+		q.SetAttributeString("class", []byte("callout callout--"+kind))
+	}
+}
+
+func Converts() int64 { return converts.Load() }
 
 func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	var found []*ast.FencedCodeBlock

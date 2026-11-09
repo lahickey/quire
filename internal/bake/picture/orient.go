@@ -9,6 +9,19 @@ import (
 	xdraw "golang.org/x/image/draw"
 )
 
+var orientations = map[int]struct {
+	swap bool
+	from func(x, y, w, h int) (int, int)
+}{
+	2: {false, func(x, y, w, h int) (int, int) { return w - 1 - x, y }},
+	3: {false, func(x, y, w, h int) (int, int) { return w - 1 - x, h - 1 - y }},
+	4: {false, func(x, y, w, h int) (int, int) { return x, h - 1 - y }},
+	5: {true, func(x, y, w, h int) (int, int) { return y, x }},
+	6: {true, func(x, y, w, h int) (int, int) { return y, h - 1 - x }},
+	7: {true, func(x, y, w, h int) (int, int) { return w - 1 - y, h - 1 - x }},
+	8: {true, func(x, y, w, h int) (int, int) { return w - 1 - y, x }},
+}
+
 func exifOrientation(r *bytes.Reader, n int64) int {
 	start, _ := r.Seek(0, io.SeekCurrent)
 	defer func() { _, _ = r.Seek(start+n, io.SeekStart) }()
@@ -106,19 +119,6 @@ func toNRGBA(src image.Image) *image.NRGBA {
 func pixAt(src *image.NRGBA, x, y int) []byte {
 	i := src.PixOffset(x, y)
 	return src.Pix[i : i+4]
-}
-
-var orientations = map[int]struct {
-	swap bool
-	from func(x, y, w, h int) (int, int)
-}{
-	2: {false, func(x, y, w, h int) (int, int) { return w - 1 - x, y }},
-	3: {false, func(x, y, w, h int) (int, int) { return w - 1 - x, h - 1 - y }},
-	4: {false, func(x, y, w, h int) (int, int) { return x, h - 1 - y }},
-	5: {true, func(x, y, w, h int) (int, int) { return y, x }},
-	6: {true, func(x, y, w, h int) (int, int) { return y, h - 1 - x }},
-	7: {true, func(x, y, w, h int) (int, int) { return w - 1 - y, h - 1 - x }},
-	8: {true, func(x, y, w, h int) (int, int) { return w - 1 - y, x }},
 }
 
 func applyOrientation(img image.Image, o int) image.Image {

@@ -13,6 +13,12 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+var (
+	preludes = regexp.MustCompile(`[^{};]*\{`)
+	classes  = regexp.MustCompile(`\.(-?[A-Za-z_][\w-]*)`)
+	comments = regexp.MustCompile(`(?s)/\*.*?\*/`)
+)
+
 type Host interface {
 	Route(method, path string, h http.HandlerFunc)
 	Claim(method, path, owner string, h http.HandlerFunc) error
@@ -39,6 +45,23 @@ type moved struct {
 	at string
 }
 
+func (m *Mount) namespaced(fsys fs.FS, names []string) {
+	for _, n := range names {
+		css, err := fs.ReadFile(fsys, n)
+		if err != nil {
+			m.err = cmp.Or(m.err, err)
+			continue
+		}
+		for _, pre := range preludes.FindAllString(comments.ReplaceAllString(string(css), ""), -1) {
+			for _, c := range classes.FindAllStringSubmatch(pre, -1) {
+				if !strings.HasPrefix(c[1], m.name+"-") {
+					m.err = cmp.Or(m.err, fmt.Errorf("%s: class .%s is outside the %s- namespace", n, c[1], m.name))
+				}
+			}
+		}
+	}
+}
+
 func (p moved) Attach(m *Mount) error {
 	m.pages = p.at
 	return p.Plugin.Attach(m)
@@ -56,29 +79,6 @@ func Attach(h Host, p Plugin) error {
 		return fmt.Errorf("plugin %s: %w", name, err)
 	}
 	return nil
-}
-
-var (
-	preludes = regexp.MustCompile(`[^{};]*\{`)
-	classes  = regexp.MustCompile(`\.(-?[A-Za-z_][\w-]*)`)
-	comments = regexp.MustCompile(`(?s)/\*.*?\*/`)
-)
-
-func (m *Mount) namespaced(fsys fs.FS, names []string) {
-	for _, n := range names {
-		css, err := fs.ReadFile(fsys, n)
-		if err != nil {
-			m.err = cmp.Or(m.err, err)
-			continue
-		}
-		for _, pre := range preludes.FindAllString(comments.ReplaceAllString(string(css), ""), -1) {
-			for _, c := range classes.FindAllStringSubmatch(pre, -1) {
-				if !strings.HasPrefix(c[1], m.name+"-") {
-					m.err = cmp.Or(m.err, fmt.Errorf("%s: class .%s is outside the %s- namespace", n, c[1], m.name))
-				}
-			}
-		}
-	}
 }
 
 func (m *Mount) Prefix() string { return "/_" + m.name + "/" }

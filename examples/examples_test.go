@@ -13,12 +13,6 @@ import (
 	"time"
 )
 
-type check struct {
-	method, path string
-	status       int
-	needle       string
-}
-
 var checks = map[string][]check{
 	"1-minimal": {
 		{"GET", "/", 200, "Example"},
@@ -66,6 +60,12 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, "basket-narrow.css"},
 		{"GET", "/missing", 404, ""},
 	},
+}
+
+type check struct {
+	method, path string
+	status       int
+	needle       string
 }
 
 func build(t *testing.T, dir string, args ...string) string {

@@ -19,6 +19,11 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+type pen struct {
+	dst  draw.Image
+	font *sfnt.Font
+}
+
 func hexColor(s string) (color.Color, error) {
 	s = strings.TrimPrefix(s, "#")
 	n, err := strconv.ParseUint(s, 16, 32)
@@ -26,11 +31,6 @@ func hexColor(s string) (color.Color, error) {
 		return nil, fmt.Errorf("quire: card colour %q", s)
 	}
 	return color.RGBA{uint8(n >> 16), uint8(n >> 8), uint8(n), 0xff}, nil
-}
-
-type pen struct {
-	dst  draw.Image
-	font *sfnt.Font
 }
 
 func (p pen) face(size float64) (font.Face, error) {

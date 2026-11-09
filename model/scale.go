@@ -21,6 +21,8 @@ const (
 	WidthFull
 )
 
+const narrowest = 320
+
 var Widths = []Width{WidthNarrow, WidthWide, WidthFull}
 
 type Scale struct {
@@ -28,18 +30,6 @@ type Scale struct {
 	Col    int
 	Widest Width
 }
-
-func DefaultScale() Scale {
-	return Scale{Root: 16, Col: 336}
-}
-
-func (s Scale) Rem(px int) string {
-	return strconv.FormatFloat(float64(px)/float64(s.Root), 'f', -1, 64) + "rem"
-}
-
-func (s Scale) Gutter() int { return s.Root * 3 / 2 }
-
-func (s Scale) Thumb() int { return s.Root * 4 }
 
 func (s Scale) inner(cols int) int {
 	if cols < 1 {
@@ -51,12 +41,6 @@ func (s Scale) inner(cols int) int {
 func (s Scale) pageWidth(cols int) int {
 	return s.inner(cols) + 2*s.Gutter()
 }
-
-func (s Scale) Measure() int { return s.pageWidth(pageCols) }
-
-func (s Scale) Wide() int { return s.pageWidth(wideCols) }
-
-func (s Scale) Full() int { return s.pageWidth(fullCols) }
 
 func (s Scale) narrowClause() string {
 	return "calc(100vw - " + s.Rem(2*s.Gutter()) + ")"
@@ -109,14 +93,30 @@ func (s Scale) display(slot Slot) int {
 	return s.inner(s.cols(slot))
 }
 
-const narrowest = 320
-
 func (s Scale) bottom(slot Slot) int {
 	if slot == SlotThumb {
 		return s.Thumb()
 	}
 	return narrowest - 2*s.Gutter()
 }
+
+func DefaultScale() Scale {
+	return Scale{Root: 16, Col: 336}
+}
+
+func (s Scale) Rem(px int) string {
+	return strconv.FormatFloat(float64(px)/float64(s.Root), 'f', -1, 64) + "rem"
+}
+
+func (s Scale) Gutter() int { return s.Root * 3 / 2 }
+
+func (s Scale) Thumb() int { return s.Root * 4 }
+
+func (s Scale) Measure() int { return s.pageWidth(pageCols) }
+
+func (s Scale) Wide() int { return s.pageWidth(wideCols) }
+
+func (s Scale) Full() int { return s.pageWidth(fullCols) }
 
 func (s Scale) Slots() map[Slot]SlotSpec {
 	out := map[Slot]SlotSpec{}

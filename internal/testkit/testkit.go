@@ -12,6 +12,15 @@ import (
 	"github.com/lahickey/quire/internal/journal"
 )
 
+func encode(t *testing.T, img image.Image) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
 func Photo(t *testing.T, w, h int, alpha bool) []byte {
 	t.Helper()
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
@@ -45,15 +54,6 @@ func Flat(t *testing.T, w, h int, alpha bool) []byte {
 		}
 	}
 	return encode(t, img)
-}
-
-func encode(t *testing.T, img image.Image) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		t.Fatal(err)
-	}
-	return buf.Bytes()
 }
 
 func ReadJournal(t *testing.T, dir string) map[string]journal.Record {

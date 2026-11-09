@@ -12,6 +12,17 @@ type Dir string
 
 func (d Dir) path(name string) string { return filepath.Join(string(d), name) }
 
+func (d Dir) link(out Dir, name string) error {
+	if os.Link(d.path(name), out.path(name)) == nil {
+		return nil
+	}
+	body, err := d.Read(name)
+	if err != nil {
+		return fmt.Errorf("quire: %s: %w", name, err)
+	}
+	return out.Write(name, body)
+}
+
 func (d Dir) Read(name string) ([]byte, error) { return os.ReadFile(d.path(name)) }
 
 func (d Dir) Write(name string, body []byte) error {
@@ -32,17 +43,6 @@ func (d Dir) Journal() map[string]journal.Record {
 		return map[string]journal.Record{}
 	}
 	return recs
-}
-
-func (d Dir) link(out Dir, name string) error {
-	if os.Link(d.path(name), out.path(name)) == nil {
-		return nil
-	}
-	body, err := d.Read(name)
-	if err != nil {
-		return fmt.Errorf("quire: %s: %w", name, err)
-	}
-	return out.Write(name, body)
 }
 
 func (d Dir) CopyOut(dest string, records []journal.Record) error {

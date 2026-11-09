@@ -10,6 +10,8 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+var bright = []string{"sky", "mint", "lime", "yellow", "amber"}
+
 type cssVar struct{ name, val string }
 
 func rootVars(tokens []cssVar) []byte {
@@ -67,8 +69,6 @@ func breakpointCSS(s model.Scale) []byte {
 	})
 	return fmt.Appendf(nil, "%s {\n%s}\n", media(s, model.WidthNarrow), inner)
 }
-
-var bright = []string{"sky", "mint", "lime", "yellow", "amber"}
 
 func contrast(hue string) string {
 	if slices.Contains(bright, hue) {

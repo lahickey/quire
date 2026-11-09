@@ -18,17 +18,13 @@ func Session(r *http.Request) string {
 	return id
 }
 
-func navigation(r *http.Request) bool {
-	return strings.Contains(r.Header.Get("Accept"), "text/html")
-}
-
 func Mint(w http.ResponseWriter, r *http.Request, secure bool) *http.Request {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		if _, err := uuid.Parse(c.Value); err == nil {
 			return r.WithContext(context.WithValue(r.Context(), sessionKey, c.Value))
 		}
 	}
-	if !navigation(r) {
+	if !strings.Contains(r.Header.Get("Accept"), "text/html") {
 		return r
 	}
 	id := uuid.New().String()

@@ -34,11 +34,6 @@ type Plugin struct {
 	carts map[string]map[string]int
 }
 
-func New(items ...Item) *Plugin { return &Plugin{items: items, carts: map[string]map[string]int{}} }
-
-// Name is where the plugin is mounted: its routes are under /_basket/.
-func (p *Plugin) Name() string { return "basket" }
-
 func (p *Plugin) url(endpoint string) string { return p.mount.Prefix() + endpoint }
 
 // stream is the Datastar action that keeps an event stream open, reconnecting if it drops.
@@ -141,6 +136,11 @@ func (p *Plugin) show(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	ui.Render(p.page(p.cart(plugin.Session(r))))(w, r)
 }
+
+func New(items ...Item) *Plugin { return &Plugin{items: items, carts: map[string]map[string]int{}} }
+
+// Name is where the plugin is mounted: its routes are under /_basket/.
+func (p *Plugin) Name() string { return "basket" }
 
 // Attach is called by e.Use. UseSessions gives each visitor a session cookie,
 // NewStreams the event streams publish sends to. Routes are endpoints under

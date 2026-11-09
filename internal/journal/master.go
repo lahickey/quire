@@ -9,11 +9,6 @@ import (
 
 const MasterCap = 2560
 
-func Hash(b []byte) string {
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:16])
-}
-
 type Format struct {
 	Ext      string
 	Type     string
@@ -29,6 +24,11 @@ type MasterMeta struct {
 	SrcW  int    `json:"sw,omitzero"`
 	SrcH  int    `json:"sh,omitzero"`
 	Alpha bool   `json:"a,omitzero"`
+}
+
+func Hash(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:16])
 }
 
 func WriteAtomic(path string, body []byte, perm os.FileMode) error {

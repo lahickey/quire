@@ -14,6 +14,38 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+func photoMasters(t *testing.T, names ...string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, n := range names {
+		if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(n)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, n), testkit.Photo(t, 600, 400, false), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func bakeCounted(t *testing.T, s model.BakeSpec) (dec, enc int64) {
+	t.Helper()
+	d0, e0 := picture.Decodes(), picture.Encodes()
+	if err := baketest.BakeMasters(s); err != nil {
+		t.Fatal(err)
+	}
+	return picture.Decodes() - d0, picture.Encodes() - e0
+}
+
+func filesIn(t *testing.T, dir, ext string) int {
+	t.Helper()
+	got, err := filepath.Glob(filepath.Join(dir, "*"+ext))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(got)
+}
+
 func TestJournalOrderPutsImgLast(t *testing.T) {
 	s := model.BakeSpec{Content: photoMasters(t, "a.png"), Dir: t.TempDir(), Codecs: []string{"avif", "webp", "jpg"}, AVIFSpeed: 9}
 	for range 2 {
@@ -92,36 +124,4 @@ func TestAMissingVariantIsEncodedAgain(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(s.Bundle(), name)); err != nil {
 		t.Error("the variant is still missing from out")
 	}
-}
-
-func photoMasters(t *testing.T, names ...string) string {
-	t.Helper()
-	dir := t.TempDir()
-	for _, n := range names {
-		if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(n)), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, n), testkit.Photo(t, 600, 400, false), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return dir
-}
-
-func bakeCounted(t *testing.T, s model.BakeSpec) (dec, enc int64) {
-	t.Helper()
-	d0, e0 := picture.Decodes(), picture.Encodes()
-	if err := baketest.BakeMasters(s); err != nil {
-		t.Fatal(err)
-	}
-	return picture.Decodes() - d0, picture.Encodes() - e0
-}
-
-func filesIn(t *testing.T, dir, ext string) int {
-	t.Helper()
-	got, err := filepath.Glob(filepath.Join(dir, "*"+ext))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return len(got)
 }

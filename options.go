@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/model"
 )
 
@@ -19,6 +18,11 @@ const (
 )
 
 type Option func(*Engine)
+
+type icon struct {
+	fsys fs.FS
+	model.Icon
+}
 
 func WithMode(m Mode) Option {
 	return func(e *Engine) { e.mode = m }
@@ -49,12 +53,6 @@ func WithIcons(fsys fs.FS, names ...string) Option {
 			}
 			e.icons = append(e.icons, icon{fsys, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Href: "/" + n}})
 		}
-	}
-}
-
-func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
-	for _, n := range names {
-		e.linked.parts.Sheets = append(e.linked.parts.Sheets, assets.Sheet{FS: fsys, Name: n, Layer: layer, At: at})
 	}
 }
 

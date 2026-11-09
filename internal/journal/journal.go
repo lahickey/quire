@@ -17,6 +17,17 @@ const (
 	journalVersion = 2
 )
 
+const ladderSame = 1.15
+
+const (
+	ShareWidth = 1200
+	CardHeight = 630
+)
+
+const SiteCard = "card"
+
+var ladder = []int{64, 128, 232, 408, 680, 1096, 1704, MasterCap}
+
 type Variant struct {
 	Name string `json:"k"`
 	W    int    `json:"w"`
@@ -31,30 +42,11 @@ type Variants struct {
 	Out  []Variant `json:"out"`
 }
 
-func (vs Variants) Format() Format {
-	return Format{Ext: vs.Ext, Type: vs.Type, Quality: vs.Q, Lossless: vs.Less}
-}
-
 type Record struct {
 	Name    string     `json:"name"`
 	Key     string     `json:"key"`
 	Prep    MasterMeta `json:"prep"`
 	Formats []Variants `json:"formats"`
-}
-
-func (r Record) File() (string, bool) {
-	if len(r.Formats) != 1 || len(r.Formats[0].Out) != 1 {
-		return "", false
-	}
-	return r.Formats[0].Out[0].Name, true
-}
-
-func (r Record) Files() []Variant {
-	var out []Variant
-	for _, vs := range r.Formats {
-		out = append(out, vs.Out...)
-	}
-	return out
 }
 
 type journalHeader struct {
@@ -90,6 +82,25 @@ func readJournal(src io.Reader) (map[string]Record, error) {
 	return out, sc.Err()
 }
 
+func (vs Variants) Format() Format {
+	return Format{Ext: vs.Ext, Type: vs.Type, Quality: vs.Q, Lossless: vs.Less}
+}
+
+func (r Record) File() (string, bool) {
+	if len(r.Formats) != 1 || len(r.Formats[0].Out) != 1 {
+		return "", false
+	}
+	return r.Formats[0].Out[0].Name, true
+}
+
+func (r Record) Files() []Variant {
+	var out []Variant
+	for _, vs := range r.Formats {
+		out = append(out, vs.Out...)
+	}
+	return out
+}
+
 func LoadJournal(fsys fs.FS) (map[string]Record, error) {
 	f, err := fsys.Open(JournalName)
 	if err != nil {
@@ -120,13 +131,9 @@ func WriteJournal(records []Record) []byte {
 	return out
 }
 
-var ladder = []int{64, 128, 232, 408, 680, 1096, 1704, MasterCap}
-
 func Key(version int, srcDigest string) string {
 	return Hash(fmt.Appendf(nil, "v=%d\nsrc=%s\nladder=%v\n", version, srcDigest, ladder))
 }
-
-const ladderSame = 1.15
 
 func Ladder() []int { return slices.Clone(ladder) }
 
@@ -158,10 +165,3 @@ func Snap(ladder []int, want int) int {
 	}
 	return ladder[len(ladder)-1]
 }
-
-const (
-	ShareWidth = 1200
-	CardHeight = 630
-)
-
-const SiteCard = "card"

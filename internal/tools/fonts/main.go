@@ -27,12 +27,12 @@ const (
 	measureDir = "internal/bake/diagram/fonts"
 )
 
-var subsets = []string{"latin", "latin-ext"}
-
 const (
 	modernUA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 	oldUA    = "Mozilla/5.0 (Windows NT 6.1)"
 )
+
+var subsets = []string{"latin", "latin-ext"}
 
 var (
 	faceBlock = regexp.MustCompile(`/\*\s*([\w-]+)\s*\*/\s*@font-face\s*\{([^}]*)\}`)

@@ -1,7 +1,5 @@
 package radix
 
-type Scale struct{ Light, Dark [12]string }
-
 var Scales = map[string]Scale{
 	"amber": {
 		Light: [12]string{"#fefdfb", "#fefbe9", "#fff7c2", "#ffee9c", "#fbe577", "#f3d673", "#e9c162", "#e2a336", "#ffc53d", "#ffba18", "#ab6400", "#4f3422"},
@@ -128,3 +126,5 @@ var Scales = map[string]Scale{
 		Dark:  [12]string{"#14120b", "#1b180f", "#2d2305", "#362b00", "#433500", "#524202", "#665417", "#836a21", "#ffe629", "#ffff57", "#f5e147", "#f6eeb4"},
 	},
 }
+
+type Scale struct{ Light, Dark [12]string }

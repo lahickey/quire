@@ -8,7 +8,25 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+var datesDayFirst = Dates{"2 January 2006", "2 Jan 2006", "January 2006", "Jan 2006"}
+
 type Date struct{ time.Time }
+
+type Dates struct {
+	Long           string
+	Short          string
+	MonthYear      string
+	ShortMonthYear string
+}
+
+func (d Dates) orDefault() Dates {
+	return Dates{
+		Long:           cmp.Or(d.Long, datesDayFirst.Long),
+		Short:          cmp.Or(d.Short, datesDayFirst.Short),
+		MonthYear:      cmp.Or(d.MonthYear, datesDayFirst.MonthYear),
+		ShortMonthYear: cmp.Or(d.ShortMonthYear, datesDayFirst.ShortMonthYear),
+	}
+}
 
 func ParseDate(iso string) (Date, error) {
 	t, err := time.Parse(time.DateOnly, iso)
@@ -36,24 +54,6 @@ func (d Date) ISO() string {
 		return ""
 	}
 	return d.Format(time.DateOnly)
-}
-
-type Dates struct {
-	Long           string
-	Short          string
-	MonthYear      string
-	ShortMonthYear string
-}
-
-var datesDayFirst = Dates{"2 January 2006", "2 Jan 2006", "January 2006", "Jan 2006"}
-
-func (d Dates) orDefault() Dates {
-	return Dates{
-		Long:           cmp.Or(d.Long, datesDayFirst.Long),
-		Short:          cmp.Or(d.Short, datesDayFirst.Short),
-		MonthYear:      cmp.Or(d.MonthYear, datesDayFirst.MonthYear),
-		ShortMonthYear: cmp.Or(d.ShortMonthYear, datesDayFirst.ShortMonthYear),
-	}
 }
 
 func (d Date) Formatted(layout string) string {

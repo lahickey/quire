@@ -21,13 +21,6 @@ templ (p *Plugin) button(endpoint, id, label string) {
 	</form>
 }
 
-// Add is the button a site places on an item's page.
-templ (p *Plugin) Add(id string) {
-	<div class="basket-add">
-		@p.button("add", id, "Add to basket")
-	</div>
-}
-
 // The basket's contents. Its id lets the event stream replace it in place.
 templ (p *Plugin) lines(cart map[string]int) {
 	<div id="basket-body">
@@ -58,4 +51,11 @@ templ (p *Plugin) page(cart map[string]int) {
 			@p.lines(cart)
 		</article>
 	}
+}
+
+// Add is the button a site places on an item's page.
+templ (p *Plugin) Add(id string) {
+	<div class="basket-add">
+		@p.button("add", id, "Add to basket")
+	</div>
 }

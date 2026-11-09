@@ -13,6 +13,10 @@ import (
 	"github.com/lahickey/quire/internal/journal"
 )
 
+const webpMethod = 4
+
+var encodes atomic.Int64
+
 type encoder interface {
 	ext() string
 	encode(img image.Image, f journal.Format) ([]byte, error)
@@ -21,6 +25,8 @@ type encoder interface {
 }
 
 type jpegEncoder struct{}
+
+type webpEncoder struct{}
 
 func (jpegEncoder) ext() string { return formatJPEG.Ext }
 
@@ -34,11 +40,7 @@ func (jpegEncoder) encode(img image.Image, f journal.Format) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type webpEncoder struct{}
-
 func (webpEncoder) ext() string { return formatWebP.Ext }
-
-const webpMethod = 4
 
 func (webpEncoder) codec() string {
 	return "gen2brain/webp@" + moduleVersion("github.com/gen2brain/webp") +
@@ -60,8 +62,6 @@ func builtinEncoders() map[string]encoder {
 		formatWebP.Ext: webpEncoder{},
 	}
 }
-
-var encodes atomic.Int64
 
 func resizeTo(src image.Image, width int) image.Image {
 	if src.Bounds().Dx() == width {

@@ -9,8 +9,12 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+const layerOrder = "@layer quire, plugin, site;\n"
+
 //go:embed *.css *.js
 var files embed.FS
+
+var ownSheets = []string{"base.css", "toggle.css", "nav.css", "layout.css", "prose.css", "highlight.css"}
 
 type Sheet struct {
 	FS    fs.FS
@@ -42,8 +46,6 @@ func read(f Sheet) []byte {
 	return body
 }
 
-const layerOrder = "@layer quire, plugin, site;\n"
-
 func appendCSS(b *strings.Builder, layer, name, query string, body []byte) {
 	if b.Len() == 0 {
 		b.WriteString(layerOrder)
@@ -65,7 +67,17 @@ func appendCSS(b *strings.Builder, layer, name, query string, body []byte) {
 	}
 }
 
-var ownSheets = []string{"base.css", "toggle.css", "nav.css", "layout.css", "prose.css", "highlight.css"}
+func appendJS(b *strings.Builder, name string, body []byte) {
+	if b.Len() > 0 {
+		b.WriteString("\n")
+	}
+	fmt.Fprintf(b, "/* --- %s --- */\n(function () {\n\"use strict\";\n", name)
+	b.Write(body)
+	if !strings.HasSuffix(string(body), "\n") {
+		b.WriteString("\n")
+	}
+	b.WriteString("})();\n")
+}
 
 func Stylesheet(p Parts) []byte {
 	var b strings.Builder
@@ -90,18 +102,6 @@ func Stylesheet(p Parts) []byte {
 		}
 	}
 	return []byte(b.String())
-}
-
-func appendJS(b *strings.Builder, name string, body []byte) {
-	if b.Len() > 0 {
-		b.WriteString("\n")
-	}
-	fmt.Fprintf(b, "/* --- %s --- */\n(function () {\n\"use strict\";\n", name)
-	b.Write(body)
-	if !strings.HasSuffix(string(body), "\n") {
-		b.WriteString("\n")
-	}
-	b.WriteString("})();\n")
 }
 
 func Script() []byte {

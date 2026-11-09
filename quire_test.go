@@ -31,8 +31,15 @@ import (
 	"github.com/lahickey/quire/plugin"
 )
 
+var withFallback = []string{"webp", "jpg"}
+
 type note struct {
 	model.Meta `yaml:",inline"`
+}
+
+type testPlugin struct {
+	name   string
+	attach func(*plugin.Mount) error
 }
 
 func body(s string) templ.Component {
@@ -40,6 +47,68 @@ func body(s string) templ.Component {
 		_, err := io.WriteString(w, s)
 		return err
 	})
+}
+
+func bakeFS(t *testing.T, masters fs.FS, codecs ...string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, masters); err != nil {
+		t.Fatal(err)
+	}
+	// AVIF at its fastest: these tests are about bookkeeping, not bytes.
+	spec := model.BakeSpec{Content: dir, Dir: t.TempDir(), Codecs: codecs, AVIFSpeed: 9}
+	if err := baketest.BakeMasters(spec); err != nil {
+		t.Fatal(err)
+	}
+	return spec.Bundle()
+}
+
+func baked(t *testing.T, masters fs.FS) Option {
+	t.Helper()
+	return WithBundle(os.DirFS(bakeFS(t, masters, withFallback...)))
+}
+
+func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) error, opts ...Option) (*Engine, error) {
+	t.Helper()
+	content := t.TempDir()
+	if err := os.CopyFS(content, files); err != nil {
+		t.Fatal(err)
+	}
+	spec := model.BakeSpec{Content: content, Dir: t.TempDir(), Codecs: withFallback, AVIFSpeed: 9}
+	if err := New(site, append(opts, WithBake(spec))...).bake(mount); err != nil {
+		return nil, err
+	}
+	e := New(site, append(opts, WithBundle(os.DirFS(spec.Bundle())))...)
+	return e, mount(e)
+}
+
+func mounted(t *testing.T, name string, src []byte, opts ...Option) (model.Image, *Engine) {
+	t.Helper()
+	dir := t.TempDir()
+	_, file, err := picture.Ingest(dir, name, src, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := New(model.Site{}, append([]Option{baked(t, os.DirFS(dir))}, opts...)...)
+	im, err := e.addImage(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return im, e
+}
+
+func rungFile(r journal.Record, w int) string {
+	for _, v := range r.Formats[len(r.Formats)-1].Out {
+		if v.W == w {
+			return v.Name
+		}
+	}
+	return ""
+}
+
+func posts(e *Engine) error {
+	_, err := e.AddCollection(model.Basic{ID: "posts"})
+	return err
 }
 
 func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
@@ -78,9 +147,10 @@ func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
 	if u := col.ItemPage(plain).ShareImage; u != "" {
 		t.Errorf("a document without an image shares %q of its own, want the site card", u)
 	}
-	card := e.currentChrome().OGImageURL
+	h := e.Handler()
+	card := e.chrome.OGImageURL
 	rec := httptest.NewRecorder()
-	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, strings.TrimPrefix(card, "https://example.com"), nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, strings.TrimPrefix(card, "https://example.com"), nil))
 	cfg, format, err := image.DecodeConfig(rec.Body)
 	if err != nil || format != "png" || cfg.Width != 1200 || cfg.Height != 630 {
 		t.Errorf("site card %s: %s %d×%d %v, want a 1200×630 png", card, format, cfg.Width, cfg.Height, err)
@@ -117,6 +187,7 @@ func TestDraftsMountOnlyWithTheFlag(t *testing.T) {
 
 func TestArticleHead(t *testing.T) {
 	e := New(model.Site{BaseURL: "https://example.com"})
+	e.Handler()
 	head := func(a model.ArticleSEO) string {
 		var b strings.Builder
 		if err := e.Shell(model.PageSpec{Title: "T", Path: "/posts/t", Article: &a}).Render(context.Background(), &b); err != nil {
@@ -263,11 +334,6 @@ func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	if e.pages.Len() != 0 {
 		t.Errorf("%d entries in the page cache; neither route may be stored", e.pages.Len())
 	}
-}
-
-type testPlugin struct {
-	name   string
-	attach func(*plugin.Mount) error
 }
 
 func (p testPlugin) Name() string { return p.name }
@@ -455,11 +521,7 @@ func TestDiagrams(t *testing.T) {
 		t.Fatal(err)
 	}
 	load := func(bundle fs.FS) (string, error) {
-		var col *model.Collection[model.Meta]
-		_, err := open(bundle, model.Site{}, func(e *Engine) (err error) {
-			col, err = e.AddCollection(model.Basic{ID: "posts"})
-			return err
-		})
+		col, err := New(model.Site{}, WithBundle(bundle)).AddCollection(model.Basic{ID: "posts"})
 		if err != nil {
 			return "", err
 		}
@@ -493,69 +555,6 @@ func TestDiagrams(t *testing.T) {
 	if _, err := load(lacking); err == nil || !strings.Contains(err.Error(), "not baked") {
 		t.Fatalf("a document whose diagram the bundle lacks must fail the load, got %v", err)
 	}
-}
-
-var withFallback = []string{"webp", "jpg"}
-
-func baked(t *testing.T, masters fs.FS) Option {
-	t.Helper()
-	return WithBundle(os.DirFS(bakeFS(t, masters, withFallback...)))
-}
-
-func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) error, opts ...Option) (*Engine, error) {
-	t.Helper()
-	content := t.TempDir()
-	if err := os.CopyFS(content, files); err != nil {
-		t.Fatal(err)
-	}
-	spec := model.BakeSpec{Content: content, Dir: t.TempDir(), Codecs: withFallback, AVIFSpeed: 9}
-	if err := New(site, append(opts, WithBake(spec))...).bake(mount); err != nil {
-		return nil, err
-	}
-	return open(os.DirFS(spec.Bundle()), site, mount, opts...)
-}
-
-func bakeFS(t *testing.T, masters fs.FS, codecs ...string) string {
-	t.Helper()
-	dir := t.TempDir()
-	if err := os.CopyFS(dir, masters); err != nil {
-		t.Fatal(err)
-	}
-	// AVIF at its fastest: these tests are about bookkeeping, not bytes.
-	spec := model.BakeSpec{Content: dir, Dir: t.TempDir(), Codecs: codecs, AVIFSpeed: 9}
-	if err := baketest.BakeMasters(spec); err != nil {
-		t.Fatal(err)
-	}
-	return spec.Bundle()
-}
-
-func mounted(t *testing.T, name string, src []byte, opts ...Option) (model.Image, *Engine) {
-	t.Helper()
-	dir := t.TempDir()
-	_, file, err := picture.Ingest(dir, name, src, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e := New(model.Site{}, append([]Option{baked(t, os.DirFS(dir))}, opts...)...)
-	im, err := e.addImage(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return im, e
-}
-
-func rungFile(r journal.Record, w int) string {
-	for _, v := range r.Formats[len(r.Formats)-1].Out {
-		if v.W == w {
-			return v.Name
-		}
-	}
-	return ""
-}
-
-func posts(e *Engine) error {
-	_, err := e.AddCollection(model.Basic{ID: "posts"})
-	return err
 }
 
 func TestBrokenPageFailsAtBoot(t *testing.T) {

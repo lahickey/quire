@@ -19,15 +19,15 @@ type item[V any] struct {
 	value V
 }
 
-func New[V any](max int, cost func(V) int) *Cache[V] {
-	return &Cache[V]{max: max, cost: cost, order: list.New(), items: map[string]*list.Element{}}
-}
-
 func (c *Cache[V]) drop(el *list.Element) {
 	it := el.Value.(*item[V])
 	c.order.Remove(el)
 	delete(c.items, it.key)
 	c.used -= c.cost(it.value)
+}
+
+func New[V any](max int, cost func(V) int) *Cache[V] {
+	return &Cache[V]{max: max, cost: cost, order: list.New(), items: map[string]*list.Element{}}
 }
 
 func (c *Cache[V]) Len() int {

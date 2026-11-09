@@ -47,7 +47,6 @@ templ Listing[T model.Metadata](shell model.Shell, c *model.Collection[T]) {
 	}
 }
 
-
 templ Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d model.Document[T]) {
 	@shell(c.ItemPage(d)) {
 		<article class="page">
@@ -103,5 +102,3 @@ templ NotFoundPage(c model.Chrome) {
 		</article>
 	}
 }
-
-

@@ -14,9 +14,6 @@ import (
 	"tuios.dev/sketch"
 )
 
-//go:embed fonts
-var defaultFonts embed.FS
-
 const (
 	styleBold = 1
 	styleMono = 4
@@ -24,7 +21,49 @@ const (
 	styleSup  = 16
 )
 
+//go:embed fonts
+var defaultFonts embed.FS
+
 type measurer struct{ text, mono map[int]*sfnt.Font }
+
+type Renderer struct {
+	set  fonts.FontSet
+	meas measurer
+}
+
+func parseFaces(measure fs.FS, files map[int]string) (map[int]*sfnt.Font, error) {
+	out := map[int]*sfnt.Font{}
+	for weight, file := range files {
+		b, err := fs.ReadFile(measure, file)
+		if err != nil {
+			return nil, err
+		}
+		f, err := sfnt.Parse(b)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+		out[weight] = f
+	}
+	if out[400] == nil {
+		return nil, fmt.Errorf("no 400 weight to measure with")
+	}
+	return out, nil
+}
+
+func newRenderer(measure fs.FS) (*Renderer, error) {
+	set, err := fonts.ReadFontSet(measure)
+	if err != nil {
+		return nil, err
+	}
+	r := &Renderer{set: set}
+	if r.meas.text, err = parseFaces(measure, set.Text.Measure); err != nil {
+		return nil, fmt.Errorf("%s: %w", set.Text.Name, err)
+	}
+	if r.meas.mono, err = parseFaces(measure, set.Mono.Measure); err != nil {
+		return nil, fmt.Errorf("%s: %w", set.Mono.Name, err)
+	}
+	return r, nil
+}
 
 func (m measurer) Width(s string, size float64, style int) float64 {
 	faces := m.text
@@ -51,45 +90,6 @@ func (m measurer) Width(s string, size float64, style int) float64 {
 		}
 	}
 	return float64(w) / 64
-}
-
-func parseFaces(measure fs.FS, files map[int]string) (map[int]*sfnt.Font, error) {
-	out := map[int]*sfnt.Font{}
-	for weight, file := range files {
-		b, err := fs.ReadFile(measure, file)
-		if err != nil {
-			return nil, err
-		}
-		f, err := sfnt.Parse(b)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", file, err)
-		}
-		out[weight] = f
-	}
-	if out[400] == nil {
-		return nil, fmt.Errorf("no 400 weight to measure with")
-	}
-	return out, nil
-}
-
-type Renderer struct {
-	set  fonts.FontSet
-	meas measurer
-}
-
-func newRenderer(measure fs.FS) (*Renderer, error) {
-	set, err := fonts.ReadFontSet(measure)
-	if err != nil {
-		return nil, err
-	}
-	r := &Renderer{set: set}
-	if r.meas.text, err = parseFaces(measure, set.Text.Measure); err != nil {
-		return nil, fmt.Errorf("%s: %w", set.Text.Name, err)
-	}
-	if r.meas.mono, err = parseFaces(measure, set.Mono.Measure); err != nil {
-		return nil, fmt.Errorf("%s: %w", set.Mono.Name, err)
-	}
-	return r, nil
 }
 
 func Default() *Renderer {

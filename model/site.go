@@ -7,40 +7,6 @@ import (
 	"github.com/a-h/templ"
 )
 
-func hostOf(base string) string {
-	u, err := url.Parse(base)
-	if err != nil || u.Host == "" {
-		return strings.TrimPrefix(strings.TrimPrefix(base, "https://"), "http://")
-	}
-	return u.Host
-}
-
-func absURL(base, path string) string {
-	if strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "//") {
-		return path
-	}
-	if base == "" {
-		base = "http://localhost"
-	}
-	if path == "" || path == "/" {
-		return base + "/"
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return base + path
-}
-
-type Icon struct{ Rel, Type, Href string }
-
-func (i Icon) Attrs() templ.Attributes {
-	a := templ.Attributes{"rel": i.Rel, "href": i.Href}
-	if i.Type != "" {
-		a["type"] = i.Type
-	}
-	return a
-}
-
 type Theme int
 
 const (
@@ -48,12 +14,7 @@ const (
 	ThemeDark
 )
 
-func (t Theme) String() string {
-	if t == ThemeDark {
-		return "dark"
-	}
-	return "light"
-}
+type Icon struct{ Rel, Type, Href string }
 
 type Site struct {
 	Name        string
@@ -108,6 +69,45 @@ type PageSpec struct {
 	NoIndex     bool
 	ShareImage  string
 	Article     *ArticleSEO
+}
+
+func hostOf(base string) string {
+	u, err := url.Parse(base)
+	if err != nil || u.Host == "" {
+		return strings.TrimPrefix(strings.TrimPrefix(base, "https://"), "http://")
+	}
+	return u.Host
+}
+
+func absURL(base, path string) string {
+	if strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "//") {
+		return path
+	}
+	if base == "" {
+		base = "http://localhost"
+	}
+	if path == "" || path == "/" {
+		return base + "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return base + path
+}
+
+func (i Icon) Attrs() templ.Attributes {
+	a := templ.Attributes{"rel": i.Rel, "href": i.Href}
+	if i.Type != "" {
+		a["type"] = i.Type
+	}
+	return a
+}
+
+func (t Theme) String() string {
+	if t == ThemeDark {
+		return "dark"
+	}
+	return "light"
 }
 
 func (s Site) AbsURL(path string) string { return absURL(s.BaseURL, path) }

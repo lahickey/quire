@@ -9,6 +9,13 @@ import (
 	"github.com/lahickey/quire/internal/radix"
 )
 
+var (
+	PaletteEmber = Palette{Neutral: "sand", Accent: "orange", Spot: "yellow", Swatch: [4]string{"orange", "tomato", "amber", "brown"}, Red: "tomato", Green: "grass", Amber: "amber"}
+	PaletteMoss  = Palette{Neutral: "sage", Accent: "grass", Spot: "lime", Swatch: [4]string{"grass", "teal", "sky", "amber"}, Red: "red", Green: "green", Amber: "amber"}
+	PaletteInk   = Palette{Neutral: "slate", Accent: "indigo", Spot: "crimson", Swatch: [4]string{"blue", "violet", "cyan", "amber"}, Red: "red", Green: "grass", Amber: "amber"}
+	PaletteDusk  = Palette{Neutral: "mauve", Accent: "purple", Spot: "amber", Swatch: [4]string{"purple", "ruby", "sky", "pink"}, Red: "red", Green: "jade", Amber: "amber"}
+)
+
 type Palette struct {
 	Neutral string
 	Accent  string
@@ -17,13 +24,6 @@ type Palette struct {
 
 	Red, Green, Amber string
 }
-
-var (
-	PaletteEmber = Palette{Neutral: "sand", Accent: "orange", Spot: "yellow", Swatch: [4]string{"orange", "tomato", "amber", "brown"}, Red: "tomato", Green: "grass", Amber: "amber"}
-	PaletteMoss  = Palette{Neutral: "sage", Accent: "grass", Spot: "lime", Swatch: [4]string{"grass", "teal", "sky", "amber"}, Red: "red", Green: "green", Amber: "amber"}
-	PaletteInk   = Palette{Neutral: "slate", Accent: "indigo", Spot: "crimson", Swatch: [4]string{"blue", "violet", "cyan", "amber"}, Red: "red", Green: "grass", Amber: "amber"}
-	PaletteDusk  = Palette{Neutral: "mauve", Accent: "purple", Spot: "amber", Swatch: [4]string{"purple", "ruby", "sky", "pink"}, Red: "red", Green: "jade", Amber: "amber"}
-)
 
 type Role struct {
 	Name string
