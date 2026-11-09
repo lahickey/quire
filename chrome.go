@@ -62,16 +62,13 @@ func (e *Engine) buildChrome() model.Chrome {
 		Footer:      e.footer,
 		ScriptURL:   e.linked.script,
 		ModuleURLs:  e.linked.modules,
-		Controls:    slices.Clone(e.navEnd),
+		NavEnd:      slices.Clone(e.navEnd),
 		StyleURLs:   e.linked.styles,
 		FontPreload: e.fontPreload,
 		LiveReload:  e.liveReload(),
 		Domain:      e.site.Host(),
 		Nav:         slices.Clone(e.navItems),
 		Sections:    e.sectionNav(),
-	}
-	if c.Footer == nil {
-		c.Footer = ui.Footer(c.Name)
 	}
 	for _, i := range e.icons {
 		c.Icons = append(c.Icons, i.Icon)

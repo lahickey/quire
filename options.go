@@ -82,8 +82,8 @@ func WithHeader(h func(model.Chrome, model.PageSpec) templ.Component) Option {
 	return func(e *Engine) { e.header = h }
 }
 
-func WithFooter(c templ.Component) Option {
-	return func(e *Engine) { e.footer = c }
+func WithFooter(f func(model.Chrome, model.PageSpec) templ.Component) Option {
+	return func(e *Engine) { e.footer = f }
 }
 
 func WithNavEnd(cs ...templ.Component) Option {

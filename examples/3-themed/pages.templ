@@ -4,7 +4,7 @@ import "github.com/lahickey/quire/model"
 import "github.com/lahickey/quire/ui"
 
 // Replaces the default footer on every page.
-templ siteFooter() {
+templ siteFooter(model.Chrome, model.PageSpec) {
 	<footer class="site-footer"><span>Written and built by A. Writer.</span></footer>
 }
 

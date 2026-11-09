@@ -85,10 +85,10 @@ type Chrome struct {
 
 	Theme       Theme
 	Header      func(Chrome, PageSpec) templ.Component
-	Footer      templ.Component
+	Footer      func(Chrome, PageSpec) templ.Component
 	ScriptURL   string
 	ModuleURLs  []string
-	Controls    []templ.Component
+	NavEnd      []templ.Component
 	StyleURLs   []string
 	FontPreload []string
 	LiveReload  LiveReload

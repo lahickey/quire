@@ -25,6 +25,7 @@ import (
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
+	"github.com/lahickey/quire/ui"
 )
 
 const javascript = "application/javascript; charset=utf-8"
@@ -49,7 +50,7 @@ type Engine struct {
 	siteCard *model.ShareCard
 	theme    model.Theme
 	header   func(model.Chrome, model.PageSpec) templ.Component
-	footer   templ.Component
+	footer   func(model.Chrome, model.PageSpec) templ.Component
 	icons    []icon
 	bundles  []fs.FS
 
@@ -123,6 +124,8 @@ func New(site model.Site, opts ...Option) *Engine {
 		site:    site,
 		palette: model.PaletteEmber,
 		scale:   model.DefaultScale(),
+		header:  ui.Header,
+		footer:  ui.Footer,
 	}
 	for _, o := range opts {
 		o(e)

@@ -148,19 +148,30 @@ templ snippet(c model.Chrome) {
 	}
 }
 
-templ nav(items []model.NavItem, path string) {
+templ Header(c model.Chrome, p model.PageSpec) {
 	<header class="site-header">
 		<nav class="site-nav" aria-label="Main navigation">
 			<div class="nav-links">
-				for _, it := range items {
-					<a href={ it.Href } class={ navClass(path, it.Href) }>{ it.Label }</a>
+				for _, it := range c.Nav {
+					<a href={ it.Href } class={ navClass(p.Path, it.Href) }>{ it.Label }</a>
 				}
 			</div>
 			<div class="nav-end">
-				{ children... }
+				for _, control := range c.NavEnd {
+					@control
+				}
+				@themeToggle()
 			</div>
 		</nav>
 	</header>
+}
+
+templ Footer(c model.Chrome, p model.PageSpec) {
+	<footer class="site-footer">
+		<div class="footer-inner">
+			<span>© { CurrentYear() } { c.Name }</span>
+		</div>
+	</footer>
 }
 
 templ Shell(c model.Chrome, p model.PageSpec) {
@@ -171,22 +182,11 @@ templ Shell(c model.Chrome, p model.PageSpec) {
 		</head>
 		<body>
 			@snippet(c)
-			if c.Header != nil {
-				@c.Header(c, p)
-			} else {
-				@nav(c.Nav, p.Path) {
-					for _, control := range c.Controls {
-						@control
-					}
-					@themeToggle()
-				}
-			}
+			@c.Header(c, p)
 			<main>
 				{ children... }
 			</main>
-			if c.Footer != nil {
-				@c.Footer
-			}
+			@c.Footer(c, p)
 		</body>
 	</html>
 }

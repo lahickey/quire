@@ -216,7 +216,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 // draws: the page's path and the controls plugins add.
 func TestCustomHeaderSeesNavAndControls(t *testing.T) {
 	e := New(model.Site{}, WithHeader(func(c model.Chrome, p model.PageSpec) templ.Component {
-		return body(fmt.Sprintf("<header>%s %d</header>", p.Path, len(c.Controls)))
+		return body(fmt.Sprintf("<header>%s %d</header>", p.Path, len(c.NavEnd)))
 	}))
 	if err := e.Use(testPlugin{"basket", func(m *plugin.Mount) error {
 		m.AddNavEnd(body("basket"))

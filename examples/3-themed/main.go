@@ -61,7 +61,7 @@ func main() {
 	}, mount,
 		// Dark unless the visitor or their system says otherwise.
 		quire.WithTheme(model.ThemeDark),
-		quire.WithFooter(siteFooter()),
+		quire.WithFooter(siteFooter),
 		// Without this, .page--wide (the card grids) is no wider than a plain page.
 		quire.WithWidest(model.WidthWide),
 		quire.WithPalette(model.PaletteInk),
