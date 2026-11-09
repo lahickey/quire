@@ -31,15 +31,12 @@ func absURL(base, path string) string {
 	return base + path
 }
 
-type Icon struct{ Rel, Type, Sizes, Href string }
+type Icon struct{ Rel, Type, Href string }
 
 func (i Icon) Attrs() templ.Attributes {
 	a := templ.Attributes{"rel": i.Rel, "href": i.Href}
 	if i.Type != "" {
 		a["type"] = i.Type
-	}
-	if i.Sizes != "" {
-		a["sizes"] = i.Sizes
 	}
 	return a
 }

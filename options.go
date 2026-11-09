@@ -1,14 +1,12 @@
 package quire
 
 import (
-	"encoding/binary"
-	"fmt"
-	"github.com/a-h/templ"
 	"io/fs"
 	"mime"
 	"path"
 	"strings"
 
+	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/model"
 )
@@ -42,14 +40,6 @@ func WithWidest(w model.Width) Option {
 	return func(e *Engine) { e.scale.Widest = w }
 }
 
-func pngSize(fsys fs.FS, name string) string {
-	b, err := fs.ReadFile(fsys, name)
-	if err != nil || len(b) < 24 || string(b[1:4]) != "PNG" {
-		return ""
-	}
-	return fmt.Sprintf("%dx%d", binary.BigEndian.Uint32(b[16:]), binary.BigEndian.Uint32(b[20:]))
-}
-
 func WithIcons(fsys fs.FS, names ...string) Option {
 	return func(e *Engine) {
 		for _, n := range names {
@@ -57,7 +47,7 @@ func WithIcons(fsys fs.FS, names ...string) Option {
 			if strings.HasPrefix(path.Base(n), "apple-touch-icon") {
 				rel = "apple-touch-icon"
 			}
-			e.icons = append(e.icons, icon{fsys, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Sizes: pngSize(fsys, n), Href: "/" + n}})
+			e.icons = append(e.icons, icon{fsys, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Href: "/" + n}})
 		}
 	}
 }
