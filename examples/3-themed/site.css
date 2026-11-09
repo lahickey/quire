@@ -1,0 +1,19 @@
+.home-intro {
+  font-size: var(--qr-text-lg);
+  color: var(--qr-neutral-11);
+  max-width: var(--qr-measure-text);
+}
+
+.swatch {
+  display: inline-block;
+  padding: var(--qr-space-2) var(--qr-space-4);
+  border-radius: var(--qr-radius);
+  background: var(--qr-accent-9);
+  color: var(--qr-accent-contrast);
+  font-family: var(--qr-font-mono);
+}
+
+.site-footer {
+  color: var(--qr-neutral-10);
+  font-size: var(--qr-text-sm);
+}

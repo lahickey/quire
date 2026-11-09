@@ -1,0 +1,48 @@
+package main
+
+import "github.com/lahickey/quire/examples/4-plugin/basket"
+import "github.com/lahickey/quire/model"
+import "github.com/lahickey/quire/ui"
+
+// The home page and the /pieces index: every piece as a picture, title and medium.
+// p is the page's title and path, so one template serves both.
+templ gallery(shell model.Shell, c *model.Collection[Piece], p model.PageSpec) {
+	@shell(p) {
+		<article class="page page--wide">
+			<header class="page-head">
+				<h1>{ c.Title() }</h1>
+				<p class="page-intro">Printed to order. Add one in this tab and watch the basket count change in another.</p>
+			</header>
+			<div class="pieces">
+				for _, d := range c.Docs() {
+					<a class="piece-card" href={ c.Href(d) }>
+						<figure class="art">
+							@ui.Img(d.Image, model.SlotColumn, d.Meta.Title)
+						</figure>
+						<h2>{ d.Meta.Title }</h2>
+						<p class="piece-medium">{ d.Meta.Medium }</p>
+					</a>
+				}
+			</div>
+		</article>
+	}
+}
+
+// A piece's own page: the default article's parts, plus its medium and the
+// basket's button.
+templ piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece], d model.Document[Piece]) {
+	@shell(c.ItemPage(d)) {
+		<article class="page">
+			<header class="page-head">
+				<h1>{ d.Meta.Title }</h1>
+				<p class="piece-medium">{ d.Meta.Medium }</p>
+			</header>
+			@ui.HeroFigure(d.Image, model.SlotPage, d.Meta.Title, "")
+			<div class="prose">
+				@templ.Raw(d.HTML)
+			</div>
+			@b.Add(d.Slug)
+			@ui.BackLink(c.IndexPage().Path, c.Title())
+		</article>
+	}
+}

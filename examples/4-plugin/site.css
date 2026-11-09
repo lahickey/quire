@@ -1,0 +1,44 @@
+.pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--qr-space-6);
+}
+
+.piece-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qr-space-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.piece-card h2 {
+  font-size: var(--qr-text-md);
+  margin: 0;
+}
+
+.piece-card:hover h2 {
+  color: var(--qr-accent-11);
+}
+
+.art {
+  margin: 0;
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius);
+  overflow: hidden;
+  background: var(--qr-neutral-2);
+  line-height: 0;
+}
+
+.art img {
+  width: 100%;
+  height: auto;
+}
+
+.piece-medium {
+  font-size: var(--qr-text-xs);
+  letter-spacing: var(--qr-track-label);
+  text-transform: uppercase;
+  color: var(--qr-neutral-11);
+  margin: 0;
+}

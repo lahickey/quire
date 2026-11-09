@@ -1,0 +1,61 @@
+package basket
+
+import "strconv"
+
+import "github.com/lahickey/quire/model"
+
+// The nav link, on every page. data-signals holds the count in the browser,
+// data-init opens the event stream, and data-text shows the count as it changes.
+templ (p *Plugin) nav() {
+	<a class="basket-link" href={ p.mount.PageURL("") } data-signals="{basket:{count:0}}" data-init={ p.stream("events") }>
+		Basket
+		<span class="basket-count" data-text="$basket.count">0</span>
+	</a>
+}
+
+// A form that posts normally, and through Datastar once it has loaded.
+templ (p *Plugin) button(endpoint, id, label string) {
+	<form method="post" action={ p.url(endpoint) } data-on:submit={ p.post(endpoint) }>
+		<input type="hidden" name="item" value={ id }/>
+		<button type="submit">{ label }</button>
+	</form>
+}
+
+// Add is the button a site places on an item's page.
+templ (p *Plugin) Add(id string) {
+	<div class="basket-add">
+		@p.button("add", id, "Add to basket")
+	</div>
+}
+
+// The basket's contents. Its id lets the event stream replace it in place.
+templ (p *Plugin) lines(cart map[string]int) {
+	<div id="basket-body">
+		if len(cart) == 0 {
+			<p class="page-intro">Nothing in it.</p>
+		} else {
+			<ul class="basket-lines">
+				for _, it := range p.items {
+					if cart[it.ID] > 0 {
+						<li class="basket-line">
+							<span class="basket-title">{ it.Title }</span>
+							@p.button("dec", it.ID, "−")
+							<span class="basket-qty">{ strconv.Itoa(cart[it.ID]) }</span>
+							@p.button("add", it.ID, "+")
+						</li>
+					}
+				}
+			</ul>
+		}
+	</div>
+}
+
+// The basket page, in the site's shell. NoIndex keeps it out of search engines.
+templ (p *Plugin) page(cart map[string]int) {
+	@p.mount.Shell(model.PageSpec{Title: "Basket", Path: p.mount.PageURL(""), NoIndex: true}) {
+		<article class="page" data-init={ p.stream("events?view=lines") }>
+			<header class="page-head"><h1>Basket</h1></header>
+			@p.lines(cart)
+		</article>
+	}
+}

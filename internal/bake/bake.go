@@ -1,0 +1,371 @@
+//go:build !quire_nobake
+
+package bake
+
+import (
+	"bytes"
+	"cmp"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"image"
+	"image/png"
+	"io/fs"
+	"log"
+	"maps"
+	"os"
+	"path"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
+	"sync"
+
+	"github.com/lahickey/quire/internal/bake/cache"
+	"github.com/lahickey/quire/internal/bake/card"
+	"github.com/lahickey/quire/internal/bake/diagram"
+	"github.com/lahickey/quire/internal/bake/markdown"
+	"github.com/lahickey/quire/internal/bake/picture"
+	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/model"
+)
+
+const Enabled = true
+
+func lossless(s model.BakeSpec, name string) bool {
+	for _, pat := range s.Lossless {
+		for p := name; p != "."; p = path.Dir(p) {
+			if ok, _ := path.Match(pat, p); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func check(s model.BakeSpec) error {
+	for _, pat := range s.Lossless {
+		if _, err := path.Match(pat, ""); err != nil || pat == "" {
+			return fmt.Errorf("quire: lossless %q is not a pattern", pat)
+		}
+	}
+	if s.AVIFSpeed < 0 || s.AVIFSpeed > 9 {
+		return fmt.Errorf("quire: avif speed %d, want 1 to 9", s.AVIFSpeed)
+	}
+	return nil
+}
+
+func report(name string, encoded, kept int) {
+	log.Printf("%-30s %2d encoded %2d kept", name, encoded, kept)
+}
+
+func within(dir, p string) bool {
+	rel, err := filepath.Rel(dir, p)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func apart(content, dir string) error {
+	if content == "" {
+		return nil
+	}
+	c, err := filepath.Abs(content)
+	if err != nil {
+		return err
+	}
+	d, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	if within(c, d) || within(d, c) {
+		return fmt.Errorf("quire: bake content %s and %s overlap", c, d)
+	}
+	return nil
+}
+
+type Run struct {
+	spec     model.BakeSpec
+	source   fs.FS
+	cache    cache.Dir
+	done     map[string]journal.Record
+	offered  []journal.Format
+	encoders picture.Encoders
+	codecs   map[string]string
+	draw     *diagram.Renderer
+
+	mu     sync.Mutex
+	wanted map[string]int64
+	made   map[string]journal.Record
+}
+
+func Start(s model.BakeSpec) (*Run, error) {
+	if err := apart(s.Content, s.Dir); err != nil {
+		return nil, err
+	}
+	if err := check(s); err != nil {
+		return nil, err
+	}
+	offered := picture.Codecs("webp")
+	if len(s.Codecs) > 0 {
+		var err error
+		if offered, err = picture.ParseCodecs(s.Codecs); err != nil {
+			return nil, err
+		}
+	}
+	draw := diagram.Default()
+	if err := os.MkdirAll(s.Cache(), 0o755); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(s.Dir, ".gitignore"), []byte("*\n"), 0o644); err != nil {
+		return nil, err
+	}
+	encs := picture.NewEncoders(offered, s.AVIFSpeed)
+	b := &Run{
+		spec:     s,
+		cache:    cache.Dir(s.Cache()),
+		done:     cache.Dir(s.Cache()).Journal(),
+		offered:  offered,
+		encoders: encs,
+		codecs:   encs.Codecs(),
+		draw:     draw,
+		wanted:   map[string]int64{},
+		made:     map[string]journal.Record{},
+	}
+	if s.Content != "" {
+		b.source = os.DirFS(s.Content)
+	}
+	return b, nil
+}
+
+func (b *Run) Master(name string) (journal.Record, error) {
+	if b.source == nil {
+		return journal.Record{}, fmt.Errorf("quire: %s: no content to read masters from", name)
+	}
+	st, err := fs.Stat(b.source, name)
+	if err != nil {
+		return journal.Record{}, err
+	}
+	b.mu.Lock()
+	b.wanted[name] = st.Size()
+	b.mu.Unlock()
+	img := b.offered[len(b.offered)-1]
+	return journal.Record{Name: name, Formats: []journal.Variants{{Ext: img.Ext, Type: img.Type}}}, nil
+}
+
+func (b *Run) single(name, key string, f journal.Format, make func() ([]byte, journal.MasterMeta, error)) ([]byte, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if rec, ok := b.made[name]; ok {
+		file, _ := rec.File()
+		return b.cache.Read(file)
+	}
+	if prev := b.done[name]; prev.Key == key {
+		if file, ok := prev.File(); ok {
+			if body, err := b.cache.Read(file); err == nil {
+				b.made[name] = prev
+				report(name, 0, 1)
+				return body, nil
+			}
+		}
+	}
+	body, prep, err := make()
+	if err != nil {
+		return nil, err
+	}
+	file := journal.Hash(body) + "." + f.Ext
+	if err := b.cache.Write(file, body); err != nil {
+		return nil, err
+	}
+	out := journal.Variants{Ext: f.Ext, Type: f.Type, Q: f.Quality, Less: f.Lossless, Out: []journal.Variant{{Name: file, W: prep.W, Size: int64(len(body))}}}
+	b.made[name] = journal.Record{Name: name, Key: key, Prep: prep, Formats: []journal.Variants{out}}
+	report(name, 1, 0)
+	return body, nil
+}
+
+func (b *Run) Diagram(src string) (string, error) {
+	name := journal.DiagramName(src, b.draw.FontID())
+	svg, err := b.single(name, journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram"))), journal.SVG, func() ([]byte, journal.MasterMeta, error) {
+		svg, err := b.draw.Render(src)
+		if err != nil {
+			first, _, _ := strings.Cut(strings.TrimSpace(src), "\n")
+			return nil, journal.MasterMeta{}, fmt.Errorf("quire: diagram %q: %w", first, err)
+		}
+		return []byte(svg), journal.MasterMeta{}, nil
+	})
+	return string(svg), err
+}
+
+func (b *Run) document(name string, fences []string) (journal.Document, error) {
+	raw, err := fs.ReadFile(b.source, name)
+	if err != nil {
+		return journal.Document{}, err
+	}
+	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("markdown"), strings.Join(fences, "\x00"), raw))
+	body, err := b.single(name, key, journal.JSON, func() ([]byte, journal.MasterMeta, error) {
+		d, err := markdown.Convert(name, raw, fences)
+		if err != nil {
+			return nil, journal.MasterMeta{}, fmt.Errorf("%s: %w", name, err)
+		}
+		body, err := journal.EncodeDocument(d)
+		return body, journal.MasterMeta{}, err
+	})
+	if err != nil {
+		return journal.Document{}, err
+	}
+	return journal.DecodeDocument(body)
+}
+
+func (b *Run) Data(name string) ([]byte, error) {
+	if b.source == nil {
+		return nil, fmt.Errorf("quire: %s: no content to read from", name)
+	}
+	raw, err := fs.ReadFile(b.source, name)
+	if err != nil {
+		return nil, err
+	}
+	return b.single(name, journal.Hash(raw), journal.YAML, func() ([]byte, journal.MasterMeta, error) { return raw, journal.MasterMeta{}, nil })
+}
+
+func (b *Run) Documents(pattern string, fences []string) ([]journal.Document, error) {
+	if b.source == nil {
+		return nil, nil
+	}
+	names, err := fs.Glob(b.source, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("glob %q: %w", pattern, err)
+	}
+	slices.Sort(names)
+	out := make([]journal.Document, 0, len(names))
+	for _, name := range names {
+		d, err := b.document(name, fences)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+func (b *Run) work(name string) (journal.Record, int, error) {
+	src, err := fs.ReadFile(b.source, name)
+	if err != nil {
+		return journal.Record{}, 0, err
+	}
+	hash := journal.Hash(src)
+	key := journal.Key(version("picture"), hash)
+	var img *image.NRGBA
+	decode := func() (err error) {
+		img, err = picture.Read(name, src, journal.MasterCap)
+		return err
+	}
+	m := b.done[name].Prep
+	if b.done[name].Key != key {
+		if err := decode(); err != nil {
+			return journal.Record{}, 0, err
+		}
+		m = picture.Describe(img, src, hash)
+	}
+
+	fmts := picture.Variants(m, lossless(b.spec, name), b.offered, b.codecs)
+	if len(fmts) == 0 {
+		return journal.Record{}, 0, fmt.Errorf("quire: %s is transparent and no codec offered carries alpha", name)
+	}
+
+	made := 0
+	for i := range fmts {
+		f := fmts[i].Format()
+		for j := range fmts[i].Out {
+			v := &fmts[i].Out[j]
+
+			if size, ok := b.cache.Size(v.Name); ok && size > 0 {
+				v.Size = size
+				continue
+			}
+			if img == nil {
+				if err := decode(); err != nil {
+					return journal.Record{}, 0, err
+				}
+			}
+			body, err := b.encoders.Encode(img, v.W, f)
+			if err != nil {
+				return journal.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
+			}
+			if err := b.cache.Write(v.Name, body); err != nil {
+				return journal.Record{}, 0, err
+			}
+			v.Size = int64(len(body))
+			made++
+		}
+	}
+	return journal.Record{Name: name, Key: key, Prep: m, Formats: picture.Order(fmts)}, made, nil
+}
+
+func (b *Run) encode() (map[string]journal.Record, error) {
+	records := map[string]journal.Record{}
+	var (
+		mu    sync.Mutex
+		wg    sync.WaitGroup
+		first error
+	)
+	ch := make(chan string)
+	for range min(runtime.GOMAXPROCS(0), len(b.wanted)) {
+		wg.Go(func() {
+			for name := range ch {
+				mu.Lock()
+				stop := first != nil
+				mu.Unlock()
+				if stop {
+					continue
+				}
+				rec, made, err := b.work(name)
+				mu.Lock()
+				switch {
+				case err != nil && first == nil:
+					first = err
+				case err == nil:
+					records[rec.Name] = rec
+					report(rec.Name, made, len(rec.Files())-made)
+				}
+				mu.Unlock()
+			}
+		})
+	}
+	names := slices.SortedFunc(maps.Keys(b.wanted), func(x, y string) int { return cmp.Compare(b.wanted[y], b.wanted[x]) })
+	for _, name := range names {
+		ch <- name
+	}
+	close(ch)
+	wg.Wait()
+	return records, first
+}
+
+func (b *Run) Finish() error {
+	records, first := b.encode()
+	maps.Copy(records, b.made)
+
+	kept := maps.Clone(b.done)
+	maps.Copy(kept, records)
+	if err := b.cache.Write(journal.JournalName, journal.WriteJournal(slices.Collect(maps.Values(kept)))); err != nil {
+		return errors.Join(first, err)
+	}
+	if first != nil {
+		return first
+	}
+	return b.cache.CopyOut(b.spec.Bundle(), slices.Collect(maps.Values(records)))
+}
+
+func (b *Run) Card(name string, c model.ShareCard) error {
+	text, _ := json.Marshal(c)
+	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("card"), b.draw.FontID(), text))
+	_, err := b.single(name, key, picture.FormatPNG, func() ([]byte, journal.MasterMeta, error) {
+		img, err := card.Draw(c, b.draw)
+		if err != nil {
+			return nil, journal.MasterMeta{}, fmt.Errorf("quire: %s: %w", name, err)
+		}
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			return nil, journal.MasterMeta{}, err
+		}
+		return buf.Bytes(), journal.MasterMeta{W: img.Bounds().Dx(), H: img.Bounds().Dy()}, nil
+	})
+	return err
+}

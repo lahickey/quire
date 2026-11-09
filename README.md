@@ -1,0 +1,84 @@
+# Quire
+
+A Go engine that turns a folder of markdown into a finished website, served from a single binary.
+Content in, complete site out — looks good by default yet every layer of it can be replaced.
+
+- **One binary.** Words, pictures and diagrams are baked into the site's own binary.
+- **Pictures handled end to end.** Refer to a picture beside a document and get a responsive ladder in WebP, with AVIF or JPEG as options.
+- **Server-rendered.** HTML from [templ](https://templ.guide); live features are plugins streaming through [Datastar](https://data-star.dev).
+
+## Getting started
+
+Quire needs Go 1.27 or later.
+
+```sh
+go mod init example.com/site
+go get github.com/lahickey/quire
+```
+
+`main.go`:
+
+```go
+package main
+
+import (
+	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/model"
+)
+
+func main() {
+	quire.Run(model.Site{Name: "Example", BaseURL: "https://example.com"},
+		func(e *quire.Engine) error {
+			_, err := e.AddCollection(model.Basic{ID: "posts"})
+			return err
+		})
+}
+```
+
+`content/posts/hello.md`:
+
+```markdown
+---
+title: Hello
+date: 2026-02-01
+---
+
+Some words.
+```
+
+`go run .` serves it on http://localhost:8090: home page, post index, post pages, navigation, a light and dark toggle, sitemap and robots.txt, with no templates or CSS of your own.
+
+To ship, `go run . bake`, then `go build -tags quire_nobake,quire_embed` with a five-line `ship.go` beside `main.go` ([how](./site/content/docs/getting-started.md#shipping-it)).
+The result is one binary that carries the whole site and none of the image or diagram tooling.
+
+## Examples
+
+Each example is a complete site, commented part by part, and each adds to the one before.
+To start a site of your own, copy the one nearest what you want, give the copy a `go.mod` as above, and `go run .` in it.
+
+1. [`1-minimal`](./examples/1-minimal) — the site above.
+2. [`2-pictures`](./examples/2-pictures) — pictures and a diagram, from the markdown alone.
+3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
+4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates. A copy also changes the basket's import path to its own module.
+
+## Documentation
+
+- [Getting started](./site/content/docs/getting-started.md)
+- [Content](./site/content/docs/content.md)
+- [Images](./site/content/docs/images.md)
+- [Baking](./site/content/docs/bake.md)
+- [The look](./site/content/docs/look.md)
+- [Wiring](./site/content/docs/wiring.md)
+- [Plugins](./site/content/docs/plugins.md)
+- [Design](./site/content/docs/architecture.md)
+
+Working on Quire itself is in [DEVELOPING.md](./DEVELOPING.md).
+
+## Status
+
+WARNING: Before 1.0, releases may change the API.
+
+## Licence
+
+MIT; see [LICENSE](./LICENSE).
+What Quire bundles from others, and under which licences, is in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

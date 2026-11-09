@@ -1,0 +1,7 @@
+.basket-line {
+  gap: var(--qr-space-2);
+}
+
+.basket-title {
+  grid-column: 1 / -1;
+}

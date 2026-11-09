@@ -1,0 +1,309 @@
+package ui
+
+import (
+	"fmt"
+	"strconv"
+	"github.com/lahickey/quire/model"
+)
+
+func tocItemClass(h model.Heading) string {
+	return "toc-item toc-item--depth-" + strconv.Itoa(h.Level)
+}
+
+func toc(heads []model.Heading) []model.Heading {
+	var out []model.Heading
+	for _, h := range heads {
+		if h.Level == 2 || h.Level == 3 {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+func tocCount(n int) string { return strconv.Itoa(n) + " sections" }
+
+func FirstN[T any](s []T, n int) []T {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
+type CardData struct {
+	Href, Kicker, Title, Description, CTA string
+	Draft, Featured                       bool
+	Image                                 model.Image
+	Badges                                []model.Marker
+	Tags                                  []model.Marker
+	Extra                                 int
+}
+
+func DocCard[T model.Metadata](c *model.Collection[T], d model.Document[T]) CardData {
+	return CardData{
+		Href:        c.Href(d),
+		Kicker:      c.Kicker(d),
+		Title:       d.Meta.DocTitle(),
+		Description: d.Meta.DocSummary(),
+		Draft:       d.Meta.IsDraft(),
+		Featured:    d.Meta.IsFeatured(),
+		Image:       d.Image,
+		Badges:      d.Meta.Badges(),
+		Tags:        c.Tags(d),
+	}
+}
+
+func (c CardData) extra() string {
+	if c.Extra <= 0 {
+		return ""
+	}
+	return "+" + strconv.Itoa(c.Extra)
+}
+
+templ styles(c model.Chrome) {
+	for _, u := range c.FontPreload {
+		<link rel="preload" href={ u } as="font" type="font/woff2" crossorigin/>
+	}
+	for _, h := range c.StyleURLs {
+		<link rel="stylesheet" href={ h }/>
+	}
+}
+
+templ head(c model.Chrome, p model.PageSpec) {
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<meta name="color-scheme" content={ c.Theme.String() }/>
+	@scripts(c)
+	@styles(c)
+	<title>{ p.Title }</title>
+	<meta name="description" content={ p.MetaDescription(c) }/>
+	if c.Author != "" {
+		<meta name="author" content={ c.Author }/>
+	}
+	if c := p.Canonical(c); c != "" {
+		<link rel="canonical" href={ c }/>
+	} else {
+		<meta name="robots" content="noindex"/>
+	}
+	if p.Article != nil && p.Article.Published != "" {
+		<meta property="og:type" content="article"/>
+		<meta property="article:published_time" content={ p.Article.Published }/>
+		if p.Article.Modified != "" {
+			<meta property="article:modified_time" content={ p.Article.Modified }/>
+		}
+	} else {
+		<meta property="og:type" content="website"/>
+	}
+	if c := p.Canonical(c); c != "" {
+		<meta property="og:url" content={ c }/>
+	}
+	<meta property="og:title" content={ p.Title }/>
+	<meta property="og:description" content={ p.MetaDescription(c) }/>
+	<meta property="og:image" content={ p.OGImage(c) }/>
+	<meta property="og:site_name" content={ c.Name }/>
+	<meta name="twitter:card" content="summary_large_image"/>
+	<meta name="twitter:title" content={ p.Title }/>
+	<meta name="twitter:description" content={ p.MetaDescription(c) }/>
+	<meta name="twitter:image" content={ p.OGImage(c) }/>
+	for _, i := range c.Icons {
+		<link { i.Attrs()... }/>
+	}
+}
+
+templ scripts(c model.Chrome) {
+	if c.ScriptURL != "" {
+		<script src={ c.ScriptURL }></script>
+	}
+	for _, m := range c.ModuleURLs {
+		<script type="module" src={ m }></script>
+	}
+}
+
+templ themeToggle() {
+	<button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+		<svg class="theme-toggle-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<circle cx="12" cy="12" r="5"></circle>
+			<line x1="12" y1="1" x2="12" y2="3"></line>
+			<line x1="12" y1="21" x2="12" y2="23"></line>
+			<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+			<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+			<line x1="1" y1="12" x2="3" y2="12"></line>
+			<line x1="21" y1="12" x2="23" y2="12"></line>
+			<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+			<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+		</svg>
+		<svg class="theme-toggle-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+		</svg>
+	</button>
+}
+
+templ snippet(c model.Chrome) {
+	if r := c.LiveReload; r.On {
+		<div
+			style="display:none"
+			data-signals={ fmt.Sprintf("{quire: {boot: %q}}", r.BootID) }
+			data-effect={ fmt.Sprintf("$quire.boot !== %q && window.location.reload()", r.BootID) }
+			data-init={ r.Init }
+		></div>
+	}
+}
+
+templ nav(items []model.NavItem, path string) {
+	<header class="site-header">
+		<nav class="site-nav" aria-label="Main navigation">
+			<div class="nav-links">
+				for _, it := range items {
+					<a href={ it.Href } class={ navClass(path, it.Href) }>{ it.Label }</a>
+				}
+			</div>
+			<div class="nav-end">
+				{ children... }
+			</div>
+		</nav>
+	</header>
+}
+
+templ Shell(c model.Chrome, p model.PageSpec) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme={ c.Theme.String() } data-theme-default={ c.Theme.String() }>
+		<head>
+			@head(c, p)
+		</head>
+		<body>
+			@snippet(c)
+			if c.Header != nil {
+				@c.Header(c, p)
+			} else {
+				@nav(c.Nav, p.Path) {
+					for _, control := range c.Controls {
+						@control
+					}
+					@themeToggle()
+				}
+			}
+			<main>
+				{ children... }
+			</main>
+			if c.Footer != nil {
+				@c.Footer
+			}
+		</body>
+	</html>
+}
+
+templ DraftBadge() {
+	<span class="status-badge status-badge--draft">Draft</span>
+}
+
+templ Badges(bs []model.Marker) {
+	for _, b := range bs {
+		<span class={ "status-badge", "status-badge--" + b.Kind }>{ b.Text }</span>
+	}
+}
+
+templ Contents(heads []model.Heading) {
+	{{ items := toc(heads) }}
+	if len(items) >= 3 {
+		<nav class="toc" aria-label="Table of contents">
+			<details>
+				<summary class="toc-toggle">
+					<span class="toc-title">Table of Contents</span>
+					<span class="toc-count">{ tocCount(len(items)) }</span>
+					<svg class="toc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<polyline points="6 9 12 15 18 9"></polyline>
+					</svg>
+				</summary>
+				<ul class="toc-list">
+					for _, h := range items {
+						<li class={ tocItemClass(h) }>
+							<a href={ "#" + h.ID } class="toc-link">{ h.Text }</a>
+						</li>
+					}
+				</ul>
+			</details>
+		</nav>
+	}
+}
+
+templ HeroFigure(im model.Image, slot model.Slot, alt, caption string) {
+	if im.Hash != "" {
+		<figure class={ figureClass(slot) }>
+			@priorityImg(im, slot, alt)
+			if caption != "" {
+				<figcaption>{ caption }</figcaption>
+			}
+		</figure>
+	}
+}
+
+templ tag(t model.Marker) {
+	<span class={ "tag", templ.KV("tag-"+t.Kind, t.Kind != "") }>{ t.Text }</span>
+}
+
+templ Tags(ts []model.Marker) {
+	if len(ts) > 0 {
+		<div class="tags-list">
+			for _, t := range ts {
+				@tag(t)
+			}
+		</div>
+	}
+}
+
+templ Card(c CardData) {
+	<a href={ c.Href } class="card">
+		if c.Image.Hash != "" {
+			<div class="card-image">
+				@Img(c.Image, model.SlotColumn, c.Title)
+			</div>
+		}
+		if c.Draft || c.Featured || len(c.Badges) > 0 {
+			<div class="card-badges">
+				if c.Featured {
+					<span class="featured-badge">
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+						Featured
+					</span>
+				}
+				if c.Draft {
+					@DraftBadge()
+				}
+				@Badges(c.Badges)
+			</div>
+		}
+		<span class="card-kicker">{ c.Kicker }</span>
+		<h3 class="card-title">{ c.Title }</h3>
+		<p class="card-description">{ c.Description }</p>
+		if len(c.Tags) > 0 {
+			<div class="tags-list">
+				for _, t := range c.Tags {
+					@tag(t)
+				}
+				if e := c.extra(); e != "" {
+					<span class="tag-more">{ e }</span>
+				}
+			</div>
+		}
+		if c.CTA != "" {
+			@ForwardLink(c.CTA, "", "accent")
+		}
+	</a>
+}
+
+templ BackLink(href, text string) {
+	<p class="back-link">
+		<a href={ href }><span class="arrow">←</span> { text }</a>
+	</p>
+}
+
+templ ForwardLink(text, href, variant string) {
+	if href != "" {
+		<a href={ href } class={ "forward-link", "forward-link--" + variant }>
+			{ text } <span class="arrow">→</span>
+		</a>
+	} else {
+		<span class={ "forward-link", "forward-link--" + variant }>
+			{ text } <span class="arrow">→</span>
+		</span>
+	}
+}

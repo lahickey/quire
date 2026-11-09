@@ -1,0 +1,54 @@
+package main
+
+import "github.com/lahickey/quire/model"
+import "github.com/lahickey/quire/ui"
+
+// Replaces the default footer on every page.
+templ siteFooter() {
+	<footer class="site-footer"><span>Written and built by A. Writer.</span></footer>
+}
+
+// One default card per document: picture, title, summary, tags.
+templ cards(c *model.Collection[model.Meta]) {
+	for _, d := range c.Docs() {
+		@ui.Card(ui.DocCard(c, d))
+	}
+}
+
+// shell wraps a page in the site's head, navigation and footer;
+// the PageSpec gives it the title and path.
+templ homePage(shell model.Shell, notes, projects *model.Collection[model.Meta]) {
+	@shell(model.PageSpec{Title: "Writing", Path: "/"}) {
+		<article class="page page--wide">
+			<h1>Writing</h1>
+			<p class="home-intro">Notes on building things, and the things built.</p>
+			<div class="card-grid">
+				@cards(notes)
+				@cards(projects)
+			</div>
+		</article>
+	}
+}
+
+// Served with a 404 for any path the site does not have.
+templ notFoundPage(shell model.Shell) {
+	@shell(model.PageSpec{Title: "Not found"}) {
+		<article class="page">
+			<h1>Nothing here</h1>
+			<p class="home-intro">That page was never written, or has moved. The <a href="/writing">writing</a> is all still there.</p>
+		</article>
+	}
+}
+
+// The projects index. Its signature is what a collection's Index takes, so
+// main.go names it directly.
+templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
+	@shell(c.IndexPage()) {
+		<article class="page page--wide">
+			<h1>{ c.Title() }</h1>
+			<div class="card-grid">
+				@cards(c)
+			</div>
+		</article>
+	}
+}

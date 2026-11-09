@@ -1,0 +1,8 @@
+# archr's settings for this project, committed with it.
+
+# What archr leaves out of browsing and reviews, in .gitignore's syntax.
+
+# Settings of your own, not the project's, go in ~/.config/archr/config.toml:
+#
+#   # Draw the status bar's separators from a Nerd Font.
+#   nerd_font = true

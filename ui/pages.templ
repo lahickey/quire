@@ -1,0 +1,114 @@
+package ui
+
+import "github.com/lahickey/quire/model"
+
+templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]) {
+	<div class="entries-list">
+		for _, d := range docs {
+			<a href={ c.Href(d) } class="entry-item">
+				if d.Image.Hash != "" {
+					<span class="entry-thumb">
+						@Img(d.Image, model.SlotThumb, d.Meta.DocTitle())
+					</span>
+				}
+				<span class="entry-body">
+					if k := c.Kicker(d); k != "" || d.Meta.IsDraft() {
+						<span class="entry-kicker">
+							if d.Meta.IsDraft() {
+								<span class="entry-kicker--draft">Draft</span>
+								if k != "" {
+									{ " · " }
+								}
+							}
+							{ k }
+						</span>
+					}
+					<h3 class="entry-title">{ d.Meta.DocTitle() }</h3>
+					if s := d.Meta.DocSummary(); s != "" {
+						<p class="entry-context">{ s }</p>
+					}
+				</span>
+			</a>
+		}
+	</div>
+}
+
+templ Listing[T model.Metadata](shell model.Shell, c *model.Collection[T]) {
+	@shell(c.IndexPage()) {
+		<article class="page">
+			<header class="page-head">
+				<h1>{ c.Title() }</h1>
+				if d := c.Description(); d != "" {
+					<p class="page-intro">{ d }</p>
+				}
+			</header>
+			@Entries(c, c.Docs())
+		</article>
+	}
+}
+
+
+templ Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d model.Document[T]) {
+	@shell(c.ItemPage(d)) {
+		<article class="page">
+			<header class="page-head">
+				if d.Meta.IsDraft() {
+					<div class="header-badges">
+						@DraftBadge()
+					</div>
+				}
+				<h1>{ d.Meta.DocTitle() }</h1>
+				if date := d.Meta.DocDate(); !date.IsZero() {
+					<p class="page-meta">{ c.LongDate(date) }</p>
+				}
+				@Tags(c.Tags(d))
+			</header>
+			@HeroFigure(d.Image, model.SlotPage, d.Meta.DocTitle(), "")
+			@Contents(d.Headings)
+			<div class="prose">
+				@templ.Raw(d.HTML)
+			</div>
+			@BackLink(c.IndexPage().Path, c.Title())
+		</article>
+	}
+}
+
+templ Home(c model.Chrome) {
+	@Shell(c, model.PageSpec{Title: c.Name, Path: "/"}) {
+		<article class="page">
+			<header class="page-head">
+				<h1>{ c.Name }</h1>
+			</header>
+			if c.Description != "" {
+				<p class="home-lede">{ c.Description }</p>
+			}
+			if items := c.Sections; len(items) > 0 {
+				<div class="home-sections">
+					for _, it := range items {
+						<a href={ it.Href } class="home-section">{ it.Label }</a>
+					}
+				</div>
+			}
+		</article>
+	}
+}
+
+templ NotFoundPage(c model.Chrome) {
+	@Shell(c, model.PageSpec{Title: "Not found"}) {
+		<article class="page">
+			<header class="page-head">
+				<h1>Not found</h1>
+				<p class="page-intro">Nothing at this URL.</p>
+			</header>
+		</article>
+	}
+}
+
+templ Footer(name string) {
+	<footer class="site-footer">
+		<div class="footer-inner">
+			<span>© { CurrentYear() } { name }</span>
+		</div>
+	</footer>
+}
+

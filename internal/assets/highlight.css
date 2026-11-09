@@ -1,0 +1,31 @@
+
+
+.chroma .k, .chroma .kc, .chroma .kd, .chroma .kn, .chroma .kp, .chroma .kr, .chroma .kt,
+.chroma .ow { color: var(--qr-accent-11); }
+
+.chroma .s, .chroma .s1, .chroma .s2, .chroma .sa, .chroma .sb, .chroma .sc, .chroma .sd,
+.chroma .se, .chroma .sh, .chroma .si, .chroma .sr, .chroma .ss, .chroma .sx,
+.chroma .dl { color: var(--qr-green-11); }
+
+.chroma .m, .chroma .mb, .chroma .mf, .chroma .mh, .chroma .mi, .chroma .mo, .chroma .il,
+.chroma .l, .chroma .no, .chroma .ni { color: var(--qr-amber-11); }
+
+.chroma .nf, .chroma .fm, .chroma .nd { color: var(--qr-swatch2-11); }
+
+.chroma .nc, .chroma .nn, .chroma .ne, .chroma .nt { color: var(--qr-swatch3-11); }
+
+.chroma .nv, .chroma .vc, .chroma .vg, .chroma .vi, .chroma .vm,
+.chroma .na, .chroma .py, .chroma .nl { color: var(--qr-swatch1-11); }
+
+.chroma .o, .chroma .or, .chroma .p,
+.chroma .go { color: var(--qr-neutral-11); }
+
+.chroma .c, .chroma .c1, .chroma .ch, .chroma .cm, .chroma .cp, .chroma .cpf, .chroma .cs,
+.chroma .gp { color: var(--qr-neutral-10); }
+.chroma .c, .chroma .c1, .chroma .ch, .chroma .cm, .chroma .cs { font-style: italic; }
+
+.chroma .gi { color: var(--qr-green-11); }
+.chroma .gd, .chroma .gr, .chroma .gt, .chroma .err { color: var(--qr-red-11); }
+.chroma .gh, .chroma .gu { color: var(--qr-accent-11); font-weight: bold; }
+.chroma .ge { font-style: italic; }
+.chroma .gs { font-weight: bold; }
