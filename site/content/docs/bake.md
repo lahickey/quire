@@ -55,8 +55,8 @@ It never encodes: a variant it was not given is a 404.
 
 ```go
 quire.WithBake(model.BakeSpec{
-	Content: "content", // the default
-	Dir:     ".quire",  // the default; holds bundle/ and cache/
+  Content: "content", // the default
+  Dir:     ".quire",  // the default; holds bundle/ and cache/
 })
 ```
 

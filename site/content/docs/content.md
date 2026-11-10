@@ -44,8 +44,8 @@ A site that needs more fields declares a type that embeds `Meta`:
 
 ```go
 type Piece struct {
-	model.Meta `yaml:",inline"`
-	Medium     string `yaml:"medium"`
+  model.Meta `yaml:",inline"`
+  Medium     string `yaml:"medium"`
 }
 ```
 
@@ -131,9 +131,9 @@ A widget turns a named fence into HTML of the site's choosing.
 
 ```go
 var widgets = map[string]model.Widget{
-	"swatch": func(_, body string) (string, error) {
-		return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
-	},
+  "swatch": func(_, body string) (string, error) {
+    return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
+  },
 }
 ```
 
@@ -178,8 +178,8 @@ A tag is typed by hand, so it is whatever the writer typed. A classifier is the 
 
 ```go
 var kinds = model.NewClassifier(
-	model.Exact("lang", "Go"),
-	model.Exact("topic", "Design"),
+  model.Exact("lang", "Go"),
+  model.Exact("topic", "Design"),
 )
 ```
 

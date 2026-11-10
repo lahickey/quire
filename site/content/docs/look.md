@@ -38,8 +38,8 @@ Embed a stylesheet and hand it to the site:
 var static embed.FS
 
 quire.Run(site, mount,
-	quire.WithStylesheets(static, "site.css"),
-	quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),
+  quire.WithStylesheets(static, "site.css"),
+  quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),
 )
 ```
 
@@ -61,16 +61,16 @@ A page of your own wraps its body in the shell, which supplies the document, nav
 
 ```templ
 templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
-	@shell(c.IndexPage()) {
-		<article class="page page--wide">
-			<h1>{ c.Title() }</h1>
-			<div class="card-grid">
-				for _, d := range c.Docs() {
-					@ui.Card(ui.DocCard(c, d))
-				}
-			</div>
-		</article>
-	}
+  @shell(c.IndexPage()) {
+    <article class="page page--wide">
+      <h1>{ c.Title() }</h1>
+      <div class="card-grid">
+        for _, d := range c.Docs() {
+          @ui.Card(ui.DocCard(c, d))
+        }
+      </div>
+    </article>
+  }
 }
 ```
 

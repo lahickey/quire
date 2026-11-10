@@ -10,8 +10,8 @@ It brings its own routes, pages, styles and state, and a site opts in with one l
 
 ```go
 func mount(e *quire.Engine) error {
-	// collections and pages first
-	return e.Use(basket.New(items...))
+  // collections and pages first
+  return e.Use(basket.New(items...))
 }
 ```
 
@@ -44,8 +44,8 @@ A `Plugin` is two methods:
 
 ```go
 type Plugin interface {
-	Name() string
-	Attach(*Mount) error
+  Name() string
+  Attach(*Mount) error
 }
 ```
 
@@ -54,15 +54,15 @@ type Plugin interface {
 
 ```go
 func (p *Plugin) Attach(m *plugin.Mount) error {
-	p.mount = m
-	p.streams = m.NewStreams()
-	m.UseSessions()
-	m.AddStylesheets(css, "basket.css")
-	m.AddNavEnd(p.nav())
-	m.Route("GET", "events", p.events)
-	m.Route("POST", "add", p.add)
-	m.Page("GET", "", p.show)
-	return nil
+  p.mount = m
+  p.streams = m.NewStreams()
+  m.UseSessions()
+  m.AddStylesheets(css, "basket.css")
+  m.AddNavEnd(p.nav())
+  m.Route("GET", "events", p.events)
+  m.Route("POST", "add", p.add)
+  m.Page("GET", "", p.show)
+  return nil
 }
 ```
 

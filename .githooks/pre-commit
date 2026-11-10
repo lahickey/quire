@@ -1,0 +1,4 @@
+#!/bin/sh
+before=$(git diff)
+just fmt
+[ "$before" = "$(git diff)" ] || { echo "just fmt changed files; review and stage them" >&2; exit 1; }

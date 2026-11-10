@@ -50,13 +50,13 @@ The mount is handed the engine and declares the site on it. It runs at bake and 
 
 ```go
 func mount(e *quire.Engine) error {
-	notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
-	if err != nil {
-		return err
-	}
-	e.AddPage("/", homePage(e.Shell, notes))
-	e.SetNotFound(notFoundPage(e.Shell))
-	return nil
+  notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
+  if err != nil {
+    return err
+  }
+  e.AddPage("/", homePage(e.Shell, notes))
+  e.SetNotFound(notFoundPage(e.Shell))
+  return nil
 }
 ```
 

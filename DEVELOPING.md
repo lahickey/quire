@@ -19,7 +19,8 @@
 
 ## Testing
 
-`just test` regenerates templ, runs vet, golangci-lint and gopls, then the tests.
+`just test` regenerates templ, runs vet, golangci-lint and gopls, rejects a tab in any Markdown file, then runs the tests.
+`just detab` turns each of those tabs into two spaces. GitHub draws a raw tab eight columns wide.
 `examples/examples_test.go` builds, bakes and fetches every example, both as it runs in dev and as it ships; `-short` skips it.
 Generated `*_templ.go` is committed, so `go run` works without templ.
 
