@@ -30,7 +30,7 @@ Bake and serve run the same mount. The folder is not a second answer to what the
 A bake reads the source tree. What that mount renders is thrown away: source order is the measured bytes, and those exist only after the encode.
 
 The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a hole for each picture, diagram and site widget, and serving fills each hole: a picture from the journal with the markup `ui` makes today, a widget by running it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one embed.
-Everything the bake makes is one kind of thing: a journal record, keyed by what it was made from, naming content-addressed files. A document, a diagram and a share card are each one file; a master is its ladder. One check decides what is remade, one copy decides what ships, and one lookup finds it again.
+Everything the bake makes is one kind of thing: a journal record, keyed by what it was made from, naming content-addressed files. A record names its kind: picture, document, diagram or data. A document, a diagram and a share card are each one file; a master is its ladder. One check decides what is remade, one copy decides what ships, and one lookup finds it again.
 Something that must convert per request is a plugin that imports its converter.
 
 ## Journal

@@ -26,7 +26,32 @@ func (d Dir) link(out Dir, name string) error {
 func (d Dir) Read(name string) ([]byte, error) { return os.ReadFile(d.path(name)) }
 
 func (d Dir) Write(name string, body []byte) error {
-	return journal.WriteAtomic(d.path(name), body, 0o644)
+	f, err := os.CreateTemp(string(d), "."+name+".*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	ok := false
+	defer func() {
+		if !ok {
+			_ = os.Remove(tmp)
+		}
+	}()
+	if _, err := f.Write(body); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, d.path(name)); err != nil {
+		return err
+	}
+	ok = true
+	return nil
 }
 
 func (d Dir) Size(name string) (int64, bool) {

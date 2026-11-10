@@ -13,7 +13,7 @@ func TestServe(t *testing.T) {
 	const name = "0123456789abcdef0123456789abcdef.webp"
 	s := New(0, 0, false, "")
 	s.add(loaded{
-		records: map[string]journal.Record{"a.jpg": {Name: "a.jpg", Formats: []journal.Variants{
+		records: map[string]journal.Record{"a.jpg": {Name: "a.jpg", Kind: journal.KindPicture, Formats: []journal.Variants{
 			{Ext: "webp", Type: "image/webp", Out: []journal.Variant{{Name: name, W: 64, Size: 4}}},
 		}}},
 		fsys: fstest.MapFS{name: {Data: []byte("webp")}},

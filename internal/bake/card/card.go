@@ -19,6 +19,8 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+const height = 630
+
 type pen struct {
 	dst  draw.Image
 	font *sfnt.Font
@@ -91,7 +93,7 @@ func Draw(c model.ShareCard, r *diagram.Renderer) (image.Image, error) {
 		}
 		ink[name] = col
 	}
-	img := image.NewRGBA(image.Rect(0, 0, journal.ShareWidth, journal.CardHeight))
+	img := image.NewRGBA(image.Rect(0, 0, journal.ShareWidth, height))
 	draw.Draw(img, img.Bounds(), image.NewUniform(ink["bg"]), image.Point{}, draw.Src)
 	bold, regular := pen{img, r.Text(700)}, pen{img, r.Text(400)}
 
@@ -122,7 +124,7 @@ func Draw(c model.ShareCard, r *diagram.Renderer) (image.Image, error) {
 		lines = append(lines, wrap(body, l, fixed.I(width), 3)...)
 	}
 	for _, l := range lines {
-		if y > journal.CardHeight-130 {
+		if y > height-130 {
 			break
 		}
 		if err := regular.text(l, 26, ink["secondary"], margin, y, 0, false); err != nil {
@@ -130,7 +132,7 @@ func Draw(c model.ShareCard, r *diagram.Renderer) (image.Image, error) {
 		}
 		y += 36
 	}
-	if err := regular.text(c.Domain, 20, ink["muted"], journal.ShareWidth-margin, journal.CardHeight-88, 0, true); err != nil {
+	if err := regular.text(c.Domain, 20, ink["muted"], journal.ShareWidth-margin, height-88, 0, true); err != nil {
 		return nil, err
 	}
 	return img, nil

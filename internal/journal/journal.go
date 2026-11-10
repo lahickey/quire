@@ -3,30 +3,50 @@ package journal
 import (
 	"bufio"
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"slices"
+	"strings"
 )
 
 const (
 	JournalName    = "journal.jsonl"
 	journalMagic   = "quire-variants"
-	journalVersion = 2
-)
-
-const ladderSame = 1.15
-
-const (
-	ShareWidth = 1200
-	CardHeight = 630
+	journalVersion = 3
 )
 
 const SiteCard = "card"
 
-var ladder = []int{64, 128, 232, 408, 680, 1096, 1704, MasterCap}
+type Kind string
+
+const (
+	KindPicture  Kind = "picture"
+	KindDocument Kind = "document"
+	KindDiagram  Kind = "diagram"
+	KindData     Kind = "data"
+)
+
+type Format struct {
+	Ext      string
+	Type     string
+	Quality  int
+	Alpha    bool
+	Lossless bool
+}
+
+type MasterMeta struct {
+	Hash  string `json:"h"`
+	W     int    `json:"w"`
+	H     int    `json:"y"`
+	SrcW  int    `json:"sw,omitzero"`
+	SrcH  int    `json:"sh,omitzero"`
+	Alpha bool   `json:"a,omitzero"`
+}
 
 type Variant struct {
 	Name string `json:"k"`
@@ -44,8 +64,9 @@ type Variants struct {
 
 type Record struct {
 	Name    string     `json:"name"`
+	Kind    Kind       `json:"kind"`
 	Key     string     `json:"key"`
-	Prep    MasterMeta `json:"prep"`
+	Prep    MasterMeta `json:"prep,omitzero"`
 	Formats []Variants `json:"formats"`
 }
 
@@ -80,6 +101,15 @@ func readJournal(src io.Reader) (map[string]Record, error) {
 		out[r.Name] = r
 	}
 	return out, sc.Err()
+}
+
+func Hash(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:16])
+}
+
+func DiagramName(src, fontID string) string {
+	return "mermaid/" + Hash([]byte(fontID+"\x00"+strings.TrimSpace(src)))
 }
 
 func (vs Variants) Format() Format {
@@ -129,39 +159,4 @@ func WriteJournal(records []Record) []byte {
 		out = append(append(out, line...), '\n')
 	}
 	return out
-}
-
-func Key(version int, srcDigest string) string {
-	return Hash(fmt.Appendf(nil, "v=%d\nsrc=%s\nladder=%v\n", version, srcDigest, ladder))
-}
-
-func Ladder() []int { return slices.Clone(ladder) }
-
-func LadderFor(masterW int) []int {
-	if masterW < 1 {
-		return nil
-	}
-	out := make([]int, 0, len(ladder)+1)
-	for _, w := range ladder {
-		if w >= masterW {
-			break
-		}
-		out = append(out, w)
-	}
-	if n := len(out); n > 0 && float64(masterW) < ladderSame*float64(out[n-1]) {
-		out = out[:n-1]
-	}
-	return append(out, masterW)
-}
-
-func Snap(ladder []int, want int) int {
-	for _, w := range ladder {
-		if w >= want {
-			return w
-		}
-	}
-	if len(ladder) == 0 {
-		return want
-	}
-	return ladder[len(ladder)-1]
 }

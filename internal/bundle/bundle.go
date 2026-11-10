@@ -59,11 +59,11 @@ func (s *Store) add(j loaded) {
 	defer s.mu.Unlock()
 	s.journals = append(s.journals, j)
 	for _, rec := range j.records {
+		if rec.Kind != journal.KindPicture {
+			continue
+		}
 		for _, vs := range rec.Formats {
 			f := vs.Format()
-			if !strings.HasPrefix(f.Type, "image/") {
-				continue
-			}
 			for _, v := range vs.Out {
 				if _, taken := s.byKey[v.Name]; taken {
 					continue
@@ -170,7 +170,7 @@ func (s *Store) Documents(pattern string, _ []string) ([]journal.Document, error
 	seen := map[string]bool{}
 	for _, j := range s.journals {
 		for name, r := range j.records {
-			if len(r.Formats) == 1 && r.Formats[0].Format() == journal.JSON {
+			if r.Kind == journal.KindDocument {
 				seen[name] = true
 			}
 		}

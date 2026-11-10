@@ -8,7 +8,7 @@ import (
 
 func TestReadJournalRefusesDamage(t *testing.T) {
 	good := string(WriteJournal(nil)) +
-		`{"name":"a.jpg","key":"k","prep":{"h":"h","w":800,"y":600},"formats":[]}` + "\n"
+		`{"name":"a.jpg","kind":"picture","key":"k","prep":{"h":"h","w":800,"y":600},"formats":[]}` + "\n"
 	if recs, err := readJournal(strings.NewReader(good)); err != nil || len(recs) != 1 {
 		t.Fatalf("a whole journal read %d records: %v", len(recs), err)
 	}

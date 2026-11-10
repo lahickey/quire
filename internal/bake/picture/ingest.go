@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/lahickey/quire/internal/bake/cache"
 	"github.com/lahickey/quire/internal/journal"
 )
 
@@ -32,7 +33,7 @@ func Ingest(dir, name string, src []byte, lossless bool) (journal.MasterMeta, st
 		return journal.MasterMeta{}, "", err
 	}
 	master := stem + "." + ext
-	if err := journal.WriteAtomic(filepath.Join(dir, master), body, 0o644); err != nil {
+	if err := cache.Dir(dir).Write(master, body); err != nil {
 		return journal.MasterMeta{}, "", err
 	}
 	return m, master, nil

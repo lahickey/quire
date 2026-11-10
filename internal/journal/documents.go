@@ -10,11 +10,6 @@ import (
 
 const holeMark = "\x00"
 
-var (
-	JSON = Format{Ext: "json", Type: "application/json"}
-	YAML = Format{Ext: "yaml", Type: "application/yaml"}
-)
-
 type Heading struct {
 	Level int    `json:"level"`
 	Text  string `json:"text"`

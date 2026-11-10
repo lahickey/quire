@@ -95,7 +95,7 @@ func apart(content, dir string) error {
 	return nil
 }
 
-func (b *Run) single(name, key string, f journal.Format, make func() ([]byte, journal.MasterMeta, error)) ([]byte, error) {
+func (b *Run) single(name, key string, kind journal.Kind, f journal.Format, make func() ([]byte, error)) ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if rec, ok := b.made[name]; ok {
@@ -111,7 +111,7 @@ func (b *Run) single(name, key string, f journal.Format, make func() ([]byte, jo
 			}
 		}
 	}
-	body, prep, err := make()
+	body, err := make()
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +119,8 @@ func (b *Run) single(name, key string, f journal.Format, make func() ([]byte, jo
 	if err := b.cache.Write(file, body); err != nil {
 		return nil, err
 	}
-	out := journal.Variants{Ext: f.Ext, Type: f.Type, Q: f.Quality, Less: f.Lossless, Out: []journal.Variant{{Name: file, W: prep.W, Size: int64(len(body))}}}
-	b.made[name] = journal.Record{Name: name, Key: key, Prep: prep, Formats: []journal.Variants{out}}
+	out := journal.Variants{Ext: f.Ext, Type: f.Type, Less: f.Lossless, Out: []journal.Variant{{Name: file, Size: int64(len(body))}}}
+	b.made[name] = journal.Record{Name: name, Kind: kind, Key: key, Formats: []journal.Variants{out}}
 	report(name, 1, 0)
 	return body, nil
 }
@@ -131,13 +131,12 @@ func (b *Run) document(name string, fences []string) (journal.Document, error) {
 		return journal.Document{}, err
 	}
 	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("markdown"), strings.Join(fences, "\x00"), raw))
-	body, err := b.single(name, key, journal.JSON, func() ([]byte, journal.MasterMeta, error) {
+	body, err := b.single(name, key, journal.KindDocument, journal.Format{Ext: "json"}, func() ([]byte, error) {
 		d, err := markdown.Convert(name, raw, fences)
 		if err != nil {
-			return nil, journal.MasterMeta{}, fmt.Errorf("%s: %w", name, err)
+			return nil, fmt.Errorf("%s: %w", name, err)
 		}
-		body, err := journal.EncodeDocument(d)
-		return body, journal.MasterMeta{}, err
+		return journal.EncodeDocument(d)
 	})
 	if err != nil {
 		return journal.Document{}, err
@@ -151,7 +150,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 		return journal.Record{}, 0, err
 	}
 	hash := journal.Hash(src)
-	key := journal.Key(version("picture"), hash)
+	key := journal.PictureKey(version("picture"), hash)
 	var img *image.NRGBA
 	decode := func() (err error) {
 		img, err = picture.Read(name, src, journal.MasterCap)
@@ -196,7 +195,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 			made++
 		}
 	}
-	return journal.Record{Name: name, Key: key, Prep: m, Formats: picture.Order(fmts)}, made, nil
+	return journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Prep: m, Formats: picture.Order(fmts)}, made, nil
 }
 
 func (b *Run) encode() (map[string]journal.Record, error) {
@@ -294,13 +293,13 @@ func (b *Run) Master(name string) (journal.Record, error) {
 
 func (b *Run) Diagram(src string) (string, error) {
 	name := journal.DiagramName(src, b.draw.FontID())
-	svg, err := b.single(name, journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram"))), journal.SVG, func() ([]byte, journal.MasterMeta, error) {
+	svg, err := b.single(name, journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram"))), journal.KindDiagram, journal.Format{Ext: "svg"}, func() ([]byte, error) {
 		svg, err := b.draw.Render(src)
 		if err != nil {
 			first, _, _ := strings.Cut(strings.TrimSpace(src), "\n")
-			return nil, journal.MasterMeta{}, fmt.Errorf("quire: diagram %q: %w", first, err)
+			return nil, fmt.Errorf("quire: diagram %q: %w", first, err)
 		}
-		return []byte(svg), journal.MasterMeta{}, nil
+		return []byte(svg), nil
 	})
 	return string(svg), err
 }
@@ -313,7 +312,7 @@ func (b *Run) Data(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return b.single(name, journal.Hash(raw), journal.YAML, func() ([]byte, journal.MasterMeta, error) { return raw, journal.MasterMeta{}, nil })
+	return b.single(name, journal.Hash(raw), journal.KindData, journal.Format{Ext: "yaml"}, func() ([]byte, error) { return raw, nil })
 }
 
 func (b *Run) Documents(pattern string, fences []string) ([]journal.Document, error) {
@@ -354,16 +353,14 @@ func (b *Run) Finish() error {
 func (b *Run) Card(name string, c model.ShareCard) error {
 	text, _ := json.Marshal(c)
 	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("card"), b.draw.FontID(), text))
-	_, err := b.single(name, key, picture.FormatPNG, func() ([]byte, journal.MasterMeta, error) {
+	_, err := b.single(name, key, journal.KindPicture, picture.FormatPNG, func() ([]byte, error) {
 		img, err := card.Draw(c, b.draw)
 		if err != nil {
-			return nil, journal.MasterMeta{}, fmt.Errorf("quire: %s: %w", name, err)
+			return nil, fmt.Errorf("quire: %s: %w", name, err)
 		}
 		var buf bytes.Buffer
-		if err := png.Encode(&buf, img); err != nil {
-			return nil, journal.MasterMeta{}, err
-		}
-		return buf.Bytes(), journal.MasterMeta{W: img.Bounds().Dx(), H: img.Bounds().Dy()}, nil
+		err = png.Encode(&buf, img)
+		return buf.Bytes(), err
 	})
 	return err
 }
