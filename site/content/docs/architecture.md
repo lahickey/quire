@@ -42,7 +42,7 @@ The bundle is linked from the cache. Nothing edits a bundle file in place. Each 
 A key holds everything its output depends on: the input, the settings, and the converter's version. The versions sit in one table and change by hand, so a refactor rebuilds nothing; a release check fails on any converter whose code or dependencies moved since its version was set.
 
 `quire_nobake` swaps the bake for a stub, so a serving binary cannot convert: no codec, no markdown, no highlighter.
-Where the bundle lives is a separate choice. A site's `ship.go`, under its own `quire_embed` tag, embeds it and hands it to `Ship`; without one, the bundle is read off disk. A shipped static site sets both tags, a CMS may embed and still bake, and a binary can serve a bundle mounted beside it.
+Where the bundle lives is a separate choice. The bake writes `.quire/ship.go`, which embeds the bundle and hands it to `Ship`; a build adds that file with `-overlay .quire/ship.json`, and without it the bundle is read off disk. A shipped static site uses the tag and the overlay, a CMS uses neither, and a binary built with the tag alone serves a bundle mounted beside it.
 
 ## Packages
 

@@ -2,55 +2,37 @@ package quire
 
 import (
 	"fmt"
-	"io/fs"
 	"net/http"
-	"strings"
 
-	"github.com/a-h/templ"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
 )
-
-const core = "quire"
-
-type pluginHost struct{ e *Engine }
 
 type liveReload struct {
 	e    *Engine
 	boot string
 }
 
-func (h pluginHost) Route(method, path string, f http.HandlerFunc) { h.e.AddRoute(method, path, f) }
-
-func (h pluginHost) Claim(method, path, owner string, f http.HandlerFunc) error {
-	if reserved(path) && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
-		return fmt.Errorf("%s belongs to another namespace", path)
+func (e *Engine) attach(p plugin.Plugin) error {
+	mustBeOpen(e.mounted, "plugin "+p.Name())
+	a, err := plugin.Attach(p, e.Shell)
+	if err != nil {
+		return err
 	}
-	pattern := method + " " + pagePattern(path)
-	if o, taken := h.e.routes[pattern]; taken {
-		return fmt.Errorf("%s is already mounted by %s", path, o)
+	for _, r := range a.Routes {
+		if err := e.claim(r.Method+" "+pagePattern(r.Path), r.Path, a.Name, r.Handler); err != nil {
+			return fmt.Errorf("plugin %s: %w", a.Name, err)
+		}
 	}
-	h.e.route(pattern, owner, f)
+	for _, s := range a.Sheets {
+		e.addSheets("plugin", s.At, s.FS, s.Names)
+	}
+	e.chrome.NavEnd = append(e.chrome.NavEnd, a.NavEnd...)
+	e.sessions = e.sessions || a.Sessions
 	return nil
 }
 
-func (h pluginHost) AddStylesheets(at model.Width, fsys fs.FS, names ...string) {
-	mustBeOpen(h.e.mounted, "stylesheet")
-	h.e.addSheets("plugin", at, fsys, names)
-}
-
-func (h pluginHost) AddNavEnd(c templ.Component) {
-	mustBeOpen(h.e.mounted, "nav control")
-	if c != nil {
-		h.e.chrome.NavEnd = append(h.e.chrome.NavEnd, c)
-	}
-}
-
-func (h pluginHost) UseSessions() { h.e.sessions = true }
-
-func (h pluginHost) Shell(p model.PageSpec) templ.Component { return h.e.Shell(p) }
-
-func (liveReload) Name() string { return core }
+func (liveReload) Name() string { return ownerQuire }
 
 func (l liveReload) Attach(m *plugin.Mount) error {
 	streams := m.NewStreams()
@@ -63,10 +45,10 @@ func (l liveReload) Attach(m *plugin.Mount) error {
 
 func (e *Engine) Use(plugins ...plugin.Plugin) error {
 	for _, p := range plugins {
-		if p.Name() == core {
-			return fmt.Errorf("plugin name %q is reserved for Quire's own plugins", core)
+		if p.Name() == ownerQuire || p.Name() == ownerSite {
+			return fmt.Errorf("plugin name %q is reserved", p.Name())
 		}
-		if err := plugin.Attach(pluginHost{e}, p); err != nil {
+		if err := e.attach(p); err != nil {
 			return err
 		}
 	}

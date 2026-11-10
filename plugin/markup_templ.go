@@ -14,9 +14,9 @@ func (m *Mount) Listen(path string) string {
 }
 
 func (m *Mount) Signals(v any) string {
-	b, err := scoped(m.name, v)
+	b, err := scoped(m.got.Name, v)
 	if err != nil {
-		panic("plugin " + m.name + ": signals: " + err.Error())
+		panic("plugin " + m.got.Name + ": signals: " + err.Error())
 	}
 	return string(b)
 }

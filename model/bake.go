@@ -5,10 +5,7 @@ import (
 	"path/filepath"
 )
 
-const (
-	QuireDir  = ".quire"
-	BundleDir = QuireDir + "/bundle"
-)
+const QuireDir = ".quire"
 
 type BakeSpec struct {
 	Content string

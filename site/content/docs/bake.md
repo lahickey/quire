@@ -49,5 +49,5 @@ An image no offered codec can carry — transparent art with only JPEG, say — 
 ## The shipped binary
 
 Built with `-tags quire_nobake`, a site binary carries a stub in place of the bake and links none of it, so the binary that ships cannot convert: no codec, no markdown, no diagram renderer.
-Where its bundle comes from is a separate tag: built with `quire_embed` too, it serves what its `ship.go` embeds (see [Getting started](./getting-started.md)); without, it reads `.quire/bundle` off disk.
-A CMS, which bakes uploads, ships without the tag.
+Where its bundle comes from is a separate flag: built with `-overlay .quire/ship.json` too, it serves the bundle it embeds (see [Getting started](./getting-started.md)); without, it reads `.quire/bundle` off disk.
+A CMS, which bakes uploads, ships with neither.

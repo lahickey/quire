@@ -22,7 +22,7 @@ An `Option` changes engine behaviour: `WithMode` `WithDrafts` `WithTheme` `WithP
 `WithFooter(component)` replaces the footer. `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
 `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included; it is handed the Chrome and the page, so it can still draw `Nav` (active against `PageSpec.Path`) and the plugins' `Controls`.
 `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension and, for a PNG, sized from the file; a name starting `apple-touch-icon` is linked as one.
-`Ship` is not an option: it hands `Run` the bundle a `quire_embed` build embeds.
+`Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.
 
 Datastar is always linked.
 

@@ -27,26 +27,7 @@ Everything under `.quire` is made by the bake, so deleting it is a clean start.
 
 ## Shipping it
 
-The shipped binary carries its bundle. Add this file beside `main.go`:
-
-```go
-//go:build quire_embed
-
-package main
-
-import (
-	"embed"
-
-	"github.com/lahickey/quire"
-)
-
-//go:embed all:.quire/bundle
-var bundle embed.FS
-
-func init() { quire.Ship(bundle) }
-```
-
-Then `go run . bake` and `go build -tags quire_nobake,quire_embed`.
+The shipped binary carries its bundle: `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json`.
 That binary serves what it embeds from any directory, links no converter, and refuses to bake.
-Only a `quire_embed` build embeds the bundle, so nothing needs `.quire` to exist before the first bake.
+The bake writes `.quire/ship.go`, which embeds the bundle, and the overlay adds it to the site's package for that build only, so nothing needs `.quire` to exist before the first bake.
 See [Baking](./bake.md).

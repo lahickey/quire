@@ -18,7 +18,7 @@ The plugin API is package `plugin`, and a plugin imports it, `model` and `ui`, n
 `plugin.Mount` is the grant: the engine's doors and nothing else of it.
 `go doc github.com/lahickey/quire/plugin.Mount` is the allow-list.
 
-- `m.Route(method, path, h)` — private, under `/_basket/`. Named from the plugin, so two plugins cannot pick the same namespace; `quire` is reserved for Quire's own. `m.URL(path)` is where it ended up.
+- `m.Route(method, path, h)` — private, under `/_basket/`. Named from the plugin, so two plugins cannot pick the same namespace; `quire` and `site` are reserved. `m.URL(path)` is where it ended up.
 - `m.Page(method, path, h)` — a page a visitor sees and may bookmark, never cached. `path` is relative, so a plugin claims nothing of the site's: `""` is `/_basket` and `"checkout"` is `/_basket/checkout`. A site moves them with `e.Use(plugin.At("/basket", b))`, to `/basket` and `/basket/checkout`; a path already claimed by the site or another plugin is a boot error naming the owner.
 - `m.PageURL(path)` — where that page ended up, for links and `PageSpec.Path`.
 - `m.NewStreams()` — Datastar SSE with a subscriber list. `Subscribe(w, r, topic, send)` is the whole handler: it opens a connection, sends the current state and holds it open. `Publish(topic, send)` reaches every connection on that topic, so a change made in one tab lands in all of them. `Signals(v)` marshals `v` and merges it into the page's signals under the plugin's name — the basket sends `{"count": 3}` and the page holds `$basket.count` — so two plugins cannot patch each other's. `Elements(ctx, component)` replaces the element with the same id.

@@ -18,14 +18,12 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
-	"github.com/lahickey/quire/internal/bake"
 	"github.com/lahickey/quire/internal/bundle"
 	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/internal/session"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/plugin"
 	"github.com/lahickey/quire/ui"
 )
 
@@ -88,8 +86,8 @@ func (e *Engine) mountDefaults() {
 	}
 	e.addAssets()
 	e.addSiteFiles()
-	e.route("GET "+model.ImagePath+"{file}", siteOwner, e.bundle.ServeHTTP)
-	if !e.claimed("GET " + pagePattern("/")) {
+	e.route("GET "+model.ImagePath+"{file}", ownerQuire, e.bundle.ServeHTTP)
+	if _, taken := e.routes["GET "+pagePattern("/")]; !taken {
 		e.AddPage("/", e.late(ui.Home))
 	}
 	e.addNotFound()
@@ -109,25 +107,6 @@ func (e *Engine) siteCardText() model.ShareCard {
 		c.Ink = e.palette.Ink()
 	}
 	return c
-}
-
-func (e *Engine) bake(mount func(*Engine) error) error {
-	s := e.bakeSpec.WithDefaults()
-	if fi, err := os.Stat(s.Content); err != nil || !fi.IsDir() {
-		s.Content = ""
-	}
-	b, err := bake.Start(s)
-	if err != nil {
-		return err
-	}
-	e.from = b
-	if err := mount(e); err != nil {
-		return err
-	}
-	if err := b.Card(journal.SiteCard, e.siteCardText()); err != nil {
-		return err
-	}
-	return b.Finish()
 }
 
 func New(site model.Site, opts ...Option) *Engine {
@@ -163,13 +142,13 @@ func New(site model.Site, opts ...Option) *Engine {
 		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
 	}
 	e.pages = serve.NewPages(pageCache, e.mode == Dev)
-	e.AddRoute("GET", healthPath, serve.Health)
+	e.route("GET "+healthPath, ownerQuire, serve.Health)
 	if e.mode == Dev {
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			panic("engine: boot id: " + err.Error())
 		}
-		if err := plugin.Attach(pluginHost{e}, liveReload{e, hex.EncodeToString(b[:])}); err != nil {
+		if err := e.attach(liveReload{e, hex.EncodeToString(b[:])}); err != nil {
 			panic("engine: live reload: " + err.Error())
 		}
 	}
@@ -197,8 +176,8 @@ func (e *Engine) Handler() http.Handler {
 	})
 }
 
-func Ship(files fs.FS) {
-	b, err := fs.Sub(files, model.BundleDir)
+func Ship(files fs.FS, dir string) {
+	b, err := fs.Sub(files, dir)
 	if err != nil {
 		panic("quire: ship: " + err.Error())
 	}
@@ -220,7 +199,7 @@ func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
 	}
 	opts := append([]Option{WithMode(mode), WithDrafts(*drafts)}, extra...)
 	b := New(site, opts...)
-	if baking || (shipped == nil && bake.Enabled) {
+	if baking || (shipped == nil && canBake) {
 		if err := b.bake(mount); err != nil {
 			log.Fatal(err)
 		}

@@ -13,7 +13,7 @@ generate:
 # gopls check prints diagnostics and exits 0; treat any output as failure.
 check:
     @cd {{ dir }} && go vet ./...
-    @cd {{ dir }} && go vet -tags quire_nobake $(go list ./... | grep -v -e /examples -e /site)
+    @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /site)
     @cd {{ dir }} && go vet -tags release ./internal/bake
     @cd {{ dir }} && golangci-lint run --show-stats=false ./...
     @cd {{ dir }} && sh -c 'out=$(gopls check $(find . -name "*.go" ! -path "./vendor/*")); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'

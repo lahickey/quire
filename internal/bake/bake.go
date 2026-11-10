@@ -30,8 +30,6 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const Enabled = true
-
 type Run struct {
 	spec     model.BakeSpec
 	source   fs.FS

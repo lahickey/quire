@@ -129,5 +129,6 @@ func (p *Plugin) Attach(m *plugin.Mount) error {
 	m.Route("GET", "events", p.events)
 	m.Route("POST", "add", p.add)
 	m.Route("POST", "dec", p.dec)
-	return m.Page("GET", "", p.show)
+	m.Page("GET", "", p.show)
+	return nil
 }

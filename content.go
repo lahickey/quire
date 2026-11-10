@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lahickey/quire/internal/bake"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
@@ -42,7 +41,7 @@ func (e *Engine) addImage(name string, max ...model.Slot) (model.Image, error) {
 
 func (r resolver) picture(name, alt, caption string, figure bool) (string, error) {
 	im, err := r.e.addImage(name)
-	if _, baking := r.e.from.(*bake.Run); err != nil || baking {
+	if err != nil || im.Hash == "" {
 		return "", err
 	}
 	c := ui.Img(im, model.SlotPage, alt)
@@ -117,7 +116,7 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	if spec.ListOnly {
 		return col, nil
 	}
-	e.route("GET /"+spec.ID+"/{slug}", siteOwner, e.pages.Cached(func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET /"+spec.ID+"/{slug}", ownerSite, e.pages.Cached(func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
 			e.notFound404.ServeHTTP(w, r)

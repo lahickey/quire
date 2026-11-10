@@ -1,6 +1,7 @@
 package quire
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -10,7 +11,10 @@ import (
 	"github.com/lahickey/quire/ui"
 )
 
-const siteOwner = "the site"
+const (
+	ownerQuire = "quire"
+	ownerSite  = "site"
+)
 
 func pagePattern(path string) string {
 	if path == "/" {
@@ -35,9 +39,15 @@ func (e *Engine) route(pattern, owner string, h http.HandlerFunc) {
 	e.mux.HandleFunc(pattern, h)
 }
 
-func (e *Engine) claimed(pattern string) bool {
-	_, ok := e.routes[pattern]
-	return ok
+func (e *Engine) claim(pattern, path, owner string, h http.HandlerFunc) error {
+	if reserved(path) && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
+		return fmt.Errorf("%s belongs to another namespace", path)
+	}
+	if o, taken := e.routes[pattern]; taken {
+		return fmt.Errorf("%s is already mounted by %s", path, o)
+	}
+	e.route(pattern, owner, h)
+	return nil
 }
 
 func (e *Engine) versioned(url, hash string) string {
@@ -46,7 +56,7 @@ func (e *Engine) versioned(url, hash string) string {
 }
 
 func (e *Engine) addBytes(url, contentType string, body []byte) string {
-	e.route("GET "+url, siteOwner, serve.Static(contentType, body).ServeHTTP)
+	e.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
 	return e.versioned(url, serve.Hash(body))
 }
 
@@ -57,7 +67,7 @@ func (e *Engine) prepare(path string, c templ.Component, code int) *serve.Prepar
 }
 
 func (e *Engine) preparePage(path string, c templ.Component) {
-	e.route("GET "+pagePattern(path), siteOwner, e.prepare(path, c, http.StatusOK).ServeHTTP)
+	e.route("GET "+pagePattern(path), ownerSite, e.prepare(path, c, http.StatusOK).ServeHTTP)
 }
 
 func (e *Engine) addNotFound() {
@@ -66,7 +76,7 @@ func (e *Engine) addNotFound() {
 		page = e.late(ui.NotFoundPage)
 	}
 	e.notFound404 = e.prepare("404", page, http.StatusNotFound)
-	e.route("GET /{path...}", siteOwner, e.notFound404.ServeHTTP)
+	e.route("GET /{path...}", ownerQuire, e.notFound404.ServeHTTP)
 }
 
 func (e *Engine) robotsTxt() string { return serve.Robots(e.chrome.AbsURL("/sitemap.xml")) }
@@ -77,18 +87,18 @@ func (e *Engine) addSiteFiles() {
 	if e.chrome.BaseURL == "" {
 		return
 	}
-	e.route("GET /robots.txt", siteOwner, func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET /robots.txt", ownerQuire, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(e.robotsTxt()))
 	})
-	e.route("GET /sitemap.xml", siteOwner, func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET /sitemap.xml", ownerQuire, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		_, _ = w.Write([]byte(e.sitemapXML()))
 	})
 }
 
 func (e *Engine) AddRoute(method, path string, h http.HandlerFunc) {
-	e.route(method+" "+path, siteOwner, h)
+	e.route(method+" "+path, ownerSite, h)
 }
 
 func (e *Engine) AddPage(path string, c templ.Component) {
@@ -107,7 +117,7 @@ func (e *Engine) AddFile(urlPath string, fsys fs.FS, name string) string {
 	if _, err := fs.Stat(fsys, name); err != nil {
 		panic("quire: file " + urlPath + ": " + err.Error())
 	}
-	e.route("GET "+urlPath, siteOwner, func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET "+urlPath, ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, fsys, name)
 	})
 	return e.versioned(urlPath, serve.FileHash(fsys, name))

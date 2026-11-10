@@ -181,7 +181,9 @@ func TestExamples(t *testing.T) {
 			if !t.Run("bakes", func(t *testing.T) { serve(t, build(t, dir), dir, cs) }) {
 				return
 			}
-			t.Run("ships", func(t *testing.T) { serve(t, build(t, dir, "-tags", "quire_nobake,quire_embed"), t.TempDir(), cs) })
+			t.Run("ships", func(t *testing.T) {
+				serve(t, build(t, dir, "-tags", "quire_nobake", "-overlay", ".quire/ship.json"), t.TempDir(), cs)
+			})
 		})
 	}
 }

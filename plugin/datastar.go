@@ -74,7 +74,7 @@ func (s *Streams) remove(topic string, st *Stream) {
 }
 
 func (m *Mount) NewStreams() *Streams {
-	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: m.name}
+	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: m.got.Name}
 }
 
 func scoped(scope string, v any) ([]byte, error) {

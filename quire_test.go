@@ -4,7 +4,6 @@ package quire
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -348,9 +347,12 @@ func TestPluginScoping(t *testing.T) {
 	err := e.Use(testPlugin{"basket", func(m *plugin.Mount) error {
 		prefix = m.URL("")
 		m.Route("GET", "events", ok)
-		return m.Page("GET", "", ok)
+		m.Page("GET", "", ok)
+		return nil
 	}}, plugin.At("/shop", testPlugin{"tickets", func(m *plugin.Mount) error {
-		return errors.Join(m.Page("GET", "", ok), m.Page("GET", "/checkout", ok))
+		m.Page("GET", "", ok)
+		m.Page("GET", "/checkout", ok)
+		return nil
 	}}))
 	if err != nil {
 		t.Fatal(err)
@@ -369,8 +371,8 @@ func TestPluginScoping(t *testing.T) {
 
 	clash := New(model.Site{})
 	err = clash.Use(
-		plugin.At("/checkout", testPlugin{"basket", func(m *plugin.Mount) error { return m.Page("GET", "", ok) }}),
-		plugin.At("/checkout", testPlugin{"tickets", func(m *plugin.Mount) error { return m.Page("GET", "", ok) }}),
+		plugin.At("/checkout", testPlugin{"basket", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
+		plugin.At("/checkout", testPlugin{"tickets", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
 	)
 	if err == nil || !strings.Contains(err.Error(), "basket") || !strings.Contains(err.Error(), "tickets") {
 		t.Fatalf("a second claim on /checkout must name both plugins, got %v", err)
@@ -378,7 +380,8 @@ func TestPluginScoping(t *testing.T) {
 
 	reserved := New(model.Site{})
 	if err := reserved.Use(plugin.At("/_quire", testPlugin{"basket", func(m *plugin.Mount) error {
-		return m.Page("GET", "style.css", ok)
+		m.Page("GET", "style.css", ok)
+		return nil
 	}})); err == nil {
 		t.Error("a plugin mounted a public page inside the reserved namespace")
 	}
@@ -404,7 +407,8 @@ func TestPluginScoping(t *testing.T) {
 	taken := New(model.Site{})
 	taken.AddPage("/basket", body("site"))
 	if err := taken.Use(plugin.At("/basket", testPlugin{"basket", func(m *plugin.Mount) error {
-		return m.Page("GET", "", ok)
+		m.Page("GET", "", ok)
+		return nil
 	}})); err == nil || !strings.Contains(err.Error(), "site") {
 		t.Fatalf("a plugin claiming a site route must error, got %v", err)
 	}

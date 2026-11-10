@@ -1,3 +1,5 @@
+//go:build !quire_nobake
+
 package baketest
 
 import (

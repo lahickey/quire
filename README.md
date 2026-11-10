@@ -48,7 +48,7 @@ Some words.
 
 `go run .` serves it on http://localhost:8090: home page, post index, post pages, navigation, a light and dark toggle, sitemap and robots.txt, with no templates or CSS of your own.
 
-To ship, `go run . bake`, then `go build -tags quire_nobake,quire_embed` with a five-line `ship.go` beside `main.go` ([how](./site/content/docs/getting-started.md#shipping-it)).
+To ship, `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json` ([how](./site/content/docs/getting-started.md#shipping-it)).
 The result is one binary that carries the whole site and none of the image or diagram tooling.
 
 ## Examples
