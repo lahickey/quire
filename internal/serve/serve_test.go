@@ -49,7 +49,7 @@ func TestPages(t *testing.T) {
 		r.Header.Set("Accept-Encoding", coding)
 		r.Header.Set("If-None-Match", inm)
 		w := httptest.NewRecorder()
-		p.Serve(w, r, h, nil)
+		p.Cached(h.ServeHTTP)(w, r)
 		return w
 	}
 	first := get(page, "br", "")

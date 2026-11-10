@@ -81,7 +81,7 @@ templ Home(c model.Chrome) {
 			if c.Description != "" {
 				<p class="home-lede">{ c.Description }</p>
 			}
-			if items := c.Sections; len(items) > 0 {
+			if items := c.Sections(); len(items) > 0 {
 				<div class="home-sections">
 					for _, it := range items {
 						<a href={ it.Href } class="home-section">{ it.Label }</a>

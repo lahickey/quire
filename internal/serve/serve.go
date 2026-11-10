@@ -26,12 +26,22 @@ var managed = map[string]bool{
 	"Etag": true, "Vary": true, "Cache-Control": true, "Set-Cookie": true,
 }
 
+type page struct {
+	body []byte
+	hdr  http.Header
+	enc  string
+	etag string
+	ct   string
+	code int
+}
+
+type coded map[string]*page
+
 type Prepared struct {
 	path string
 	c    templ.Component
 	code int
-	v    compress.Variants
-	etag string
+	by   coded
 }
 
 type buffer struct {
@@ -41,17 +51,8 @@ type buffer struct {
 	wrote  bool
 }
 
-type entry struct {
-	body []byte
-	hdr  http.Header
-	enc  string
-	etag string
-	ct   string
-	code int
-}
-
 type Pages struct {
-	cache *lru.Cache[*entry]
+	cache *lru.Cache[*page]
 	dev   bool
 }
 
@@ -86,7 +87,7 @@ func replayable(h http.Header) http.Header {
 	return out
 }
 
-func (page *entry) write(w http.ResponseWriter, r *http.Request) {
+func (page *page) write(w http.ResponseWriter, r *http.Request) {
 	maps.Copy(w.Header(), page.hdr)
 	if page.ct != "" {
 		w.Header().Set("Content-Type", page.ct)
@@ -103,14 +104,35 @@ func (page *entry) write(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	if len(page.body) > 0 {
-		w.Header().Set("Content-Length", strconv.Itoa(len(page.body)))
-	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(page.body)))
 	w.WriteHeader(page.code)
 	if r.Method == http.MethodHead {
 		return
 	}
 	_, _ = w.Write(page.body)
+}
+
+func newPage(code int, hdr http.Header, body []byte, coding string, quality int) *page {
+	ct := hdr.Get("Content-Type")
+	out, enc := compress.Encode(body, ct, coding, quality)
+	etag := `"` + Hash(body)
+	if enc != "" {
+		etag += "-" + enc
+	}
+	return &page{body: out, hdr: replayable(hdr), enc: enc, etag: etag + `"`, ct: ct, code: code}
+}
+
+func encode(code int, ct string, body []byte, quality int) coded {
+	hdr := http.Header{"Content-Type": {ct}}
+	out := coded{"": newPage(code, hdr, body, "", quality)}
+	for _, coding := range compress.Codings {
+		out[coding] = newPage(code, hdr, body, coding, quality)
+	}
+	return out
+}
+
+func (c coded) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	c[compress.Accepted(r, compress.Codings...)].write(w, r)
 }
 
 func Hash(b []byte) string { return journal.Hash(b) }
@@ -163,33 +185,13 @@ func (p *Prepared) Build() {
 	if err := p.c.Render(context.Background(), &buf); err != nil {
 		panic("quire: page " + p.path + ": " + err.Error())
 	}
-	body := buf.Bytes()
-	p.etag = `"` + Hash(body) + `"`
-	p.v = compress.Prepare(body, htmlType, compress.PageQuality)
-	if p.v == nil {
-		p.v = compress.Variants{}
-	}
-	p.v[""] = bytes.Clone(body)
+	p.by = encode(p.code, htmlType, buf.Bytes(), compress.PageQuality)
 }
 
-func (p *Prepared) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", htmlType)
-	out := compress.Negotiate(w, r, p.v[""], p.v)
-	etag := p.etag
-	if enc := w.Header().Get("Content-Encoding"); enc != "" {
-		etag = strings.TrimSuffix(etag, `"`) + "-" + enc + `"`
-	}
-	w.Header().Set("ETag", etag)
-	if p.code/100 == 2 && ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
-		w.Header().Del("Content-Encoding")
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	w.Header().Set("Content-Length", strconv.Itoa(len(out)))
-	w.WriteHeader(p.code)
-	if r.Method != http.MethodHead {
-		_, _ = w.Write(out)
-	}
+func (p *Prepared) ServeHTTP(w http.ResponseWriter, r *http.Request) { p.by.ServeHTTP(w, r) }
+
+func Static(contentType string, body []byte) http.Handler {
+	return encode(http.StatusOK, contentType, body, compress.BestQuality)
 }
 
 func (b *buffer) Header() http.Header { return b.header }
@@ -208,40 +210,32 @@ func (b *buffer) WriteHeader(code int) {
 }
 
 func NewPages(max int, dev bool) *Pages {
-	return &Pages{cache: lru.New(max, func(p *entry) int { return len(p.body) }), dev: dev}
+	return &Pages{cache: lru.New(max, func(p *page) int { return len(p.body) }), dev: dev}
 }
 
 func (p *Pages) Len() int { return p.cache.Len() }
 
-func (p *Pages) Serve(w http.ResponseWriter, r *http.Request, h http.Handler, notFound *Prepared) {
-	coding := compress.Accepted(r, compress.Codings...)
-	k := r.URL.Path + "\x00" + coding
-	if page, ok := p.cache.Get(k); ok {
+func (p *Pages) Cached(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		coding := compress.Accepted(r, compress.Codings...)
+		k := r.URL.Path + "\x00" + coding
+		if page, ok := p.cache.Get(k); ok {
+			page.write(w, r)
+			return
+		}
+		buf := &buffer{header: w.Header(), code: http.StatusOK}
+		h(buf, r)
+		if buf.code != http.StatusOK {
+			w.WriteHeader(buf.code)
+			_, _ = w.Write(buf.body.Bytes())
+			return
+		}
+		page := newPage(buf.code, buf.header, buf.body.Bytes(), coding, compress.PageQuality)
+		if !p.dev {
+			p.cache.Put(k, page)
+		}
 		page.write(w, r)
-		return
 	}
-	buf := &buffer{header: w.Header(), code: http.StatusOK}
-	h.ServeHTTP(buf, r)
-	if buf.code == http.StatusNotFound && buf.body.Len() == 0 && notFound != nil {
-		notFound.ServeHTTP(w, r)
-		return
-	}
-	body := buf.body.Bytes()
-	ct := buf.header.Get("Content-Type")
-	etag := `"` + Hash(body) + `"`
-	storable := buf.code == http.StatusOK
-	out, enc := body, ""
-	if storable {
-		out, enc = compress.Encode(body, ct, coding)
-	}
-	if enc != "" {
-		etag = strings.TrimSuffix(etag, `"`) + "-" + enc + `"`
-	}
-	page := &entry{body: bytes.Clone(out), hdr: replayable(buf.header), enc: enc, etag: etag, ct: ct, code: buf.code}
-	if storable && !p.dev {
-		p.cache.Put(k, page)
-	}
-	page.write(w, r)
 }
 
 func Sitemap(abs func(string) string, locs []Loc) string {

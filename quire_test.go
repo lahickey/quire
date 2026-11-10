@@ -141,7 +141,7 @@ func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
 	}
 	pic, _ := col.Get("pic")
 	plain, _ := col.Get("plain")
-	if u, want := col.ItemPage(pic).ShareImage, e.site.AbsURL(model.ImageURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
+	if u, want := col.ItemPage(pic).ShareImage, e.chrome.AbsURL(model.ImageURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
 		t.Errorf("a document with an image shares %q, want its own 1096 rung %q", u, want)
 	}
 	if u := col.ItemPage(plain).ShareImage; u != "" {
@@ -178,7 +178,7 @@ func TestDraftsMountOnlyWithTheFlag(t *testing.T) {
 		}
 		rec := httptest.NewRecorder()
 		e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts", nil))
-		inNav := slices.ContainsFunc(e.navItems, func(it model.NavItem) bool { return it.Href == "/posts" })
+		inNav := slices.ContainsFunc(e.chrome.Nav, func(it model.NavItem) bool { return it.Href == "/posts" })
 		if (rec.Code == http.StatusOK) != drafts || inNav != drafts {
 			t.Errorf("drafts %v: /posts %d, in nav %v", drafts, rec.Code, inNav)
 		}

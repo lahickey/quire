@@ -76,7 +76,7 @@ Working on Quire itself is in [DEVELOPING.md](./DEVELOPING.md).
 
 ## Status
 
-WARNING: Before 1.0, releases may change the API.
+WARNING: Quire is very early and things may well change dramatically. No guarantees of anything before 1.0.
 
 ## Licence
 

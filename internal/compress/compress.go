@@ -12,11 +12,12 @@ import (
 
 const minSize = 256
 
-const PageQuality = 5
+const (
+	PageQuality = 5
+	BestQuality = brotli.BestCompression
+)
 
 var Codings = []string{"br", "gzip"}
-
-type Variants map[string][]byte
 
 func compressible(ct string, n int) bool {
 	if n < minSize {
@@ -57,14 +58,14 @@ func brotliBytes(body []byte, quality int) []byte {
 	return bytes.Clone(buf.Bytes())
 }
 
-func Encode(body []byte, ct, coding string) ([]byte, string) {
+func Encode(body []byte, ct, coding string, quality int) ([]byte, string) {
 	if coding == "" || !compressible(ct, len(body)) {
 		return body, ""
 	}
 	var out []byte
 	switch coding {
 	case "br":
-		out = brotliBytes(body, PageQuality)
+		out = brotliBytes(body, quality)
 	case "gzip":
 		out = gzipBody(body, ct)
 	}
@@ -72,23 +73,6 @@ func Encode(body []byte, ct, coding string) ([]byte, string) {
 		return body, ""
 	}
 	return out, coding
-}
-
-func Prepare(body []byte, ct string, quality int) Variants {
-	if !compressible(ct, len(body)) {
-		return nil
-	}
-	v := Variants{}
-	if b := brotliBytes(body, quality); b != nil {
-		v["br"] = b
-	}
-	if g := gzipBody(body, ct); g != nil {
-		v["gzip"] = g
-	}
-	if len(v) == 0 {
-		return nil
-	}
-	return v
 }
 
 func Accepted(r *http.Request, offer ...string) string {
@@ -115,22 +99,4 @@ func Accepted(r *http.Request, offer ...string) string {
 		}
 	}
 	return ""
-}
-
-func Negotiate(w http.ResponseWriter, r *http.Request, body []byte, v Variants) []byte {
-	if len(v) == 0 {
-		return body
-	}
-	w.Header().Set("Vary", "Accept-Encoding")
-	offer := make([]string, 0, len(Codings))
-	for _, c := range Codings {
-		if _, have := v[c]; have {
-			offer = append(offer, c)
-		}
-	}
-	if c := Accepted(r, offer...); c != "" {
-		w.Header().Set("Content-Encoding", c)
-		return v[c]
-	}
-	return body
 }

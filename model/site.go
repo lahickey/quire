@@ -2,6 +2,7 @@ package model
 
 import (
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -54,9 +55,7 @@ type Chrome struct {
 	FontPreload []string
 	LiveReload  LiveReload
 	OGImageURL  string
-	Domain      string
 	Nav         []NavItem
-	Sections    []NavItem
 	Icons       []Icon
 }
 
@@ -108,6 +107,10 @@ func (t Theme) String() string {
 		return "dark"
 	}
 	return "light"
+}
+
+func (c Chrome) Sections() []NavItem {
+	return slices.DeleteFunc(slices.Clone(c.Nav), func(n NavItem) bool { return n.Href == "/" })
 }
 
 func (s Site) AbsURL(path string) string { return absURL(s.BaseURL, path) }

@@ -94,7 +94,7 @@ func (r resolver) Image(name string, max model.Slot) (model.Image, error) {
 func (r resolver) Data(name string) ([]byte, error) { return r.e.from.Data(name) }
 
 func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
-	col, err := model.Collect(spec, resolver{e}, e.site, e.drafts)
+	col, err := model.Collect(spec, resolver{e}, e.chrome.Site, e.drafts)
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +117,14 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	if spec.ListOnly {
 		return col, nil
 	}
-	e.route("GET /"+spec.ID+"/{slug}", true, func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET /"+spec.ID+"/{slug}", siteOwner, e.pages.Cached(func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
-			e.serveNotFound(w, r)
+			e.notFound404.ServeHTTP(w, r)
 			return
 		}
 		ui.Render(item(e.Shell, col, doc))(w, r)
-	})
+	}))
 	for _, d := range docs {
 		if !d.Meta.IsDraft() {
 			e.sitemap = append(e.sitemap, serve.Loc{Path: col.Href(d), LastMod: d.Meta.LastMod().ISO()})

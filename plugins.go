@@ -27,14 +27,10 @@ func (h pluginHost) Claim(method, path, owner string, f http.HandlerFunc) error 
 		return fmt.Errorf("%s belongs to another namespace", path)
 	}
 	pattern := method + " " + pagePattern(path)
-	if o, taken := h.e.claims[pattern]; taken {
+	if o, taken := h.e.routes[pattern]; taken {
 		return fmt.Errorf("%s is already mounted by %s", path, o)
 	}
-	if h.e.claimed(pattern) {
-		return fmt.Errorf("%s is already mounted by the site", path)
-	}
-	h.e.claims[pattern] = owner
-	h.e.route(pattern, false, f)
+	h.e.route(pattern, owner, f)
 	return nil
 }
 
@@ -46,7 +42,7 @@ func (h pluginHost) AddStylesheets(at model.Width, fsys fs.FS, names ...string) 
 func (h pluginHost) AddNavEnd(c templ.Component) {
 	mustBeOpen(h.e.mounted, "nav control")
 	if c != nil {
-		h.e.navEnd = append(h.e.navEnd, c)
+		h.e.chrome.NavEnd = append(h.e.chrome.NavEnd, c)
 	}
 }
 
@@ -58,7 +54,7 @@ func (liveReload) Name() string { return core }
 
 func (l liveReload) Attach(m *plugin.Mount) error {
 	streams := m.NewStreams()
-	l.e.reload = model.LiveReload{On: true, BootID: l.boot, Init: m.Listen("reload")}
+	l.e.chrome.LiveReload = model.LiveReload{On: true, BootID: l.boot, Init: m.Listen("reload")}
 	m.Route("GET", "reload", func(w http.ResponseWriter, r *http.Request) {
 		streams.Subscribe(w, r, "boot", func(s *plugin.Stream) error { return s.Signals(map[string]string{"boot": l.boot}) })
 	})

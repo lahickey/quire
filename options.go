@@ -19,11 +19,6 @@ const (
 
 type Option func(*Engine)
 
-type icon struct {
-	fsys fs.FS
-	model.Icon
-}
-
 func WithMode(m Mode) Option {
 	return func(e *Engine) { e.mode = m }
 }
@@ -51,7 +46,7 @@ func WithIcons(fsys fs.FS, names ...string) Option {
 			if strings.HasPrefix(path.Base(n), "apple-touch-icon") {
 				rel = "apple-touch-icon"
 			}
-			e.icons = append(e.icons, icon{fsys, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Href: "/" + n}})
+			e.chrome.Icons = append(e.chrome.Icons, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Href: e.AddFile("/"+n, fsys, n)})
 		}
 	}
 }
@@ -73,19 +68,19 @@ func WithBake(s model.BakeSpec) Option {
 }
 
 func WithTheme(t model.Theme) Option {
-	return func(e *Engine) { e.theme = t }
+	return func(e *Engine) { e.chrome.Theme = t }
 }
 
 func WithHeader(h func(model.Chrome, model.PageSpec) templ.Component) Option {
-	return func(e *Engine) { e.header = h }
+	return func(e *Engine) { e.chrome.Header = h }
 }
 
 func WithFooter(f func(model.Chrome, model.PageSpec) templ.Component) Option {
-	return func(e *Engine) { e.footer = f }
+	return func(e *Engine) { e.chrome.Footer = f }
 }
 
 func WithNavEnd(cs ...templ.Component) Option {
-	return func(e *Engine) { e.navEnd = append(e.navEnd, cs...) }
+	return func(e *Engine) { e.chrome.NavEnd = append(e.chrome.NavEnd, cs...) }
 }
 
 func WithSiteCard(c model.ShareCard) Option {

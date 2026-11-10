@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/internal/bake"
 	"github.com/lahickey/quire/internal/bundle"
 	"github.com/lahickey/quire/internal/fonts"
@@ -46,42 +47,32 @@ type source interface {
 }
 
 type Engine struct {
-	site     model.Site
+	chrome   model.Chrome
 	mode     Mode
 	drafts   bool
 	palette  model.Palette
 	scale    model.Scale
 	siteCard *model.ShareCard
-	theme    model.Theme
-	header   func(model.Chrome, model.PageSpec) templ.Component
-	footer   func(model.Chrome, model.PageSpec) templ.Component
-	icons    []icon
+	sheets   []assets.Sheet
 	bundles  []fs.FS
 
 	slots  map[model.Slot]model.SlotSpec
 	fonts  fonts.FontSet
 	bundle *bundle.Store
 	pages  *serve.Pages
-	reload model.LiveReload
 
 	bakeSpec model.BakeSpec
 	from     source
 
 	mux         *http.ServeMux
-	routes      map[string]bool
+	routes      map[string]string
 	versions    map[string]string
-	claims      map[string]string
 	sessions    bool
 	sitemap     []serve.Loc
 	fixed       []*serve.Prepared
 	notFound    templ.Component
 	notFound404 *serve.Prepared
 	mounted     bool
-
-	linked   linked
-	navItems []model.NavItem
-	navEnd   []templ.Component
-	chrome   model.Chrome
 }
 
 func (e *Engine) cacheControl(r *http.Request) string {
@@ -97,12 +88,11 @@ func (e *Engine) mountDefaults() {
 	}
 	e.addAssets()
 	e.addSiteFiles()
-	e.route("GET "+model.ImagePath+"{file}", false, e.bundle.ServeHTTP)
+	e.route("GET "+model.ImagePath+"{file}", siteOwner, e.bundle.ServeHTTP)
 	if !e.claimed("GET " + pagePattern("/")) {
 		e.AddPage("/", e.late(ui.Home))
 	}
 	e.addNotFound()
-	e.chrome = e.buildChrome()
 	e.mounted = true
 	for _, p := range e.fixed {
 		p.Build()
@@ -110,11 +100,11 @@ func (e *Engine) mountDefaults() {
 }
 
 func (e *Engine) siteCardText() model.ShareCard {
-	c := model.ShareCard{Title: e.site.Name, Lines: []string{e.site.Description}}
+	c := model.ShareCard{Title: e.chrome.Name, Lines: []string{e.chrome.Description}}
 	if e.siteCard != nil {
 		c = *e.siteCard
 	}
-	c.Domain = cmp.Or(c.Domain, e.site.Host())
+	c.Domain = cmp.Or(c.Domain, e.chrome.Host())
 	if c.Ink == (model.Ink{}) {
 		c.Ink = e.palette.Ink()
 	}
@@ -143,14 +133,11 @@ func (e *Engine) bake(mount func(*Engine) error) error {
 func New(site model.Site, opts ...Option) *Engine {
 	e := &Engine{
 		mux:      http.NewServeMux(),
-		routes:   map[string]bool{},
+		routes:   map[string]string{},
 		versions: map[string]string{},
-		claims:   map[string]string{},
-		site:     site.WithDefaults(),
+		chrome:   model.Chrome{Site: site.WithDefaults(), Header: ui.Header, Footer: ui.Footer},
 		palette:  model.PaletteEmber,
 		scale:    model.DefaultScale(),
-		header:   ui.Header,
-		footer:   ui.Footer,
 	}
 	for _, o := range opts {
 		o(e)
@@ -171,11 +158,12 @@ func New(site model.Site, opts ...Option) *Engine {
 			panic("quire: bundle: " + err.Error() + "; run the site's bake")
 		}
 	}
+	rec, _ := e.bundle.Record(journal.SiteCard)
+	if file, ok := rec.File(); ok {
+		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
+	}
 	e.pages = serve.NewPages(pageCache, e.mode == Dev)
 	e.AddRoute("GET", healthPath, serve.Health)
-	for k, i := range e.icons {
-		e.icons[k].Href = e.AddFile(i.Href, i.fsys, strings.TrimPrefix(i.Href, "/"))
-	}
 	if e.mode == Dev {
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
@@ -190,11 +178,11 @@ func New(site model.Site, opts ...Option) *Engine {
 
 func (e *Engine) Handler() http.Handler {
 	e.mountDefaults()
-	apex := e.site.Host()
+	apex := e.chrome.Host()
 	if e.mode == Dev {
 		apex = ""
 	}
-	secure := e.mode != Dev && strings.HasPrefix(e.site.BaseURL, "https://")
+	secure := e.mode != Dev && strings.HasPrefix(e.chrome.BaseURL, "https://")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if target, ok := serve.Redirect(r, apex); ok {
 			w.Header().Set("Cache-Control", "no-cache")
@@ -205,13 +193,7 @@ func (e *Engine) Handler() http.Handler {
 		if e.sessions {
 			r = session.Mint(w, r, secure)
 		}
-
-		_, pattern := e.mux.Handler(r)
-		if !e.routes[pattern] || (r.Method != http.MethodGet && r.Method != http.MethodHead) {
-			e.mux.ServeHTTP(w, r)
-			return
-		}
-		e.pages.Serve(w, r, e.mux, e.notFound404)
+		e.mux.ServeHTTP(w, r)
 	})
 }
 

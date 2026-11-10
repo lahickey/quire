@@ -438,7 +438,7 @@ func Home(c model.Chrome) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if items := c.Sections; len(items) > 0 {
+			if items := c.Sections(); len(items) > 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"home-sections\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
