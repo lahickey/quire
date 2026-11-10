@@ -20,3 +20,19 @@ dev:
     	-file '\.go$' -file '\.templ$' -file '\.css$' -file '\.md$' -file '\.svg$' -file '\.js$' -file '\.yaml$' \
     	go tool templ generate -path {{ root }} \
     	:: go run . --dev --drafts --addr :{{ port }}
+
+# Bake and exit, for the image build.
+bake:
+    cd {{ root }} && go tool templ generate -path .
+    cd {{ source_directory() }} && go run . bake
+
+# Build the image locally, as `quire-site`.
+build: bake
+    cd {{ root }} && docker build -f site/Dockerfile -t quire-site .
+
+# Long-running CLIs need a pseudo-TTY when invoked via just. There is no
+# `fly launch` recipe: creating the app is a one-off, by hand.
+# --local-only keeps the image build on this machine. This is production.
+[no-quiet]
+deploy: bake
+    cd {{ root }} && script -q -c "fly deploy . --config site/fly.toml --dockerfile site/Dockerfile --local-only" /dev/null
