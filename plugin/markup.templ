@@ -1,0 +1,19 @@
+package plugin
+
+func (m *Mount) Listen(path string) string {
+	return "@get('" + m.URL(path) + "', {retry: 'always', retryMaxCount: Infinity, requestCancellation: 'cleanup'})"
+}
+
+func (m *Mount) Signals(v any) string {
+	b, err := scoped(m.name, v)
+	if err != nil {
+		panic("plugin " + m.name + ": signals: " + err.Error())
+	}
+	return string(b)
+}
+
+templ (m *Mount) Form(path string) {
+	<form method="post" action={ m.URL(path) } data-on:submit={ "@post('" + m.URL(path) + "', {contentType: 'form'})" }>
+		{ children... }
+	</form>
+}

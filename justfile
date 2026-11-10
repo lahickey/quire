@@ -27,28 +27,7 @@ release-check:
 
 # Check everything, then tag HEAD on master. Prints the push; never pushes.
 release version:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd {{ dir }}
-    v={{ quote(version) }}
-    die() { echo "release: $*" >&2; exit 1; }
-    [[ $v =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || die "usage: just release vMAJOR.MINOR.PATCH"
-    git rev-parse -q --verify "refs/tags/$v" >/dev/null && die "$v is already a tag"
-    last=$(git tag -l 'v*' --sort=-v:refname | head -n 1)
-    [[ -z $last || $(printf '%s\n%s\n' "$last" "$v" | sort -V | tail -n 1) == "$v" ]] || die "$v does not come after $last"
-    [[ $(git branch --show-current) == master ]] || die "not on master"
-    [[ -z $(git status --porcelain) ]] || die "the tree has uncommitted changes"
-    grep -Eq '^[[:space:]]*replace([[:space:]]|\()' go.mod && die "go.mod has a replace"
-    go mod tidy -diff >/dev/null || die "go.mod or go.sum is not tidy: run go mod tidy"
-    command -v govulncheck >/dev/null || die "govulncheck is not installed: go install golang.org/x/vuln/cmd/govulncheck@latest"
-    just release-check
-    govulncheck ./...
-    just test
-    [[ -z $(git status --porcelain) ]] || die "the tests changed the tree: commit what they generated"
-    git tag -a "$v" -m "$v"
-    echo "tagged $v; push it, then fetch it through the proxy so pkg.go.dev has it:"
-    echo "  git push public master $v"
-    echo "  GOPROXY=https://proxy.golang.org go list -m $(go list -m)@$v"
+    @cd {{ dir }} && go run ./internal/tools/release {{ quote(version) }}
 
 # Run an example: `just example` for 1-minimal, or `just example <name>`.
 [continue]
@@ -85,13 +64,7 @@ free:
 
 # Update every dependency to its latest compatible version: Go modules and tools, the fonts, Datastar 1.x. Review the diff.
 deps:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd {{ dir }}
-    go get -u ./...
-    go get tool
-    go mod tidy
-    go run ./internal/tools/fonts
-    v=$(curl -sSf 'https://data.jsdelivr.com/v1/packages/gh/starfederation/datastar/resolved?specifier=1' | jq -r .version)
-    js=$(curl -sSf "https://cdn.jsdelivr.net/gh/starfederation/datastar@v$v/bundles/datastar.js")
-    printf '/*! Datastar v%s | MIT License | Copyright (c) Star Federation | https://github.com/starfederation/datastar */\n%s\n' "$v" "$js" > internal/assets/datastar.js
+    @cd {{ dir }} && go get -u ./...
+    @cd {{ dir }} && go get tool
+    @cd {{ dir }} && go mod tidy
+    @cd {{ dir }} && go run ./internal/tools/thirdparty

@@ -346,7 +346,7 @@ func TestPluginScoping(t *testing.T) {
 	e := New(model.Site{BaseURL: "https://example.com"})
 	var prefix string
 	err := e.Use(testPlugin{"basket", func(m *plugin.Mount) error {
-		prefix = m.Prefix()
+		prefix = m.URL("")
 		m.Route("GET", "events", ok)
 		return m.Page("GET", "", ok)
 	}}, plugin.At("/shop", testPlugin{"tickets", func(m *plugin.Mount) error {
@@ -385,6 +385,9 @@ func TestPluginScoping(t *testing.T) {
 
 	if err := New(model.Site{}).Use(testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
 		t.Error("a name that would break the prefix was accepted")
+	}
+	if err := New(model.Site{}, WithMode(Dev)).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
+		t.Error("a site plugin took the name reserved for Quire's own")
 	}
 
 	css := fstest.MapFS{"ok.css": {Data: []byte("/* .line */ .basket-line { background: url(a.svg) } a.basket-x:hover {}")}, "bad.css": {Data: []byte(".basket-line, .line {}")}}
@@ -654,7 +657,7 @@ func TestLayers(t *testing.T) {
 	may := map[string]func(string) bool{
 		q + "/model":  func(p string) bool { return p == q+"/internal/journal" || p == q+"/internal/radix" },
 		q + "/ui":     func(p string) bool { return p == q+"/model" },
-		q + "/plugin": func(p string) bool { return p == q+"/model" },
+		q + "/plugin": func(p string) bool { return p == q+"/model" || p == q+"/internal/session" },
 	}
 	for line := range strings.Lines(string(out)) {
 		f := strings.Fields(line)

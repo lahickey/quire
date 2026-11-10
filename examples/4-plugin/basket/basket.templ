@@ -7,7 +7,7 @@ import "github.com/lahickey/quire/model"
 // The nav link, on every page. data-signals holds the count in the browser,
 // data-init opens the event stream, and data-text shows the count as it changes.
 templ (p *Plugin) nav() {
-	<a class="basket-link" href={ p.mount.PageURL("") } data-signals="{basket:{count:0}}" data-init={ p.stream("events") }>
+	<a class="basket-link" href={ p.mount.PageURL("") } data-signals={ p.mount.Signals(map[string]int{"count": 0}) } data-init={ p.mount.Listen("events") }>
 		Basket
 		<span class="basket-count" data-text="$basket.count">0</span>
 	</a>
@@ -15,10 +15,10 @@ templ (p *Plugin) nav() {
 
 // A form that posts normally, and through Datastar once it has loaded.
 templ (p *Plugin) button(endpoint, id, label string) {
-	<form method="post" action={ p.url(endpoint) } data-on:submit={ p.post(endpoint) }>
+	@p.mount.Form(endpoint) {
 		<input type="hidden" name="item" value={ id }/>
 		<button type="submit">{ label }</button>
-	</form>
+	}
 }
 
 // The basket's contents. Its id lets the event stream replace it in place.
@@ -46,7 +46,7 @@ templ (p *Plugin) lines(cart map[string]int) {
 // The basket page, in the site's shell. NoIndex keeps it out of search engines.
 templ (p *Plugin) page(cart map[string]int) {
 	@p.mount.Shell(model.PageSpec{Title: "Basket", Path: p.mount.PageURL(""), NoIndex: true}) {
-		<article class="page" data-init={ p.stream("events?view=lines") }>
+		<article class="page" data-init={ p.mount.Listen("events?view=lines") }>
 			<header class="page-head"><h1>Basket</h1></header>
 			@p.lines(cart)
 		</article>

@@ -81,11 +81,9 @@ func Attach(h Host, p Plugin) error {
 	return nil
 }
 
-func (m *Mount) Prefix() string { return "/_" + m.name + "/" }
+func (m *Mount) URL(path string) string { return "/_" + m.name + "/" + strings.TrimPrefix(path, "/") }
 
-func (m *Mount) Route(method, path string, h http.HandlerFunc) {
-	m.h.Route(method, m.Prefix()+strings.TrimPrefix(path, "/"), h)
-}
+func (m *Mount) Route(method, path string, h http.HandlerFunc) { m.h.Route(method, m.URL(path), h) }
 
 func (m *Mount) PageURL(path string) string {
 	base := cmp.Or(m.pages, "/_"+m.name)

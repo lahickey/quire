@@ -8,9 +8,7 @@ import (
 	"embed"
 	"maps"
 	"net/http"
-	"net/url"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/lahickey/quire/model"
@@ -34,18 +32,6 @@ type Plugin struct {
 	carts map[string]map[string]int
 }
 
-func (p *Plugin) url(endpoint string) string { return p.mount.Prefix() + endpoint }
-
-// stream is the Datastar action that keeps an event stream open, reconnecting if it drops.
-func (p *Plugin) stream(endpoint string) string {
-	return "@get('" + p.url(endpoint) + "', {retry: 'always', requestCancellation: 'cleanup'})"
-}
-
-// post is the Datastar action that sends a form without leaving the page.
-func (p *Plugin) post(endpoint string) string {
-	return "@post('" + p.url(endpoint) + "', {contentType: 'form'})"
-}
-
 func (p *Plugin) known(id string) bool {
 	return slices.ContainsFunc(p.items, func(it Item) bool { return it.ID == id })
 }
@@ -62,15 +48,6 @@ func count(cart map[string]int) int {
 		n += q
 	}
 	return n
-}
-
-// back is where a form post without JavaScript returns to: the page it came from, if on this site.
-func (p *Plugin) back(r *http.Request) string {
-	u, err := url.Parse(r.Header.Get("Referer"))
-	if err != nil || (u.Host != "" && u.Host != r.Host) || !strings.HasPrefix(u.Path, "/") {
-		return p.mount.PageURL("")
-	}
-	return u.Path
 }
 
 // publish pushes a changed cart to every tab of the session: the new count to the
@@ -105,11 +82,7 @@ func (p *Plugin) change(w http.ResponseWriter, r *http.Request, delta int) {
 	cart := maps.Clone(c)
 	p.mu.Unlock()
 	p.publish(session, cart)
-	if plugin.IsDatastar(r) {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	http.Redirect(w, r, p.back(r), http.StatusSeeOther)
+	plugin.Done(w, r)
 }
 
 func (p *Plugin) add(w http.ResponseWriter, r *http.Request) { p.change(w, r, 1) }

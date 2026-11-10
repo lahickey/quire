@@ -59,11 +59,9 @@ func (e *Engine) buildChrome() model.Chrome {
 		StyleURLs:   e.linked.styles,
 		FontPreload: e.linked.preload,
 		Domain:      e.site.Host(),
+		LiveReload:  e.reload,
 		Nav:         slices.Clone(e.navItems),
 		Sections:    slices.DeleteFunc(slices.Clone(e.navItems), func(n model.NavItem) bool { return n.Href == "/" }),
-	}
-	if e.mode == Dev {
-		c.LiveReload = model.LiveReload{On: true, BootID: e.bootID, Init: reloadInit}
 	}
 	for _, i := range e.icons {
 		c.Icons = append(c.Icons, i.Icon)

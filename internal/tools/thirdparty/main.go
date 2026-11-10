@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	text       = "Inter:wght@100..900"
-	mono       = "JetBrains Mono:wght@100..800"
-	webDir     = "internal/fonts/web"
-	measureDir = "internal/bake/diagram/fonts"
+	text         = "Inter:wght@100..900"
+	mono         = "JetBrains Mono:wght@100..800"
+	webDir       = "internal/fonts/web"
+	measureDir   = "internal/bake/diagram/fonts"
+	datastarFile = "internal/assets/datastar.js"
 )
 
 const (
@@ -149,11 +150,10 @@ func fetchLicence(name, dest string) error {
 	return fmt.Errorf("%s: no licence found on github.com/google/fonts", name)
 }
 
-func main() {
-	log.SetFlags(0)
+func refreshFonts() error {
 	for _, d := range []string{webDir, measureDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
@@ -165,7 +165,7 @@ func main() {
 	}{{text, &set.Text}, {mono, &set.Mono}} {
 		fam, ttfs, err := fetchFamily(f.spec, subsets, webDir, measureDir)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		*f.into = fam
 		measured.Write(ttfs)
@@ -173,7 +173,7 @@ func main() {
 		lic := "LICENSE-" + slug(fam.Name) + ".txt"
 		for _, d := range []string{webDir, measureDir} {
 			if err := fetchLicence(fam.Name, filepath.Join(d, lic)); err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
 		log.Printf("%-16s %d faces, measured at %v", fam.Name, len(fam.Faces), slices.Sorted(maps.Keys(fam.Measure)))
@@ -181,11 +181,41 @@ func main() {
 	set.ID = journal.Hash(measured.Bytes())
 	b, err := json.Marshal(set, json.Deterministic(true))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for _, d := range []string{webDir, measureDir} {
 		if err := os.WriteFile(filepath.Join(d, fonts.FontsName), append(b, '\n'), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func refreshDatastar() error {
+	b, err := get("https://data.jsdelivr.com/v1/packages/gh/starfederation/datastar/resolved?specifier=1", modernUA)
+	if err != nil {
+		return err
+	}
+	var latest struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(b, &latest); err != nil {
+		return err
+	}
+	js, err := get("https://cdn.jsdelivr.net/gh/starfederation/datastar@v"+latest.Version+"/bundles/datastar.js", modernUA)
+	if err != nil {
+		return err
+	}
+	out := fmt.Appendf(nil, "/*! Datastar v%s | MIT License | Copyright (c) Star Federation | https://github.com/starfederation/datastar */\n%s\n", latest.Version, bytes.TrimRight(js, "\n"))
+	log.Printf("%-16s v%s", "Datastar", latest.Version)
+	return os.WriteFile(datastarFile, out, 0o644)
+}
+
+func main() {
+	log.SetFlags(0)
+	for _, refresh := range []func() error{refreshFonts, refreshDatastar} {
+		if err := refresh(); err != nil {
 			log.Fatal(err)
 		}
 	}

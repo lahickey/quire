@@ -8,6 +8,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -76,27 +77,24 @@ func (m *Mount) NewStreams() *Streams {
 	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: m.name}
 }
 
-func IsDatastar(r *http.Request) bool {
-	return r.Header.Get("Datastar-Request") != ""
+func scoped(scope string, v any) ([]byte, error) {
+	return json.Marshal(map[string]any{scope: v})
 }
 
-func OpenStream(w http.ResponseWriter) *Stream {
+func openStream(w http.ResponseWriter, scope string) *Stream {
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-store")
 	h.Set("Connection", "keep-alive")
 	h.Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	s := &Stream{w: w, rc: http.NewResponseController(w)}
+	s := &Stream{w: w, rc: http.NewResponseController(w), scope: scope}
 	_ = s.rc.Flush()
 	return s
 }
 
 func (s *Stream) Signals(v any) error {
-	if s.scope != "" {
-		v = map[string]any{s.scope: v}
-	}
-	b, err := json.Marshal(v)
+	b, err := scoped(s.scope, v)
 	if err != nil {
 		return err
 	}
@@ -123,8 +121,7 @@ func (s *Streams) Publish(topic string, send func(*Stream) error) {
 }
 
 func (s *Streams) Subscribe(w http.ResponseWriter, r *http.Request, topic string, send func(*Stream) error) {
-	st := OpenStream(w)
-	st.scope = s.scope
+	st := openStream(w, s.scope)
 	s.add(topic, st)
 	defer s.remove(topic, st)
 	if err := send(st); err != nil {
@@ -142,4 +139,16 @@ func (s *Streams) Subscribe(w http.ResponseWriter, r *http.Request, topic string
 			}
 		}
 	}
+}
+
+func Done(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Datastar-Request") != "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	back := "/"
+	if u, err := url.Parse(r.Header.Get("Referer")); err == nil && strings.HasPrefix(u.Path, "/") && (u.Host == "" || u.Host == r.Host) {
+		back = u.Path
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }

@@ -11,7 +11,14 @@ import (
 	"github.com/lahickey/quire/plugin"
 )
 
+const core = "quire"
+
 type pluginHost struct{ e *Engine }
+
+type liveReload struct {
+	e    *Engine
+	boot string
+}
 
 func (h pluginHost) Route(method, path string, f http.HandlerFunc) { h.e.AddRoute(method, path, f) }
 
@@ -47,8 +54,22 @@ func (h pluginHost) UseSessions() { h.e.sessions = true }
 
 func (h pluginHost) Shell(p model.PageSpec) templ.Component { return h.e.Shell(p) }
 
+func (liveReload) Name() string { return core }
+
+func (l liveReload) Attach(m *plugin.Mount) error {
+	streams := m.NewStreams()
+	l.e.reload = model.LiveReload{On: true, BootID: l.boot, Init: m.Listen("reload")}
+	m.Route("GET", "reload", func(w http.ResponseWriter, r *http.Request) {
+		streams.Subscribe(w, r, "boot", func(s *plugin.Stream) error { return s.Signals(map[string]string{"boot": l.boot}) })
+	})
+	return nil
+}
+
 func (e *Engine) Use(plugins ...plugin.Plugin) error {
 	for _, p := range plugins {
+		if p.Name() == core {
+			return fmt.Errorf("plugin name %q is reserved for Quire's own plugins", core)
+		}
 		if err := plugin.Attach(pluginHost{e}, p); err != nil {
 			return err
 		}

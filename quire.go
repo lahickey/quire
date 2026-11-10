@@ -22,6 +22,7 @@ import (
 	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
+	"github.com/lahickey/quire/internal/session"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
 	"github.com/lahickey/quire/ui"
@@ -30,8 +31,6 @@ import (
 const (
 	assetPrefix      = "/_quire/"
 	healthPath       = assetPrefix + "health"
-	reloadPath       = assetPrefix + "reload"
-	reloadInit       = `@get('` + reloadPath + `', {retry: 'always', openWhenHidden: true})`
 	pageCache        = 4 << 20
 	imageMemory      = 12 << 20
 	imageMemoryLimit = 64 << 10
@@ -63,7 +62,7 @@ type Engine struct {
 	fonts  fonts.FontSet
 	bundle *bundle.Store
 	pages  *serve.Pages
-	bootID string
+	reload model.LiveReload
 
 	bakeSpec model.BakeSpec
 	from     source
@@ -182,11 +181,9 @@ func New(site model.Site, opts ...Option) *Engine {
 		if _, err := rand.Read(b[:]); err != nil {
 			panic("engine: boot id: " + err.Error())
 		}
-		e.bootID = hex.EncodeToString(b[:])
-		e.AddRoute("GET", reloadPath, func(w http.ResponseWriter, r *http.Request) {
-			_ = plugin.OpenStream(w).Signals(map[string]any{"quire": map[string]string{"boot": e.bootID}})
-			<-r.Context().Done()
-		})
+		if err := plugin.Attach(pluginHost{e}, liveReload{e, hex.EncodeToString(b[:])}); err != nil {
+			panic("engine: live reload: " + err.Error())
+		}
 	}
 	return e
 }
@@ -206,7 +203,7 @@ func (e *Engine) Handler() http.Handler {
 		}
 		w.Header().Set("Cache-Control", e.cacheControl(r))
 		if e.sessions {
-			r = plugin.Mint(w, r, secure)
+			r = session.Mint(w, r, secure)
 		}
 
 		_, pattern := e.mux.Handler(r)
