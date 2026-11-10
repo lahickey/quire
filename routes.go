@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/ui"
 )
@@ -57,7 +58,7 @@ func (e *Engine) versioned(url, hash string) string {
 
 func (e *Engine) addBytes(url, contentType string, body []byte) string {
 	e.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
-	return e.versioned(url, serve.Hash(body))
+	return e.versioned(url, journal.Hash(body))
 }
 
 func (e *Engine) prepare(path string, c templ.Component, code int) *serve.Prepared {
@@ -114,13 +115,14 @@ func (e *Engine) AddPage(path string, c templ.Component) {
 }
 
 func (e *Engine) AddFile(urlPath string, fsys fs.FS, name string) string {
-	if _, err := fs.Stat(fsys, name); err != nil {
+	body, err := fs.ReadFile(fsys, name)
+	if err != nil {
 		panic("quire: file " + urlPath + ": " + err.Error())
 	}
 	e.route("GET "+urlPath, ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, fsys, name)
 	})
-	return e.versioned(urlPath, serve.FileHash(fsys, name))
+	return e.versioned(urlPath, journal.Hash(body))
 }
 
 func (e *Engine) SetNotFound(c templ.Component) {

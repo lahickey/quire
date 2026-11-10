@@ -25,8 +25,6 @@ const (
 	SlotBleed
 )
 
-const SlotDefault = SlotPage
-
 type SlotSpec struct {
 	Width int
 	Sizes string
@@ -39,32 +37,15 @@ type imgRef struct {
 	sizes    string
 }
 
-type imgKey struct {
-	ext string
-	w   int
-}
-
 type Image struct {
-	Name    string
-	Hash    string
-	Width   int
-	Height  int
-	Alpha   bool
-	formats []journal.Format
-	files   map[imgKey]string
-	refs    []imgRef
-	rungs   []int
-}
-
-func upTo(max Slot) []Slot {
-	if max < SlotThumb {
-		max = SlotDefault
-	}
-	out := make([]Slot, 0, int(max))
-	for s := SlotThumb; s <= max; s++ {
-		out = append(out, s)
-	}
-	return out
+	Name   string
+	Hash   string
+	Width  int
+	Height int
+	Alpha  bool
+	files  map[int]string
+	refs   []imgRef
+	rungs  []int
 }
 
 func window(rungs []int, bot, top int) []int {
@@ -81,28 +62,6 @@ func window(rungs []int, bot, top int) []int {
 	return rungs[min(lo, hi) : hi+1]
 }
 
-func rungsOf(rec journal.Record) []int {
-	seen := map[int]bool{}
-	var rungs []int
-	for _, vs := range rec.Formats {
-		for _, v := range vs.Out {
-			if seen[v.W] {
-				continue
-			}
-			seen[v.W] = true
-			rungs = append(rungs, v.W)
-		}
-	}
-	slices.Sort(rungs)
-	return rungs
-}
-
-func (im Image) file(ext string, w int) string { return im.files[imgKey{ext, w}] }
-
-func (im Image) last() journal.Format { return im.formats[len(im.formats)-1] }
-
-func (im Image) ext() string { return im.last().Ext }
-
 func (im Image) shareURL() string {
 	if len(im.rungs) == 0 {
 		return ""
@@ -113,10 +72,7 @@ func (im Image) shareURL() string {
 			w = r
 		}
 	}
-	if f := im.file(im.ext(), w); f != "" {
-		return ImageURL(f)
-	}
-	return ""
+	return ImageURL(im.files[w])
 }
 
 func (im Image) ref(slot Slot) (imgRef, bool) {
@@ -126,25 +82,6 @@ func (im Image) ref(slot Slot) (imgRef, bool) {
 		}
 	}
 	return imgRef{}, false
-}
-
-func (im Image) srcSet(slot Slot, f journal.Format) string {
-	r, ok := im.ref(slot)
-	if !ok {
-		return ""
-	}
-	var b strings.Builder
-	for _, w := range window(im.rungs, r.bot, r.top) {
-		name := im.file(f.Ext, w)
-		if name == "" {
-			continue
-		}
-		if b.Len() > 0 {
-			b.WriteString(", ")
-		}
-		fmt.Fprintf(&b, "%s %dw", ImageURL(name), w)
-	}
-	return b.String()
 }
 
 func (im Image) attrs(slot Slot, priority bool) templ.Attributes {
@@ -184,26 +121,21 @@ func (s Slot) String() string {
 
 func ImageURL(file string) string { return ImagePath + file }
 
-func NewImage(rec journal.Record, sc Scale, ceiling Slot, slots map[Slot]SlotSpec) Image {
+func NewImage(rec journal.Record, sc Scale) Image {
 	base := path.Base(filepath.ToSlash(rec.Name))
 	stem := strings.TrimSuffix(base, path.Ext(base))
 	m := rec.Prep
-	rungs := rungsOf(rec)
-	formats := make([]journal.Format, len(rec.Formats))
-	files := map[imgKey]string{}
-	for i, vs := range rec.Formats {
-		formats[i] = vs.Format()
-		for _, v := range vs.Out {
-			files[imgKey{vs.Ext, v.W}] = v.Name
-		}
+	var rungs []int
+	files := map[int]string{}
+	for _, v := range rec.Formats[len(rec.Formats)-1].Out {
+		files[v.W] = v.Name
+		rungs = append(rungs, v.W)
 	}
-	used := upTo(ceiling)
-	refs := make([]imgRef, 0, len(used))
-	for _, s := range used {
-		spec, ok := slots[s]
-		if !ok {
-			continue
-		}
+	slices.Sort(rungs)
+	slots := sc.Slots()
+	refs := make([]imgRef, 0, len(slots))
+	for s := SlotThumb; s <= SlotBleed; s++ {
+		spec := slots[s]
 		refs = append(refs, imgRef{
 			slot:  s,
 			w:     journal.Snap(rungs, spec.Width),
@@ -213,15 +145,14 @@ func NewImage(rec journal.Record, sc Scale, ceiling Slot, slots map[Slot]SlotSpe
 		})
 	}
 	return Image{
-		Name:    stem,
-		Hash:    m.Hash,
-		Width:   m.W,
-		Height:  m.H,
-		Alpha:   m.Alpha,
-		formats: formats,
-		files:   files,
-		refs:    refs,
-		rungs:   rungs,
+		Name:   stem,
+		Hash:   m.Hash,
+		Width:  m.W,
+		Height: m.H,
+		Alpha:  m.Alpha,
+		files:  files,
+		refs:   refs,
+		rungs:  rungs,
 	}
 }
 
@@ -230,8 +161,8 @@ func (im Image) URL(slot Slot) string {
 	if !ok {
 		return ""
 	}
-	name := im.file(im.last().Ext, r.w)
-	if name == "" {
+	name, ok := im.files[r.w]
+	if !ok {
 		return ""
 	}
 	return ImageURL(name)
@@ -244,25 +175,23 @@ func (im Image) Src() string {
 	return im.URL(im.refs[len(im.refs)-1].slot)
 }
 
-func (im Image) SrcSet(slot Slot) string { return im.srcSet(slot, im.last()) }
+func (im Image) SrcSet(slot Slot) string {
+	r, ok := im.ref(slot)
+	if !ok || len(im.rungs) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, w := range window(im.rungs, r.bot, r.top) {
+		parts = append(parts, fmt.Sprintf("%s %dw", ImageURL(im.files[w]), w))
+	}
+	return strings.Join(parts, ", ")
+}
 
 func (im Image) Sizes(slot Slot) string {
 	if r, ok := im.ref(slot); ok {
 		return r.sizes
 	}
 	return "100vw"
-}
-
-func (im Image) Sources(slot Slot) []templ.Attributes {
-	out := make([]templ.Attributes, 0, len(im.formats))
-	for _, f := range im.formats[:max(0, len(im.formats)-1)] {
-		out = append(out, templ.Attributes{
-			"type":   f.Type,
-			"srcset": im.srcSet(slot, f),
-			"sizes":  im.Sizes(slot),
-		})
-	}
-	return out
 }
 
 func (im Image) Attrs(slot Slot) templ.Attributes {

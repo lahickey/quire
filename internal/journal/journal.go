@@ -28,7 +28,6 @@ const (
 	KindPicture  Kind = "picture"
 	KindDocument Kind = "document"
 	KindDiagram  Kind = "diagram"
-	KindData     Kind = "data"
 )
 
 type Format struct {

@@ -18,7 +18,6 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
-	"github.com/lahickey/quire/internal/bundle"
 	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
@@ -41,7 +40,6 @@ type source interface {
 	Master(name string) (journal.Record, error)
 	Diagram(src string) (string, error)
 	Documents(pattern string, fences []string) ([]journal.Document, error)
-	Data(name string) ([]byte, error)
 }
 
 type Engine struct {
@@ -52,11 +50,11 @@ type Engine struct {
 	scale    model.Scale
 	siteCard *model.ShareCard
 	sheets   []assets.Sheet
-	bundles  []fs.FS
+	shipped  fs.FS
 
-	slots  map[model.Slot]model.SlotSpec
+	images map[string]model.Image
 	fonts  fonts.FontSet
-	bundle *bundle.Store
+	bundle *serve.Store
 	pages  *serve.Pages
 
 	bakeSpec model.BakeSpec
@@ -113,6 +111,7 @@ func New(site model.Site, opts ...Option) *Engine {
 	e := &Engine{
 		mux:      http.NewServeMux(),
 		routes:   map[string]string{},
+		images:   map[string]model.Image{},
 		versions: map[string]string{},
 		chrome:   model.Chrome{Site: site.WithDefaults(), Header: ui.Header, Footer: ui.Footer},
 		palette:  model.PaletteEmber,
@@ -122,18 +121,17 @@ func New(site model.Site, opts ...Option) *Engine {
 		o(e)
 	}
 
-	e.slots = e.scale.Slots()
 	e.palette.Check()
 	set, err := fonts.ReadFontSet(fonts.Default())
 	if err != nil {
 		panic("quire: fonts: " + err.Error())
 	}
 	e.fonts = set
-	e.bundle = bundle.New(imageMemory, imageMemoryLimit, e.mode == Dev, e.fonts.ID)
+	e.bundle = serve.NewStore(imageMemory, imageMemoryLimit, e.mode == Dev, e.fonts.ID)
 	e.from = e.bundle
 
-	for _, fsys := range e.bundles {
-		if err := e.bundle.AddBundle(fsys); err != nil {
+	if e.shipped != nil {
+		if err := e.bundle.Load(e.shipped); err != nil {
 			panic("quire: bundle: " + err.Error() + "; run the site's bake")
 		}
 	}
@@ -211,7 +209,7 @@ func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
 	if bundle == nil {
 		bundle = os.DirFS(b.bakeSpec.WithDefaults().Bundle())
 	}
-	e := New(site, append(opts, WithBundle(bundle))...)
+	e := New(site, append(opts, withBundle(bundle))...)
 	if err := mount(e); err != nil {
 		log.Fatal(err)
 	}

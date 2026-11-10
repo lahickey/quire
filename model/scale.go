@@ -69,7 +69,7 @@ func (s Scale) top(slot Slot) int {
 func (s Scale) sizes(slot Slot) string {
 	switch slot {
 	case SlotThumb:
-		return "4rem"
+		return s.Rem(s.Thumb())
 	case SlotBleed:
 		return "100vw"
 	case SlotColumn:
@@ -120,7 +120,7 @@ func (s Scale) Full() int { return s.pageWidth(fullCols) }
 
 func (s Scale) Slots() map[Slot]SlotSpec {
 	out := map[Slot]SlotSpec{}
-	for _, slot := range upTo(SlotBleed) {
+	for slot := SlotThumb; slot <= SlotBleed; slot++ {
 		out[slot] = SlotSpec{Width: journal.Snap(journal.Ladder(), 2*s.display(slot)), Sizes: s.sizes(slot)}
 	}
 	return out

@@ -42,3 +42,14 @@
   color: var(--qr-neutral-11);
   margin: 0;
 }
+
+/* The home page's banner and the wall crop tall art to a strip. */
+.figure--bleed img,
+.wall-piece img {
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+}
+
+.wall-piece {
+  margin-block-end: var(--qr-space-6);
+}

@@ -20,12 +20,12 @@ func outStem(name string) (string, error) {
 	return s, nil
 }
 
-func Ingest(dir, name string, src []byte, lossless bool) (journal.MasterMeta, string, error) {
+func Ingest(dir, name string, src []byte) (journal.MasterMeta, string, error) {
 	stem, err := outStem(name)
 	if err != nil {
 		return journal.MasterMeta{}, "", err
 	}
-	m, ext, body, err := master(name, src, lossless)
+	m, ext, body, err := master(name, src)
 	if err != nil {
 		return journal.MasterMeta{}, "", err
 	}

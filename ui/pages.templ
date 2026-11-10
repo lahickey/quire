@@ -8,13 +8,13 @@ templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]
 			<a href={ c.Href(d) } class="entry-item">
 				if d.Image.Hash != "" {
 					<span class="entry-thumb">
-						@Img(d.Image, model.SlotThumb, d.Meta.DocTitle())
+						@Img(d.Image, model.SlotThumb, d.Meta.Base().Title)
 					</span>
 				}
 				<span class="entry-body">
-					if k := c.Kicker(d); k != "" || d.Meta.IsDraft() {
+					if k := c.Kicker(d); k != "" || d.Meta.Base().Draft {
 						<span class="entry-kicker">
-							if d.Meta.IsDraft() {
+							if d.Meta.Base().Draft {
 								<span class="entry-kicker--draft">Draft</span>
 								if k != "" {
 									{ " · " }
@@ -23,8 +23,8 @@ templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]
 							{ k }
 						</span>
 					}
-					<h3 class="entry-title">{ d.Meta.DocTitle() }</h3>
-					if s := d.Meta.DocSummary(); s != "" {
+					<h3 class="entry-title">{ d.Meta.Base().Title }</h3>
+					if s := d.Meta.Base().Summary; s != "" {
 						<p class="entry-context">{ s }</p>
 					}
 				</span>
@@ -51,18 +51,18 @@ templ Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mod
 	@shell(c.ItemPage(d)) {
 		<article class="page">
 			<header class="page-head">
-				if d.Meta.IsDraft() {
+				if d.Meta.Base().Draft {
 					<div class="header-badges">
 						@DraftBadge()
 					</div>
 				}
-				<h1>{ d.Meta.DocTitle() }</h1>
-				if date := d.Meta.DocDate(); !date.IsZero() {
+				<h1>{ d.Meta.Base().Title }</h1>
+				if date := d.Meta.Base().Date; !date.IsZero() {
 					<p class="page-meta">{ c.LongDate(date) }</p>
 				}
 				@Tags(c.Tags(d))
 			</header>
-			@HeroFigure(d.Image, model.SlotPage, d.Meta.DocTitle(), "")
+			@HeroFigure(d.Image, model.SlotPage, d.Meta.Base().Title, "")
 			@Contents(d.Headings)
 			<div class="prose">
 				@templ.Raw(d.HTML)

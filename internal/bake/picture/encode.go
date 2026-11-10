@@ -17,8 +17,12 @@ const webpMethod = 4
 
 var encodes atomic.Int64
 
+var encoders = map[string]encoder{
+	formatJPEG.Ext: jpegEncoder{},
+	formatWebP.Ext: webpEncoder{},
+}
+
 type encoder interface {
-	ext() string
 	encode(img image.Image, f journal.Format) ([]byte, error)
 
 	codec() string
@@ -27,8 +31,6 @@ type encoder interface {
 type jpegEncoder struct{}
 
 type webpEncoder struct{}
-
-func (jpegEncoder) ext() string { return formatJPEG.Ext }
 
 func (jpegEncoder) codec() string { return "stdlib/jpeg@" + runtime.Version() }
 
@@ -39,8 +41,6 @@ func (jpegEncoder) encode(img image.Image, f journal.Format) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-
-func (webpEncoder) ext() string { return formatWebP.Ext }
 
 func (webpEncoder) codec() string {
 	return "gen2brain/webp@" + moduleVersion("github.com/gen2brain/webp") +
@@ -54,20 +54,6 @@ func (webpEncoder) encode(img image.Image, f journal.Format) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-func builtinEncoders() map[string]encoder {
-	return map[string]encoder{
-		formatJPEG.Ext: jpegEncoder{},
-		formatWebP.Ext: webpEncoder{},
-	}
-}
-
-func resizeTo(src image.Image, width int) image.Image {
-	if src.Bounds().Dx() == width {
-		return src
-	}
-	return resizeWidth(src, width)
 }
 
 func Encodes() int64 { return encodes.Load() }

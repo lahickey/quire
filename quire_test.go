@@ -21,7 +21,6 @@ import (
 	"testing/fstest"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/bake/baketest"
 	"github.com/lahickey/quire/internal/bake/markdown"
 	"github.com/lahickey/quire/internal/bake/picture"
 	"github.com/lahickey/quire/internal/journal"
@@ -29,8 +28,6 @@ import (
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
 )
-
-var withFallback = []string{"webp", "jpg"}
 
 type note struct {
 	model.Meta `yaml:",inline"`
@@ -48,48 +45,27 @@ func body(s string) templ.Component {
 	})
 }
 
-func bakeFS(t *testing.T, masters fs.FS, codecs ...string) string {
-	t.Helper()
-	dir := t.TempDir()
-	if err := os.CopyFS(dir, masters); err != nil {
-		t.Fatal(err)
-	}
-	// AVIF at its fastest: these tests are about bookkeeping, not bytes.
-	spec := model.BakeSpec{Content: dir, Dir: t.TempDir(), Codecs: codecs, AVIFSpeed: 9}
-	if err := baketest.BakeMasters(spec); err != nil {
-		t.Fatal(err)
-	}
-	return spec.Bundle()
-}
-
-func baked(t *testing.T, masters fs.FS) Option {
-	t.Helper()
-	return WithBundle(os.DirFS(bakeFS(t, masters, withFallback...)))
-}
-
 func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) error, opts ...Option) (*Engine, error) {
 	t.Helper()
 	content := t.TempDir()
 	if err := os.CopyFS(content, files); err != nil {
 		t.Fatal(err)
 	}
-	spec := model.BakeSpec{Content: content, Dir: t.TempDir(), Codecs: withFallback, AVIFSpeed: 9}
+	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
 	if err := New(site, append(opts, WithBake(spec))...).bake(mount); err != nil {
 		return nil, err
 	}
-	e := New(site, append(opts, WithBundle(os.DirFS(spec.Bundle())))...)
+	e := New(site, append(opts, withBundle(os.DirFS(spec.Bundle())))...)
 	return e, mount(e)
 }
 
-func mounted(t *testing.T, name string, src []byte, opts ...Option) (model.Image, *Engine) {
+func mounted(t *testing.T, files fs.FS, name string) (model.Image, *Engine) {
 	t.Helper()
-	dir := t.TempDir()
-	_, file, err := picture.Ingest(dir, name, src, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e := New(model.Site{}, append([]Option{baked(t, os.DirFS(dir))}, opts...)...)
-	im, err := e.addImage(file)
+	var im model.Image
+	e, err := served(t, files, model.Site{}, func(e *Engine) (err error) {
+		im, err = e.addImage(name)
+		return err
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +86,7 @@ func posts(e *Engine) error {
 	return err
 }
 
-func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
+func TestShareImages(t *testing.T) {
 	dir := t.TempDir()
 	for name, body := range map[string][]byte{
 		"content/posts/pic.md":    []byte("---\ntitle: Pic\nimage: ridge.png\n---\nA ridge.\n"),
@@ -133,7 +109,7 @@ func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
 		t.Errorf("the bake left .quire without its .gitignore: %v", err)
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(site, WithBundle(bundle))
+	e := New(site, withBundle(bundle))
 	col, err := e.AddCollection(model.Basic{ID: "posts"})
 	if err != nil {
 		t.Fatal(err)
@@ -153,18 +129,6 @@ func TestBakeSharesExistingRungsAndOneCard(t *testing.T) {
 	cfg, format, err := image.DecodeConfig(rec.Body)
 	if err != nil || format != "png" || cfg.Width != 1200 || cfg.Height != 630 {
 		t.Errorf("site card %s: %s %d×%d %v, want a 1200×630 png", card, format, cfg.Width, cfg.Height, err)
-	}
-}
-
-func TestYAMLCollectionsBake(t *testing.T) {
-	fsys := fstest.MapFS{"team.yaml": {Data: []byte("- title: A\n- title: B\n")}}
-	var col *model.Collection[model.Meta]
-	_, err := served(t, fsys, model.Site{}, func(e *Engine) (err error) {
-		col, err = e.AddCollection(model.Basic{ID: "team", YAML: "team.yaml", ListOnly: true})
-		return err
-	})
-	if err != nil || col.Len() != 2 {
-		t.Fatalf("a YAML collection served %v from the bundle: %v", col, err)
 	}
 }
 
@@ -416,12 +380,7 @@ func TestPluginScoping(t *testing.T) {
 
 func TestSrcSetIsPerSlot(t *testing.T) {
 	body := testkit.Photo(t, 2400, 1600, false)
-	fsys := fstest.MapFS{"r.png": {Data: body}}
-	e := New(model.Site{}, baked(t, fsys))
-	im, err := e.addImage("r.png", model.SlotPage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	im, _ := mounted(t, fstest.MapFS{"r.png": {Data: body}}, "r.png")
 	thumb, page := im.SrcSet(model.SlotThumb), im.SrcSet(model.SlotPage)
 	if strings.Count(thumb, ",") != 2 {
 		t.Errorf("thumb srcset is not three rungs: %s", thumb)
@@ -434,9 +393,6 @@ func TestSrcSetIsPerSlot(t *testing.T) {
 	}
 	if strings.Contains(page, " 64w") {
 		t.Errorf("page srcset carries a thumbnail rung: %s", page)
-	}
-	if im.SrcSet(model.SlotBleed) != "" {
-		t.Error("an image offers a slot above its ceiling")
 	}
 }
 
@@ -470,7 +426,7 @@ func TestBodyMarkdownImages(t *testing.T) {
 	if strings.Contains(d.HTML, `fetchpriority="high"`) {
 		t.Fatal("body image stole hero priority")
 	}
-	im, ok := e.bundle.Mounted("images/ridge.png", model.SlotThumb)
+	im, ok := e.images["images/ridge.png"]
 	if !ok {
 		t.Fatal("e.Image missed the body path")
 	}
@@ -498,7 +454,7 @@ func TestMissingBodyImageFailsLoad(t *testing.T) {
 }
 
 func TestNarrowMasterCollapsesSlots(t *testing.T) {
-	im, _ := mounted(t, "small.png", testkit.Flat(t, 600, 400, false))
+	im, _ := mounted(t, fstest.MapFS{"small.png": {Data: testkit.Flat(t, 600, 400, false)}}, "small.png")
 	if im.URL(model.SlotPage) != im.URL(model.SlotColumn) {
 		t.Fatalf("600px master serves two files: %s", im.SrcSet(model.SlotPage))
 	}
@@ -528,7 +484,7 @@ func TestDiagrams(t *testing.T) {
 		t.Fatal(err)
 	}
 	load := func(bundle fs.FS) (string, error) {
-		col, err := New(model.Site{}, WithBundle(bundle)).AddCollection(model.Basic{ID: "posts"})
+		col, err := New(model.Site{}, withBundle(bundle)).AddCollection(model.Basic{ID: "posts"})
 		if err != nil {
 			return "", err
 		}
@@ -627,7 +583,7 @@ func TestBakeIsWhatTheMountAsked(t *testing.T) {
 		t.Fatal("the mount's document is not in the journal")
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(model.Site{}, WithBundle(bundle))
+	e := New(model.Site{}, withBundle(bundle))
 	if err := posts(e); err != nil {
 		t.Fatalf("serving from the bake's bundle: %v", err)
 	}

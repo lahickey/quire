@@ -59,8 +59,8 @@ func WithStylesheetsAt(w model.Width, fsys fs.FS, names ...string) Option {
 	return func(e *Engine) { e.addSheets("site", w, fsys, names) }
 }
 
-func WithBundle(fsys fs.FS) Option {
-	return func(e *Engine) { e.bundles = append(e.bundles, fsys) }
+func withBundle(fsys fs.FS) Option {
+	return func(e *Engine) { e.shipped = fsys }
 }
 
 func WithBake(s model.BakeSpec) Option {

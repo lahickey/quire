@@ -51,7 +51,7 @@ func parseFaces(measure fs.FS, files map[int]string) (map[int]*sfnt.Font, error)
 }
 
 func newRenderer(measure fs.FS) (*Renderer, error) {
-	set, err := fonts.ReadFontSet(measure)
+	set, err := fonts.ReadFontSet(fonts.Default())
 	if err != nil {
 		return nil, err
 	}

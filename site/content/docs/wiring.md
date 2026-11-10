@@ -17,7 +17,7 @@ How it looks is options.
 
 ## Options
 
-An `Option` changes engine behaviour: `WithMode` `WithDrafts` `WithTheme` `WithPalette` `WithStylesheets` `WithStylesheetsAt` `WithHeader` `WithFooter` `WithNavEnd` `WithBake` `WithSiteCard` `WithScale` `WithWidest` `WithIcons` `WithBundle`.
+An `Option` changes engine behaviour: `WithMode` `WithDrafts` `WithTheme` `WithPalette` `WithStylesheets` `WithStylesheetsAt` `WithHeader` `WithFooter` `WithNavEnd` `WithBake` `WithSiteCard` `WithScale` `WithWidest` `WithIcons`.
 `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none; default `ThemeLight`, and the visitor's own choice always wins.
 `WithFooter(component)` replaces the footer. `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
 `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included; it is handed the Chrome and the page, so it can still draw `Nav` (active against `PageSpec.Path`) and the plugins' `Controls`.

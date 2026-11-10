@@ -184,12 +184,7 @@ func refreshFonts() error {
 		return err
 	}
 
-	for _, d := range []string{webDir, measureDir} {
-		if err := os.WriteFile(filepath.Join(d, fonts.FontsName), append(b, '\n'), 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
+	return os.WriteFile(filepath.Join(webDir, fonts.FontsName), append(b, '\n'), 0o644)
 }
 
 func refreshDatastar() error {

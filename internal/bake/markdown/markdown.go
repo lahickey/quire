@@ -69,11 +69,9 @@ type imgTarget struct {
 
 type calloutTransform struct{ src []byte }
 
-type Widget = func(info, body string) (string, error)
-
 type fenceTransform struct {
 	src     []byte
-	widgets map[string]Widget
+	widgets map[string]model.Widget
 	err     error
 }
 
@@ -252,8 +250,8 @@ func palette(_, body string) (string, error) {
 	return b.String(), nil
 }
 
-func fences(names []string, em *embeds) map[string]Widget {
-	out := map[string]Widget{"palette": palette}
+func fences(names []string, em *embeds) map[string]model.Widget {
+	out := map[string]model.Widget{"palette": palette}
 	for _, name := range append([]string{"mermaid"}, names...) {
 		out[name] = func(info, body string) (string, error) {
 			return em.hole(journal.Embed{Fence: name, Info: info, Body: body}), nil

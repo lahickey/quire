@@ -14,8 +14,6 @@ type note struct {
 	Meta `yaml:",inline"`
 }
 
-type baked []journal.Document
-
 func apca(t *testing.T, text, bg string) float64 {
 	t.Helper()
 	y := func(hex string) float64 {
@@ -37,14 +35,8 @@ func apca(t *testing.T, text, bg string) float64 {
 	return ((math.Pow(yb, 0.65)-math.Pow(yt, 0.62))*1.14 + 0.027) * 100
 }
 
-func (b baked) Documents(string, map[string]Widget) ([]journal.Document, error) { return b, nil }
-
-func (baked) Image(string, Slot) (Image, error) { return Image{}, nil }
-
-func (baked) Data(string) ([]byte, error) { return nil, nil }
-
 func TestUnknownFrontmatterField(t *testing.T) {
-	if _, err := load[note](baked{{Path: "x.md", Front: "title: A\nnope: 1"}}, "*.md", nil); err == nil {
+	if _, err := load[note]([]journal.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
 		t.Fatal("expected error")
 	}
 }
@@ -86,8 +78,8 @@ func TestPalettes(t *testing.T) {
 }
 
 func TestDuplicateSlugFailsLoad(t *testing.T) {
-	docs := baked{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
-	if _, err := load[note](docs, "*/*.md", nil); err == nil || !strings.Contains(err.Error(), "intro") {
+	docs := []journal.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
+	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
 		t.Fatalf("two documents with one slug loaded: %v", err)
 	}
 }

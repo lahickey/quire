@@ -37,7 +37,7 @@ Something that must convert per request is a plugin that imports its converter.
 
 A journal is an authority. One that will not write fails the build. It is written whole and renamed into place. A variant is one content-addressed file, so a crash leaves it whole or absent.
 
-The bundle is linked from the cache. Nothing edits a bundle file in place. Each `WithBundle` is one journal, and the first to name a variant owns it.
+The bundle is linked from the cache. Nothing edits a bundle file in place.
 
 A key holds everything its output depends on: the input, the settings, and the converter's version. The versions sit in one table and change by hand, so a refactor rebuilds nothing; a release check fails on any converter whose code or dependencies moved since its version was set.
 

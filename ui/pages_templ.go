@@ -55,7 +55,7 @@ func Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T])
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = Img(d.Image, model.SlotThumb, d.Meta.DocTitle()).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = Img(d.Image, model.SlotThumb, d.Meta.Base().Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -68,12 +68,12 @@ func Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T])
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if k := c.Kicker(d); k != "" || d.Meta.IsDraft() {
+			if k := c.Kicker(d); k != "" || d.Meta.Base().Draft {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"entry-kicker\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if d.Meta.IsDraft() {
+				if d.Meta.Base().Draft {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"entry-kicker--draft\">Draft</span> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -113,9 +113,9 @@ func Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T])
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Meta.DocTitle())
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Meta.Base().Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/pages.templ`, Line: 26, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/pages.templ`, Line: 26, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -125,7 +125,7 @@ func Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T])
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if s := d.Meta.DocSummary(); s != "" {
+			if s := d.Meta.Base().Summary; s != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"entry-context\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -277,7 +277,7 @@ func Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mode
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if d.Meta.IsDraft() {
+			if d.Meta.Base().Draft {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"header-badges\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -296,9 +296,9 @@ func Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mode
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(d.Meta.DocTitle())
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(d.Meta.Base().Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/pages.templ`, Line: 59, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/pages.templ`, Line: 59, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mode
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if date := d.Meta.DocDate(); !date.IsZero() {
+			if date := d.Meta.Base().Date; !date.IsZero() {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"page-meta\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -335,7 +335,7 @@ func Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mode
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = HeroFigure(d.Image, model.SlotPage, d.Meta.DocTitle(), "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = HeroFigure(d.Image, model.SlotPage, d.Meta.Base().Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

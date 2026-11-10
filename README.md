@@ -4,7 +4,7 @@ A Go engine that turns a folder of markdown into a finished website, served from
 Content in, complete site out — looks good by default yet every layer of it can be replaced.
 
 - **One binary.** Words, pictures and diagrams are baked into the site's own binary.
-- **Pictures handled end to end.** Refer to a picture beside a document and get a responsive ladder in WebP, with AVIF or JPEG as options.
+- **Pictures handled end to end.** Refer to a picture beside a document and get a responsive ladder in WebP.
 - **Server-rendered.** HTML from [templ](https://templ.guide); live features are plugins streaming through [Datastar](https://data-star.dev).
 
 ## Getting started

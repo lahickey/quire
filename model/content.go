@@ -2,7 +2,6 @@
 package model
 
 import (
-	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -17,14 +16,7 @@ type Marker struct {
 }
 
 type Metadata interface {
-	IsDraft() bool
-	IsFeatured() bool
-	DocDate() Date
-	LastMod() Date
-	DocTitle() string
-	DocSummary() string
-	DocTags() []string
-	DocImage() string
+	Base() Meta
 	Badges() []Marker
 }
 
@@ -60,7 +52,6 @@ type Collection[T Metadata] struct {
 	desc   string
 	docs   []Document[T]
 	bySlug map[string]Document[T]
-	items  bool
 	site   Site
 	kicker func(Document[T]) string
 	tags   *Classifier
@@ -71,25 +62,14 @@ type Spec[T Metadata] struct {
 	Title       string
 	Description string
 	Markdown    string
-	YAML        string
 	Widgets     map[string]Widget
 	Classifier  *Classifier
-	Cmp         func(a, b Document[T]) int
 	Kicker      func(Document[T]) string
 	Index       func(Shell, *Collection[T]) templ.Component
 	Item        func(Shell, *Collection[T], Document[T]) templ.Component
-	ListOnly    bool
-
-	ImageMax Slot
 }
 
 type Basic = Spec[Meta]
-
-type Resolver interface {
-	Documents(pattern string, widgets map[string]Widget) ([]journal.Document, error)
-	Data(name string) ([]byte, error)
-	Image(name string, max Slot) (Image, error)
-}
 
 func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	if drafts {
@@ -97,7 +77,7 @@ func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	}
 	n := 0
 	for _, d := range docs {
-		if d.Meta.IsDraft() {
+		if d.Meta.Base().Draft {
 			continue
 		}
 		docs[n] = d
@@ -106,27 +86,13 @@ func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	return docs[:n]
 }
 
-func sortByDateDesc[T Metadata](docs []Document[T]) {
-	slices.SortStableFunc(docs, func(a, b Document[T]) int {
-		return b.Meta.DocDate().Compare(a.Meta.DocDate().Time)
-	})
-}
-
-func newCollection[T Metadata](id string, docs []Document[T], items bool) *Collection[T] {
-	by := make(map[string]Document[T], len(docs))
-	for _, d := range docs {
-		by[d.Slug] = d
-	}
-	return &Collection[T]{id: id, docs: docs, bySlug: by, items: items}
-}
-
 func checkTags[T Metadata](id string, docs []Document[T], c *Classifier) error {
 	if c == nil {
 		return nil
 	}
 	var tags []string
 	for _, d := range docs {
-		tags = append(tags, d.Meta.DocTags()...)
+		tags = append(tags, d.Meta.Base().Tags...)
 	}
 	if err := c.check(tags...); err != nil {
 		return fmt.Errorf("%s: %w", id, err)
@@ -134,27 +100,17 @@ func checkTags[T Metadata](id string, docs []Document[T], c *Classifier) error {
 	return nil
 }
 
-func modified[T Metadata](m T) string {
-	if mod := m.LastMod(); !mod.Equal(m.DocDate().Time) {
+func modified(m Meta) string {
+	if mod := m.LastMod(); !mod.Equal(m.Date.Time) {
 		return mod.ISO()
 	}
 	return ""
 }
 
-func (spec Spec[T]) imageMax() Slot {
-	if spec.ImageMax >= SlotThumb {
-		return spec.ImageMax
-	}
-	if spec.ListOnly {
-		return SlotThumb
-	}
-	return SlotDefault
-}
-
-func images[T Metadata](r Resolver, id string, docs []Document[T], max Slot) error {
+func images[T Metadata](image func(string) (Image, error), id string, docs []Document[T]) error {
 	seen := map[string]Image{}
 	for i, d := range docs {
-		name := d.Meta.DocImage()
+		name := d.Meta.Base().Image
 		if name == "" {
 			continue
 		}
@@ -162,7 +118,7 @@ func images[T Metadata](r Resolver, id string, docs []Document[T], max Slot) err
 		im, ok := seen[name]
 		if !ok {
 			var err error
-			if im, err = r.Image(name, max); err != nil {
+			if im, err = image(name); err != nil {
 				return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
 			}
 			seen[name] = im
@@ -172,21 +128,9 @@ func images[T Metadata](r Resolver, id string, docs []Document[T], max Slot) err
 	return nil
 }
 
-func (m Meta) IsDraft() bool { return m.Draft }
-
-func (m Meta) IsFeatured() bool { return m.Featured }
+func (m Meta) Base() Meta { return m }
 
 func (m Meta) Badges() []Marker { return nil }
-
-func (m Meta) DocDate() Date { return m.Date }
-
-func (m Meta) DocTitle() string { return m.Title }
-
-func (m Meta) DocSummary() string { return m.Summary }
-
-func (m Meta) DocTags() []string { return m.Tags }
-
-func (m Meta) DocImage() string { return m.Image }
 
 func (m Meta) LastMod() Date {
 	if !m.Updated.IsZero() {
@@ -204,12 +148,7 @@ func (c *Collection[T]) Get(slug string) (Document[T], bool) {
 	return d, ok
 }
 
-func (c *Collection[T]) Href(d Document[T]) string {
-	if !c.items {
-		return "/" + c.id
-	}
-	return "/" + c.id + "/" + d.Slug
-}
+func (c *Collection[T]) Href(d Document[T]) string { return "/" + c.id + "/" + d.Slug }
 
 func (c *Collection[T]) LongDate(d Date) string { return d.Formatted(c.site.Dates.Long) }
 
@@ -222,7 +161,7 @@ func (c *Collection[T]) ShortMonthYear(d Date) string {
 func (c *Collection[T]) Featured() []Document[T] {
 	var out []Document[T]
 	for _, d := range c.docs {
-		if d.Meta.IsFeatured() {
+		if d.Meta.Base().Featured {
 			out = append(out, d)
 		}
 	}
@@ -251,14 +190,15 @@ func (c *Collection[T]) IndexPage() PageSpec {
 }
 
 func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
+	m := d.Meta.Base()
 	p := PageSpec{
-		Title:       d.Meta.DocTitle(),
-		Description: d.Meta.DocSummary(),
-		Path:        "/" + c.id + "/" + d.Slug,
+		Title:       m.Title,
+		Description: m.Summary,
+		Path:        c.Href(d),
 		Article: &ArticleSEO{
-			Published: d.Meta.DocDate().ISO(),
-			Modified:  modified(d.Meta),
-			Draft:     d.Meta.IsDraft(),
+			Published: m.Date.ISO(),
+			Modified:  modified(m),
+			Draft:     m.Draft,
 		},
 	}
 	if u := d.Image.shareURL(); u != "" {
@@ -269,42 +209,36 @@ func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
 
 func (c *Collection[T]) Kicker(d Document[T]) string { return c.kicker(d) }
 
-func (c *Collection[T]) Tags(d Document[T]) []Marker { return c.tags.Markers(d.Meta.DocTags()) }
+func (c *Collection[T]) Tags(d Document[T]) []Marker { return c.tags.Markers(d.Meta.Base().Tags) }
 
-func Collect[T Metadata](spec Spec[T], r Resolver, site Site, drafts bool) (*Collection[T], error) {
+func Collect[T Metadata](spec Spec[T], baked []journal.Document, image func(string) (Image, error), site Site, drafts bool) (*Collection[T], error) {
 	if spec.ID == "" {
 		return nil, fmt.Errorf("collection: empty ID")
 	}
-	if spec.Markdown != "" && spec.YAML != "" {
-		return nil, fmt.Errorf("%s: set Markdown or YAML, not both", spec.ID)
-	}
-	var docs []Document[T]
-	var err error
-	if spec.YAML != "" {
-		docs, err = loadSeq[T](r, spec.YAML)
-	} else {
-		docs, err = load[T](r, cmp.Or(spec.Markdown, spec.ID+"/*.md"), spec.Widgets)
-	}
+	docs, err := load[T](baked)
 	if err != nil {
 		return nil, err
 	}
 	if err := checkTags(spec.ID, docs, spec.Classifier); err != nil {
 		return nil, err
 	}
-	if err := images(r, spec.ID, docs, spec.imageMax()); err != nil {
+	if err := images(image, spec.ID, docs); err != nil {
 		return nil, err
 	}
 	docs = published(docs, drafts)
-	if spec.Cmp != nil {
-		slices.SortStableFunc(docs, spec.Cmp)
-	} else {
-		sortByDateDesc(docs)
+	slices.SortStableFunc(docs, func(a, b Document[T]) int {
+		return b.Meta.Base().Date.Compare(a.Meta.Base().Date.Time)
+	})
+	col := &Collection[T]{
+		id: spec.ID, title: spec.Title, desc: spec.Description, site: site,
+		docs: docs, bySlug: make(map[string]Document[T], len(docs)),
+		kicker: spec.Kicker, tags: spec.Classifier,
 	}
-	col := newCollection(spec.ID, docs, !spec.ListOnly)
-	col.title, col.desc, col.site = spec.Title, spec.Description, site
-	col.kicker, col.tags = spec.Kicker, spec.Classifier
+	for _, d := range docs {
+		col.bySlug[d.Slug] = d
+	}
 	if col.kicker == nil {
-		col.kicker = func(d Document[T]) string { return col.ShortMonthYear(d.Meta.DocDate()) }
+		col.kicker = func(d Document[T]) string { return col.ShortMonthYear(d.Meta.Base().Date) }
 	}
 	return col, nil
 }

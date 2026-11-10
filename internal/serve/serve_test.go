@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/fstest"
+
+	"github.com/lahickey/quire/internal/journal"
 )
 
 func TestRedirect(t *testing.T) {
@@ -18,19 +21,6 @@ func TestRedirect(t *testing.T) {
 		got, _ := Redirect(httptest.NewRequest(c.method, c.url, nil), c.apex)
 		if got != c.want {
 			t.Errorf("%s %s: redirected to %q, want %q", c.method, c.url, got, c.want)
-		}
-	}
-}
-
-func TestCacheControl(t *testing.T) {
-	hashes := map[string]string{"/a.css": "abc"}
-	for url, want := range map[string]string{
-		"/a.css?h=abc": "public, max-age=31536000, immutable",
-		"/a.css?h=old": "no-cache",
-		"/a.css":       "no-cache",
-	} {
-		if got := CacheControl(httptest.NewRequest("GET", url, nil), hashes); got != want {
-			t.Errorf("%s: %q, want %q", url, got, want)
 		}
 	}
 }
@@ -71,5 +61,79 @@ func TestPages(t *testing.T) {
 	get(missing, "br", "")
 	if p.Len() != n {
 		t.Error("a 404 was stored")
+	}
+}
+
+func TestAcceptEncoding(t *testing.T) {
+	for header, want := range map[string]string{
+		"":                  "",
+		"gzip":              "gzip",
+		"br":                "br",
+		"gzip, deflate, br": "br",
+		"gzip;q=0, br":      "br",
+		"br;q=0, gzip":      "gzip",
+		"br;q=0, gzip;q=0":  "",
+		"*":                 "br",
+		"identity":          "",
+		"GZIP":              "gzip",
+	} {
+		r := httptest.NewRequest("GET", "/", nil)
+		if header != "" {
+			r.Header.Set("Accept-Encoding", header)
+		}
+		if got := accepted(r, codings...); got != want {
+			t.Errorf("accepted(%q) = %q, want %q", header, got, want)
+		}
+	}
+}
+
+func TestEvictsByBytes(t *testing.T) {
+	entry := func(n int) []byte { return make([]byte, n) }
+	c := newCache(300, func(b []byte) int { return len(b) })
+	c.put("a", entry(100))
+	c.put("b", entry(100))
+	c.put("c", entry(100))
+	if c.used != 300 {
+		t.Fatalf("used %d, want 300", c.used)
+	}
+	c.get("a")
+	c.put("d", entry(100))
+	if c.used > 300 {
+		t.Errorf("used %d, over budget", c.used)
+	}
+	for key, want := range map[string]bool{"a": true, "b": false, "c": true, "d": true} {
+		if _, got := c.get(key); got != want {
+			t.Errorf("%q cached = %v, want %v", key, got, want)
+		}
+	}
+	c.put("huge", entry(400))
+	if _, ok := c.get("huge"); ok || c.used > 300 {
+		t.Errorf("oversized entry admitted (used %d)", c.used)
+	}
+}
+
+func TestStore(t *testing.T) {
+	const name = "0123456789abcdef0123456789abcdef.webp"
+	s := NewStore(0, 0, false, "")
+	if err := s.Load(fstest.MapFS{
+		name: {Data: []byte("webp")},
+		journal.JournalName: {Data: journal.WriteJournal([]journal.Record{{Name: "a.jpg", Kind: journal.KindPicture, Formats: []journal.Variants{
+			{Ext: "webp", Type: "image/webp", Out: []journal.Variant{{Name: name, W: 64, Size: 4}}},
+		}}})},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for file, want := range map[string]int{
+		name:                                    http.StatusOK,
+		"fedcba9876543210fedcba9876543210.webp": http.StatusNotFound,
+		"../../etc/passwd":                      http.StatusNotFound,
+	} {
+		r := httptest.NewRequest("GET", "/_quire/img/x", nil)
+		r.SetPathValue("file", file)
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, r)
+		if w.Code != want {
+			t.Errorf("%s: %d, want %d", file, w.Code, want)
+		}
 	}
 }

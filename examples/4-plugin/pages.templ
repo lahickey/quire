@@ -4,11 +4,12 @@ import "github.com/lahickey/quire/examples/4-plugin/basket"
 import "github.com/lahickey/quire/model"
 import "github.com/lahickey/quire/ui"
 
-// The home page and the /pieces index: every piece as a picture, title and medium.
-// p is the page's title and path, so one template serves both.
-templ gallery(shell model.Shell, c *model.Collection[Piece], p model.PageSpec) {
-	@shell(p) {
+// The home page: the newest piece edge to edge, then every piece as a card.
+// SlotBleed is the full width of the window; SlotColumn is one column of the grid.
+templ home(shell model.Shell, c *model.Collection[Piece]) {
+	@shell(model.PageSpec{Title: "Prints", Path: "/"}) {
 		<article class="page page--wide">
+			@ui.HeroFigure(c.Docs()[0].Image, model.SlotBleed, c.Docs()[0].Meta.Title, "")
 			<header class="page-head">
 				<h1>{ c.Title() }</h1>
 				<p class="page-intro">Printed to order. Add one in this tab and watch the basket count change in another.</p>
@@ -28,16 +29,37 @@ templ gallery(shell model.Shell, c *model.Collection[Piece], p model.PageSpec) {
 	}
 }
 
+// The /pieces index: a wall, one piece across the widest page the site builds.
+// .page--full is four columns, and SlotPageFull is the picture that fills it.
+templ wall(shell model.Shell, c *model.Collection[Piece]) {
+	@shell(c.IndexPage()) {
+		<article class="page page--full">
+			<header class="page-head">
+				<h1>{ c.Title() }</h1>
+			</header>
+			for _, d := range c.Docs() {
+				<a class="piece-card wall-piece" href={ c.Href(d) }>
+					<figure class="art">
+						@ui.Img(d.Image, model.SlotPageFull, d.Meta.Title)
+					</figure>
+					<h2>{ d.Meta.Title }</h2>
+					<p class="piece-medium">{ d.Meta.Medium }</p>
+				</a>
+			}
+		</article>
+	}
+}
+
 // A piece's own page: the default article's parts, plus its medium and the
-// basket's button.
+// basket's button, on a three-column page with a picture to match.
 templ piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece], d model.Document[Piece]) {
 	@shell(c.ItemPage(d)) {
-		<article class="page">
+		<article class="page page--wide">
 			<header class="page-head">
 				<h1>{ d.Meta.Title }</h1>
 				<p class="piece-medium">{ d.Meta.Medium }</p>
 			</header>
-			@ui.HeroFigure(d.Image, model.SlotPage, d.Meta.Title, "")
+			@ui.HeroFigure(d.Image, model.SlotPageWide, d.Meta.Title, "")
 			<div class="prose">
 				@templ.Raw(d.HTML)
 			</div>

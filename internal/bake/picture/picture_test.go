@@ -26,13 +26,12 @@ func jpegOf(t *testing.T, src []byte) []byte {
 	return b.Bytes()
 }
 
-func exifJPEG(t *testing.T, w, h int) []byte {
+func exifJPEG(t *testing.T, body []byte, orientation byte) []byte {
 	t.Helper()
-	body := jpegOf(t, testkit.Photo(t, w, h, false))
 	tiff := []byte{
 		'M', 'M', 0x00, 0x2a, 0x00, 0x00, 0x00, 0x08,
 		0x00, 0x01,
-		0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+		0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, orientation, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
 	}
 	payload := append(append([]byte("Exif\x00\x00"), tiff...), []byte("GPS-51.5074N-0.1278W")...)
@@ -47,7 +46,7 @@ func exifJPEG(t *testing.T, w, h int) []byte {
 func ingested(t *testing.T, name string, src []byte) (journal.MasterMeta, []byte) {
 	t.Helper()
 	dir := t.TempDir()
-	m, file, err := Ingest(dir, name, src, false)
+	m, file, err := Ingest(dir, name, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,20 +73,10 @@ func TestVariantNameCoversTheEncode(t *testing.T) {
 	}
 }
 
-func TestFormatsFromDropsJPEGWhenAlpha(t *testing.T) {
-	for _, offered := range [][]journal.Format{{formatJPEG, formatWebP}, {formatAVIF, formatJPEG, formatWebP}} {
-		for _, f := range formatsFrom(false, true, offered) {
-			if !f.Alpha {
-				t.Errorf("offered %s for an image with alpha: %v", f.Ext, formatsFrom(false, true, offered))
-			}
-		}
-	}
-}
-
 func TestIngestRejectsBadName(t *testing.T) {
 	src := testkit.Flat(t, 8, 8, false)
 	for _, name := range []string{"", ".", "..", "a/b", "/abs"} {
-		if _, _, err := Ingest(t.TempDir(), name, src, false); err == nil {
+		if _, _, err := Ingest(t.TempDir(), name, src); err == nil {
 			t.Errorf("%q accepted", name)
 		}
 	}
@@ -104,19 +93,8 @@ func TestIngestOrientation(t *testing.T) {
 	if err := jpeg.Encode(&buf, src, &jpeg.Options{Quality: 90}); err != nil {
 		t.Fatal(err)
 	}
-	raw := buf.Bytes()
-	header := []byte{
-		'M', 'M', 0x00, 0x2a,
-		0x00, 0x00, 0x00, 0x08,
-		0x00, 0x01,
-		0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-	}
-	payload := append([]byte("Exif\x00\x00"), header...)
-	n := 2 + len(payload)
-	app1 := append([]byte{0xff, 0xe1, byte(n >> 8), byte(n)}, payload...)
-	oriented := append([]byte{0xff, 0xd8}, append(app1, raw[2:]...)...)
-	im, _, err := Ingest(t.TempDir(), "phone.jpg", oriented, false)
+	oriented := exifJPEG(t, buf.Bytes(), 6)
+	im, _, err := Ingest(t.TempDir(), "phone.jpg", oriented)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +104,7 @@ func TestIngestOrientation(t *testing.T) {
 }
 
 func TestMasterCarriesNoProvenance(t *testing.T) {
-	src := exifJPEG(t, 400, 300)
+	src := exifJPEG(t, jpegOf(t, testkit.Photo(t, 400, 300, false)), 1)
 	_, body := ingested(t, "holiday.jpg", src)
 	for _, secret := range []string{"GPS-51.5074N", "Exif", "ICC_PROFILE", "DISPLAY-P3"} {
 		if bytes.Contains(body, []byte(secret)) {

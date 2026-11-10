@@ -1,4 +1,4 @@
-package compress
+package serve
 
 import (
 	"bytes"
@@ -13,11 +13,11 @@ import (
 const minSize = 256
 
 const (
-	PageQuality = 5
-	BestQuality = brotli.BestCompression
+	pageQuality = 5
+	bestQuality = brotli.BestCompression
 )
 
-var Codings = []string{"br", "gzip"}
+var codings = []string{"br", "gzip"}
 
 func compressible(ct string, n int) bool {
 	if n < minSize {
@@ -58,7 +58,7 @@ func brotliBytes(body []byte, quality int) []byte {
 	return bytes.Clone(buf.Bytes())
 }
 
-func Encode(body []byte, ct, coding string, quality int) ([]byte, string) {
+func compressed(body []byte, ct, coding string, quality int) ([]byte, string) {
 	if coding == "" || !compressible(ct, len(body)) {
 		return body, ""
 	}
@@ -75,7 +75,7 @@ func Encode(body []byte, ct, coding string, quality int) ([]byte, string) {
 	return out, coding
 }
 
-func Accepted(r *http.Request, offer ...string) string {
+func accepted(r *http.Request, offer ...string) string {
 	q := map[string]float64{}
 	for part := range strings.SplitSeq(r.Header.Get("Accept-Encoding"), ",") {
 		name, params, _ := strings.Cut(strings.TrimSpace(part), ";")

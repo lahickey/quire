@@ -48,7 +48,11 @@ var checks = map[string][]check{
 	},
 	"4-plugin": {
 		{"GET", "/", 200, "Paper Moon"},
+		{"GET", "/", 200, "figure--bleed"},
 		{"GET", "/pieces", 200, "Tidal Drift"},
+		{"GET", "/pieces", 200, "page--full"},
+		{"GET", "/pieces/paper-moon", 200, "page--wide"},
+		{"GET", "/_quire/style.css", 200, "--qr-measure-full"},
 		{"GET", "/pieces/paper-moon", 200, "Add to basket"},
 		{"GET", "/pieces/paper-moon", 200, "/_quire/img/"},
 		{"POST", "/_basket/add?item=paper-moon", 303, ""},

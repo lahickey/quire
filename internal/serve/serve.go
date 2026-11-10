@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/xml"
-	"io/fs"
 	"maps"
 	"net"
 	"net/http"
@@ -14,9 +13,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/compress"
 	"github.com/lahickey/quire/internal/journal"
-	"github.com/lahickey/quire/internal/lru"
 )
 
 const htmlType = "text/html; charset=utf-8"
@@ -52,7 +49,7 @@ type buffer struct {
 }
 
 type Pages struct {
-	cache *lru.Cache[*page]
+	cache *cache[*page]
 	dev   bool
 }
 
@@ -114,8 +111,8 @@ func (page *page) write(w http.ResponseWriter, r *http.Request) {
 
 func newPage(code int, hdr http.Header, body []byte, coding string, quality int) *page {
 	ct := hdr.Get("Content-Type")
-	out, enc := compress.Encode(body, ct, coding, quality)
-	etag := `"` + Hash(body)
+	out, enc := compressed(body, ct, coding, quality)
+	etag := `"` + journal.Hash(body)
 	if enc != "" {
 		etag += "-" + enc
 	}
@@ -125,24 +122,14 @@ func newPage(code int, hdr http.Header, body []byte, coding string, quality int)
 func encode(code int, ct string, body []byte, quality int) coded {
 	hdr := http.Header{"Content-Type": {ct}}
 	out := coded{"": newPage(code, hdr, body, "", quality)}
-	for _, coding := range compress.Codings {
+	for _, coding := range codings {
 		out[coding] = newPage(code, hdr, body, coding, quality)
 	}
 	return out
 }
 
 func (c coded) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c[compress.Accepted(r, compress.Codings...)].write(w, r)
-}
-
-func Hash(b []byte) string { return journal.Hash(b) }
-
-func FileHash(fsys fs.FS, name string) string {
-	b, err := fs.ReadFile(fsys, name)
-	if err != nil {
-		return ""
-	}
-	return Hash(b)
+	c[accepted(r, codings...)].write(w, r)
 }
 
 func Redirect(r *http.Request, apex string) (string, bool) {
@@ -185,13 +172,13 @@ func (p *Prepared) Build() {
 	if err := p.c.Render(context.Background(), &buf); err != nil {
 		panic("quire: page " + p.path + ": " + err.Error())
 	}
-	p.by = encode(p.code, htmlType, buf.Bytes(), compress.PageQuality)
+	p.by = encode(p.code, htmlType, buf.Bytes(), pageQuality)
 }
 
 func (p *Prepared) ServeHTTP(w http.ResponseWriter, r *http.Request) { p.by.ServeHTTP(w, r) }
 
 func Static(contentType string, body []byte) http.Handler {
-	return encode(http.StatusOK, contentType, body, compress.BestQuality)
+	return encode(http.StatusOK, contentType, body, bestQuality)
 }
 
 func (b *buffer) Header() http.Header { return b.header }
@@ -210,16 +197,16 @@ func (b *buffer) WriteHeader(code int) {
 }
 
 func NewPages(max int, dev bool) *Pages {
-	return &Pages{cache: lru.New(max, func(p *page) int { return len(p.body) }), dev: dev}
+	return &Pages{cache: newCache(max, func(p *page) int { return len(p.body) }), dev: dev}
 }
 
-func (p *Pages) Len() int { return p.cache.Len() }
+func (p *Pages) Len() int { return p.cache.len() }
 
 func (p *Pages) Cached(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		coding := compress.Accepted(r, compress.Codings...)
+		coding := accepted(r, codings...)
 		k := r.URL.Path + "\x00" + coding
-		if page, ok := p.cache.Get(k); ok {
+		if page, ok := p.cache.get(k); ok {
 			page.write(w, r)
 			return
 		}
@@ -230,9 +217,9 @@ func (p *Pages) Cached(h http.HandlerFunc) http.HandlerFunc {
 			_, _ = w.Write(buf.body.Bytes())
 			return
 		}
-		page := newPage(buf.code, buf.header, buf.body.Bytes(), coding, compress.PageQuality)
+		page := newPage(buf.code, buf.header, buf.body.Bytes(), coding, pageQuality)
 		if !p.dev {
-			p.cache.Put(k, page)
+			p.cache.put(k, page)
 		}
 		page.write(w, r)
 	}

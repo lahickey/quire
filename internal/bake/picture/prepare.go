@@ -44,10 +44,10 @@ func fit(src image.Image, maxEdge int) *image.NRGBA {
 	return scale(src, max(1, (w*maxEdge+h/2)/h), maxEdge)
 }
 
-func resizeWidth(src image.Image, width int) *image.NRGBA {
+func resizeWidth(src image.Image, width int) image.Image {
 	b := src.Bounds()
 	if b.Dx() == width {
-		return toNRGBA(src)
+		return src
 	}
 	return scale(src, width, max(1, (b.Dy()*width+b.Dx()/2)/b.Dx()))
 }

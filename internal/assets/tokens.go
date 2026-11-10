@@ -40,9 +40,9 @@ func scaleCSS(s model.Scale) []byte {
 	tokens := []cssVar{
 		{"--qr-text-root", strconv.Itoa(s.Root) + "px"},
 		{"--qr-col", s.Rem(s.Col)},
-		{"--qr-gutter", "1.5rem"},
+		{"--qr-gutter", s.Rem(s.Gutter())},
 		{"--qr-measure", strconv.Itoa(s.Measure()) + "px"},
-		{"--qr-thumb", "4rem"},
+		{"--qr-thumb", s.Rem(s.Thumb())},
 		{"--qr-nav-columns", "1fr auto 1fr"},
 		{"--qr-nav-links-column", "2"},
 		{"--qr-nav-end-column", "3"},

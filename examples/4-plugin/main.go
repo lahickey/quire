@@ -31,9 +31,7 @@ func mount(e *quire.Engine) error {
 	pieces, err := e.AddCollection(model.Spec[Piece]{
 		ID:    "pieces",
 		Title: "Pieces",
-		Index: func(shell model.Shell, c *model.Collection[Piece]) templ.Component {
-			return gallery(shell, c, c.IndexPage())
-		},
+		Index: wall,
 		Item: func(shell model.Shell, c *model.Collection[Piece], d model.Document[Piece]) templ.Component {
 			return piecePage(shell, b, c, d)
 		},
@@ -46,7 +44,7 @@ func mount(e *quire.Engine) error {
 		items = append(items, basket.Item{ID: d.Slug, Title: d.Meta.Title})
 	}
 	b = basket.New(items...)
-	e.AddPage("/", gallery(e.Shell, pieces, model.PageSpec{Title: "Prints", Path: "/"}))
+	e.AddPage("/", home(e.Shell, pieces))
 	// Use attaches the plugin: its routes, page, stylesheets and nav link.
 	// A plugin's pages live under /_basket unless the site moves them, as here.
 	return e.Use(plugin.At("/basket", b))
@@ -58,6 +56,9 @@ func main() {
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",
 	}, mount,
+		// The widest page the site builds: without it .page--wide and .page--full
+		// are no wider than a plain page.
+		quire.WithWidest(model.WidthFull),
 		quire.WithPalette(model.PaletteDusk),
 		quire.WithStylesheets(css, "site.css"),
 	)

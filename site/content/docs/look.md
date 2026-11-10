@@ -21,7 +21,7 @@ Sheets read `--qr-font` and `--qr-font-mono`.
 
 `Root`, `Col`, `Widest`. Gutter and thumb are rem from Root. A `.page` is two columns of Col, `.page--wide` three, `.page--full` four; Col defaults to 336.
 `Widest` is the widest page the site builds (`WidthWide`, `WidthFull`; zero is a plain `.page`). A page token past it is not emitted, so `.page--wide` on a site that never declared it stays a `.page`.
-It gates the CSS only — which slots an image offers is a ceiling on the image, not a switch on the site.
+It gates the CSS only: every image offers every slot.
 `WithScale` sets all three; page widths, the breakpoint and the slot sizes follow.
 Host CSS for a step is `WithStylesheetsAt(WidthNarrow|WidthWide|WidthFull, …)` — Scale writes the query.
 Read the properties with `var()`; never restate the number.

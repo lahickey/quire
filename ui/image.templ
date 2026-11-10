@@ -2,27 +2,18 @@ package ui
 
 import "github.com/lahickey/quire/model"
 
-templ pictureOf(im model.Image, slot model.Slot, alt string, a templ.Attributes) {
+templ img(im model.Image, alt string, a templ.Attributes) {
 	if im.Src() != "" {
-		if srcs := im.Sources(slot); len(srcs) > 0 {
-			<picture>
-				for _, src := range srcs {
-					<source { src... }/>
-				}
-				<img { a... } alt={ alt }/>
-			</picture>
-		} else {
-			<img { a... } alt={ alt }/>
-		}
+		<img { a... } alt={ alt }/>
 	}
 }
 
 templ priorityImg(im model.Image, slot model.Slot, alt string) {
-	@pictureOf(im, slot, alt, im.PriorityAttrs(slot))
+	@img(im, alt, im.PriorityAttrs(slot))
 }
 
 templ Img(im model.Image, slot model.Slot, alt string) {
-	@pictureOf(im, slot, alt, im.Attrs(slot))
+	@img(im, alt, im.Attrs(slot))
 }
 
 templ LazyFigure(im model.Image, alt, caption string) {

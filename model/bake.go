@@ -10,11 +10,6 @@ const QuireDir = ".quire"
 type BakeSpec struct {
 	Content string
 	Dir     string
-
-	Codecs    []string
-	AVIFSpeed int
-
-	Lossless []string
 }
 
 type Ink struct {

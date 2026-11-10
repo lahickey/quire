@@ -6,7 +6,6 @@ require (
 	github.com/a-h/templ v0.3.1100
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/andybalholm/brotli v1.3.0
-	github.com/gen2brain/avif v0.6.0
 	github.com/gen2brain/webp v0.6.4
 	github.com/yuin/goldmark v1.8.7
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
@@ -27,7 +26,6 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
-	github.com/tetratelabs/wazero v1.12.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect

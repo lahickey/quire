@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/internal/session"
 	"github.com/lahickey/quire/model"
 )
 
@@ -90,6 +91,8 @@ func Attach(p Plugin, shell model.Shell) (Attached, error) {
 	}
 	return m.got, nil
 }
+
+func Session(r *http.Request) string { return session.ID(r) }
 
 func (m *Mount) URL(path string) string {
 	return "/_" + m.got.Name + "/" + strings.TrimPrefix(path, "/")

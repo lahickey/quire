@@ -1,11 +1,11 @@
-package lru
+package serve
 
 import (
 	"container/list"
 	"sync"
 )
 
-type Cache[V any] struct {
+type cache[V any] struct {
 	mu    sync.Mutex
 	max   int
 	used  int
@@ -19,24 +19,24 @@ type item[V any] struct {
 	value V
 }
 
-func (c *Cache[V]) drop(el *list.Element) {
+func (c *cache[V]) drop(el *list.Element) {
 	it := el.Value.(*item[V])
 	c.order.Remove(el)
 	delete(c.items, it.key)
 	c.used -= c.cost(it.value)
 }
 
-func New[V any](max int, cost func(V) int) *Cache[V] {
-	return &Cache[V]{max: max, cost: cost, order: list.New(), items: map[string]*list.Element{}}
+func newCache[V any](max int, cost func(V) int) *cache[V] {
+	return &cache[V]{max: max, cost: cost, order: list.New(), items: map[string]*list.Element{}}
 }
 
-func (c *Cache[V]) Len() int {
+func (c *cache[V]) len() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return len(c.items)
 }
 
-func (c *Cache[V]) Get(key string) (V, bool) {
+func (c *cache[V]) get(key string) (V, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	el, ok := c.items[key]
@@ -48,7 +48,7 @@ func (c *Cache[V]) Get(key string) (V, bool) {
 	return el.Value.(*item[V]).value, true
 }
 
-func (c *Cache[V]) Put(key string, v V) {
+func (c *cache[V]) put(key string, v V) {
 	cost := c.cost(v)
 	c.mu.Lock()
 	defer c.mu.Unlock()

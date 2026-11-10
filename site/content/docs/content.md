@@ -50,12 +50,11 @@ Anything else a document says about its own state is the site's vocabulary — o
 
 ## Collections
 
-`AddCollection` loads a markdown glob (`Markdown`, default `{id}/*.md`) or a YAML sequence (`YAML`), drops drafts unless `WithDrafts`, sorts (date-descending, or `Cmp`), mounts `/{id}` and `/{id}/{slug}`, and records them in the sitemap.
+`AddCollection` loads a markdown glob (`Markdown`, default `{id}/*.md`), drops drafts unless `WithDrafts`, sorts date-descending, mounts `/{id}` and `/{id}/{slug}`, and records them in the sitemap.
 Empty after the draft filter: not mounted.
 `model.Basic` is `Spec[Meta]`, the spec for stock frontmatter; a site with its own frontmatter type uses `Spec[T]`.
 
 - Nil `Index` / `Item` render `Listing` / `Article`, which show the title, date, tags, hero, contents and body, and link back to the index. Either is handed `model.Shell` as well as the collection, so it needs no closure over the engine. A missing slug is the site 404; two documents with one slug fail the load.
-- `ListOnly` suppresses item routes.
 - `Kicker` labels each document in `Entries` rows and cards; nil uses `ShortMonthYear`. `Entries(c, docs)` renders the same rows anywhere.
 - `Featured()` selects from a collection.
 

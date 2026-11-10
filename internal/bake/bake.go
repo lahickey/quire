@@ -14,7 +14,6 @@ import (
 	"log"
 	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -31,41 +30,13 @@ import (
 )
 
 type Run struct {
-	spec     model.BakeSpec
-	source   fs.FS
-	cache    cache.Dir
-	done     map[string]journal.Record
-	offered  []journal.Format
-	encoders picture.Encoders
-	codecs   map[string]string
-	draw     *diagram.Renderer
-
-	mu     sync.Mutex
+	spec   model.BakeSpec
+	source fs.FS
+	cache  cache.Dir
+	done   map[string]journal.Record
+	draw   *diagram.Renderer
 	wanted map[string]int64
 	made   map[string]journal.Record
-}
-
-func lossless(s model.BakeSpec, name string) bool {
-	for _, pat := range s.Lossless {
-		for p := name; p != "."; p = path.Dir(p) {
-			if ok, _ := path.Match(pat, p); ok {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func check(s model.BakeSpec) error {
-	for _, pat := range s.Lossless {
-		if _, err := path.Match(pat, ""); err != nil || pat == "" {
-			return fmt.Errorf("quire: lossless %q is not a pattern", pat)
-		}
-	}
-	if s.AVIFSpeed < 0 || s.AVIFSpeed > 9 {
-		return fmt.Errorf("quire: avif speed %d, want 1 to 9", s.AVIFSpeed)
-	}
-	return nil
 }
 
 func report(name string, encoded, kept int) {
@@ -96,8 +67,6 @@ func apart(content, dir string) error {
 }
 
 func (b *Run) single(name, key string, kind journal.Kind, f journal.Format, make func() ([]byte, error)) ([]byte, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if rec, ok := b.made[name]; ok {
 		file, _ := rec.File()
 		return b.cache.Read(file)
@@ -164,10 +133,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 		m = picture.Describe(img, src, hash)
 	}
 
-	fmts := picture.Variants(m, lossless(b.spec, name), b.offered, b.codecs)
-	if len(fmts) == 0 {
-		return journal.Record{}, 0, fmt.Errorf("quire: %s is transparent and no codec offered carries alpha", name)
-	}
+	fmts := picture.Variants(m)
 
 	made := 0
 	for i := range fmts {
@@ -184,7 +150,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 					return journal.Record{}, 0, err
 				}
 			}
-			body, err := b.encoders.Encode(img, v.W, f)
+			body, err := picture.Encode(img, v.W, f)
 			if err != nil {
 				return journal.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
 			}
@@ -195,7 +161,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 			made++
 		}
 	}
-	return journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Prep: m, Formats: picture.Order(fmts)}, made, nil
+	return journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Prep: m, Formats: fmts}, made, nil
 }
 
 func (b *Run) encode() (map[string]journal.Record, error) {
@@ -241,34 +207,19 @@ func Start(s model.BakeSpec) (*Run, error) {
 	if err := apart(s.Content, s.Dir); err != nil {
 		return nil, err
 	}
-	if err := check(s); err != nil {
-		return nil, err
-	}
-	offered := picture.Codecs("webp")
-	if len(s.Codecs) > 0 {
-		var err error
-		if offered, err = picture.ParseCodecs(s.Codecs); err != nil {
-			return nil, err
-		}
-	}
-	draw := diagram.Default()
 	if err := os.MkdirAll(s.Cache(), 0o755); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(filepath.Join(s.Dir, ".gitignore"), []byte("*\n"), 0o644); err != nil {
 		return nil, err
 	}
-	encs := picture.NewEncoders(offered, s.AVIFSpeed)
 	b := &Run{
-		spec:     s,
-		cache:    cache.Dir(s.Cache()),
-		done:     cache.Dir(s.Cache()).Journal(),
-		offered:  offered,
-		encoders: encs,
-		codecs:   encs.Codecs(),
-		draw:     draw,
-		wanted:   map[string]int64{},
-		made:     map[string]journal.Record{},
+		spec:   s,
+		cache:  cache.Dir(s.Cache()),
+		done:   cache.Dir(s.Cache()).Journal(),
+		draw:   diagram.Default(),
+		wanted: map[string]int64{},
+		made:   map[string]journal.Record{},
 	}
 	if s.Content != "" {
 		b.source = os.DirFS(s.Content)
@@ -284,11 +235,8 @@ func (b *Run) Master(name string) (journal.Record, error) {
 	if err != nil {
 		return journal.Record{}, err
 	}
-	b.mu.Lock()
 	b.wanted[name] = st.Size()
-	b.mu.Unlock()
-	img := b.offered[len(b.offered)-1]
-	return journal.Record{Name: name, Formats: []journal.Variants{{Ext: img.Ext, Type: img.Type}}}, nil
+	return journal.Record{Name: name, Formats: picture.Variants(journal.MasterMeta{})}, nil
 }
 
 func (b *Run) Diagram(src string) (string, error) {
@@ -302,17 +250,6 @@ func (b *Run) Diagram(src string) (string, error) {
 		return []byte(svg), nil
 	})
 	return string(svg), err
-}
-
-func (b *Run) Data(name string) ([]byte, error) {
-	if b.source == nil {
-		return nil, fmt.Errorf("quire: %s: no content to read from", name)
-	}
-	raw, err := fs.ReadFile(b.source, name)
-	if err != nil {
-		return nil, err
-	}
-	return b.single(name, journal.Hash(raw), journal.KindData, journal.Format{Ext: "yaml"}, func() ([]byte, error) { return raw, nil })
 }
 
 func (b *Run) Documents(pattern string, fences []string) ([]journal.Document, error) {
