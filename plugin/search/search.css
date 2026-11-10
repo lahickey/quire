@@ -1,0 +1,104 @@
+.search-box {
+  position: relative;
+  margin-right: var(--qr-space-3);
+}
+
+.search-input {
+  width: min(14rem, 32vw);
+  padding: var(--qr-space-2) var(--qr-space-3);
+  font: inherit;
+  font-size: var(--qr-text-xs);
+  color: var(--qr-neutral-12);
+  background: var(--qr-neutral-2);
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius-s);
+}
+
+.search-input::placeholder {
+  color: var(--qr-neutral-10);
+}
+
+.search-input:hover {
+  border-color: var(--qr-neutral-8);
+}
+
+.search-live {
+  display: none;
+  position: absolute;
+  top: calc(100% + var(--qr-space-2));
+  right: 0;
+  width: min(30rem, calc(100vw - 2 * var(--qr-space-4)));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--qr-space-2);
+  background: var(--qr-neutral-1);
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
+
+.search-box:focus-within .search-live:has(*) {
+  display: block;
+}
+
+.search-hits {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--qr-space-1);
+}
+
+.search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qr-space-1);
+  padding: var(--qr-space-3);
+  border-radius: var(--qr-radius-s);
+  color: inherit;
+}
+
+.search-hit:hover,
+.search-hit:focus-visible,
+.search-input:focus ~ .search-live li:first-child .search-hit {
+  color: inherit;
+  background: var(--qr-accent-3);
+}
+
+.search-hit-title {
+  font-weight: var(--qr-weight-semibold);
+  color: var(--qr-neutral-12);
+}
+
+.search-hit-sep {
+  color: var(--qr-neutral-10);
+  font-weight: normal;
+}
+
+.search-hit-text {
+  font-size: var(--qr-text-xs);
+  color: var(--qr-neutral-11);
+  overflow-wrap: anywhere;
+}
+
+.search-hit-text mark {
+  color: var(--qr-accent-12);
+  background: var(--qr-accent-5);
+  border-radius: 2px;
+}
+
+.search-none {
+  padding: var(--qr-space-3);
+  color: var(--qr-neutral-11);
+}
+
+.search-page .search-hits {
+  gap: var(--qr-space-3);
+}
+
+.search-page .search-hit {
+  border: 1px solid var(--qr-neutral-6);
+}
+
+.search-page .search-none {
+  padding: 0;
+}

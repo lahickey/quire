@@ -65,6 +65,7 @@ type Spec[T Metadata] struct {
 	Widgets     map[string]Widget
 	Classifier  *Classifier
 	Kicker      func(Document[T]) string
+	Sort        func(a, b Document[T]) int
 	Index       func(Shell, *Collection[T]) templ.Component
 	Item        func(Shell, *Collection[T], Document[T]) templ.Component
 }
@@ -148,6 +149,17 @@ func (c *Collection[T]) Get(slug string) (Document[T], bool) {
 	return d, ok
 }
 
+func (c *Collection[T]) Neighbours(d Document[T]) (prev, next *Document[T]) {
+	i := slices.IndexFunc(c.docs, func(o Document[T]) bool { return o.Slug == d.Slug })
+	if i > 0 {
+		prev = &c.docs[i-1]
+	}
+	if i >= 0 && i < len(c.docs)-1 {
+		next = &c.docs[i+1]
+	}
+	return prev, next
+}
+
 func (c *Collection[T]) Href(d Document[T]) string { return "/" + c.id + "/" + d.Slug }
 
 func (c *Collection[T]) LongDate(d Date) string { return d.Formatted(c.site.Dates.Long) }
@@ -226,9 +238,11 @@ func Collect[T Metadata](spec Spec[T], baked []journal.Document, image func(stri
 		return nil, err
 	}
 	docs = published(docs, drafts)
-	slices.SortStableFunc(docs, func(a, b Document[T]) int {
-		return b.Meta.Base().Date.Compare(a.Meta.Base().Date.Time)
-	})
+	sort := spec.Sort
+	if sort == nil {
+		sort = func(a, b Document[T]) int { return b.Meta.Base().Date.Compare(a.Meta.Base().Date.Time) }
+	}
+	slices.SortStableFunc(docs, sort)
 	col := &Collection[T]{
 		id: spec.ID, title: spec.Title, desc: spec.Description, site: site,
 		docs: docs, bySlug: make(map[string]Document[T], len(docs)),

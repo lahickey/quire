@@ -1,0 +1,126 @@
+package main
+
+import (
+	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/ui"
+)
+
+var features = []ui.CardData{
+	{Href: "/docs/bake", Kicker: "Shipping", Title: "One binary", Description: "Words, pictures and diagrams are baked into the site's own binary. It serves from any directory and carries none of the tooling that made it."},
+	{Href: "/docs/images", Kicker: "Pictures", Title: "Images, end to end", Description: "Refer to a picture beside a document and get a responsive ladder in WebP, sized for where it is placed."},
+	{Href: "/docs/content#diagrams", Kicker: "Diagrams", Title: "Mermaid, drawn once", Description: "A mermaid fence is drawn by the bake and inlined as SVG, so it takes the site's palette and fonts."},
+	{Href: "/docs/look", Kicker: "The look", Title: "Good by default", Description: "Palette, fonts, a light and dark toggle, navigation and a sitemap, with no templates or CSS of your own."},
+	{Href: "/docs/wiring", Kicker: "Wiring", Title: "Every layer replaceable", Description: "Swap the palette, a stylesheet, a component, a page or the whole header. Dropping one layer is not a rewrite."},
+	{Href: "/docs/plugins", Kicker: "Plugins", Title: "Live when it needs to be", Description: "Pages are server-rendered HTML from templ. Live features are plugins that stream through Datastar."},
+}
+
+templ repoLink() {
+	<a class="site-repo" href={ repo } rel="external">GitHub</a>
+}
+
+templ footer(model.Chrome, model.PageSpec) {
+	<footer class="site-footer">
+		<div class="footer-inner">
+			<span>Quire is MIT licensed. This site is built with it.</span>
+			<a href={ repo } rel="external">Source on GitHub</a>
+		</div>
+	</footer>
+}
+
+templ home(shell model.Shell, sample templ.Component) {
+	@shell(model.PageSpec{Title: "Quire", Path: "/"}) {
+		<div class="page page--wide">
+			<header class="home-hero">
+				<p class="kicker">A site engine for Go</p>
+				<h1>A folder of markdown in. A finished website out.</h1>
+				<p class="home-lede">Quire bakes your words, pictures and diagrams into one binary and serves them. It looks good by default, and every layer of it can be replaced.</p>
+				<div class="btn-row">
+					<a class="btn-primary" href="/docs/getting-started">Get started</a>
+					<a class="btn-secondary" href="/docs">Documentation</a>
+				</div>
+				<pre class="home-install"><code>go get github.com/lahickey/quire</code></pre>
+			</header>
+			<section class="card-grid">
+				for _, f := range features {
+					@ui.Card(f)
+				}
+			</section>
+			<section class="home-sample">
+				<div class="home-sample-words">
+					<h2>This is a whole site</h2>
+					<p>Home page, post index, post pages, navigation, a colour-scheme toggle, sitemap and robots.txt. Add markdown to <code>content/posts</code> and run it.</p>
+					@ui.ForwardLink("The smallest site", "/docs/getting-started", "accent")
+				</div>
+				<div class="prose">
+					@sample
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// The sidebar is behind a button until the page is wide enough to show it.
+templ sidebar(c docs, current string) {
+	<aside class="docs-side" data-signals="{site: {menu: false}}" data-class="{'docs-side--open': $site.menu}">
+		<button type="button" class="docs-menu" data-on:click="$site.menu = !$site.menu">Menu</button>
+		<nav class="docs-nav" aria-label="Documentation">
+			for _, s := range sections {
+				<p class="docs-label">{ s.Title }</p>
+				<ul>
+					for _, d := range within(c, s) {
+						<li>
+							<a
+								class="docs-link"
+								href={ c.Href(d) }
+								if d.Slug == current {
+									aria-current="page"
+								}
+							>{ d.Meta.Title }</a>
+						</li>
+					}
+				</ul>
+			}
+		</nav>
+	</aside>
+}
+
+templ docsIndex(shell model.Shell, c docs) {
+	@shell(c.IndexPage()) {
+		<div class="page page--wide docs">
+			@sidebar(c, "")
+			<div class="docs-main">
+				<header class="page-head">
+					<h1>{ c.Title() }</h1>
+					<p class="page-intro">{ c.Description() }</p>
+				</header>
+				<div class="card-grid">
+					for _, d := range c.Docs() {
+						@ui.Card(ui.DocCard(c, d))
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ docsPage(shell model.Shell, c docs, d doc) {
+	@shell(c.ItemPage(d)) {
+		<div class="page page--wide docs">
+			@sidebar(c, d.Slug)
+			<article class="docs-main">
+				<header class="page-head">
+					<p class="kicker">{ c.Kicker(d) }</p>
+					<h1>{ d.Meta.Title }</h1>
+					if d.Meta.Summary != "" {
+						<p class="page-intro">{ d.Meta.Summary }</p>
+					}
+				</header>
+				@ui.Contents(d.Headings)
+				<div class="prose">
+					@templ.Raw(d.HTML)
+				</div>
+				@ui.Pager(c, d)
+			</article>
+		</div>
+	}
+}

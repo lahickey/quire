@@ -13,7 +13,7 @@
 
 `just example [name]` runs an example on :8091, and `just examples` lists them.
 `just dev [name]` adds live reload and drafts; generated `*_templ.go` is not a watch trigger.
-`just site` runs the documentation site.
+`just site` runs the documentation site, and `just site dev` adds live reload; `PORT` moves either off :8091.
 `just free` frees :8091 after a bad exit.
 
 ## Testing

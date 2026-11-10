@@ -1,0 +1,22 @@
+.docs {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  column-gap: var(--qr-space-7);
+  align-items: start;
+}
+
+.docs-side {
+  position: sticky;
+  top: 6rem;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+}
+
+.docs-menu {
+  display: none;
+}
+
+.docs-nav {
+  display: block;
+  padding-top: 0;
+}

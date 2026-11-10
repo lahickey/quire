@@ -3,34 +3,28 @@ title: Design
 summary: Why Quire is shaped this way.
 ---
 
-The other pages say how to use Quire. This one says why.
+The other pages say how to use Quire. This one says why it is built the way it is.
+You do not need it to build a site. Read it when a rule elsewhere seems arbitrary, or before changing Quire itself.
 
-## Scale
+## The short version
 
-The column is 336 because that is the widest one that still fits two of them on a 744px tablet, the narrowest worth keeping off the phone layout.
-
-`Widest` gates page tokens only. How wide an image goes is where it is placed, so one wide page does not make every thumbnail pay for that width.
-
-`sizes` sees the viewport, not the container. Between the two-column width and the three-column width a `.page` is already capped and a `.page--wide` is still growing, so the cells differ in that band.
-
-`SlotBleed` measures in `cqw` against `main`. `100vw` counts the scrollbar.
-
-A sheet reads the scale's variables and never writes a width query. `WithStylesheetsAt` attaches CSS to a step.
-
-`--qr-measure-text` is `ch`, because a comfortable line belongs to the font. `.prose` is a breakout grid so a figure is not capped with the text.
-
-Every custom property is `--qr-*`. A plugin uses its own prefix. Overriding a `--qr-*` token is a tweak, the same act as `WithScale`.
+- **A site is known by its mount, not its folder.** One description of the site drives both the bake and the serving, so the two cannot disagree.
+- **The bake converts and serving composes.** Everything slow happens once, ahead of time, and the binary that serves cannot convert at all.
+- **Layers only point down.** The data knows nothing of the components, and the components nothing of the engine.
+- **The look is tokens.** Sheets read roles and scale properties, never a hue or a pixel width.
 
 ## One mount
 
-Dev may run a step lazily. It may not skip one. A variant is in a journal or it is an error, in every mode.
-
 Bake and serve run the same mount. The folder is not a second answer to what the site contains. A file reaches the bundle because the mount read it or referred to it. `AddFile` ships anything else.
+
+Dev may run a step lazily. It may not skip one. A variant is in a journal or it is an error, in every mode.
 
 A bake reads the source tree. What that mount renders is thrown away: source order is the measured bytes, and those exist only after the encode.
 
 The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a hole for each picture, diagram and site widget, and serving fills each hole: a picture from the journal with the markup `ui` makes today, a widget by running it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one embed.
+
 Everything the bake makes is one kind of thing: a journal record, keyed by what it was made from, naming content-addressed files. A record names its kind: picture, document, diagram or data. A document, a diagram and a share card are each one file; a master is its ladder. One check decides what is remade, one copy decides what ships, and one lookup finds it again.
+
 Something that must convert per request is a plugin that imports its converter.
 
 ## Journal
@@ -48,11 +42,40 @@ Where the bundle lives is a separate choice. The bake writes `.quire/ship.go`, w
 
 Layers only point down, and a test holds them to it.
 
+```mermaid
+flowchart TD
+  site[a site or a command] --> quire
+  site --> plugins[its plugins]
+  quire --> ui
+  quire --> plugin
+  plugins --> ui
+  plugins --> plugin
+  ui --> model
+  plugin --> model
+  model --> journal[bundle format]
+```
+
 `model` is the data. Of Quire's it imports only the bundle format (`internal/journal`) and the colour scales.
 `ui` and `plugin` import `model` and nothing else of Quire's.
 `quire` is what a site calls. A site or a command is the only importer.
 
-A plugin sits beside `ui`, and a site opts in with `Use`.
+A plugin sits beside `ui`, and a site opts in with `Use`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
+
+## Scale
+
+The column is 336 because that is the widest one that still fits two of them on a 744px tablet, the narrowest worth keeping off the phone layout.
+
+`Widest` gates page tokens only. How wide an image goes is where it is placed, so one wide page does not make every thumbnail pay for that width.
+
+`sizes` sees the viewport, not the container. Between the two-column width and the three-column width a `.page` is already capped and a `.page--wide` is still growing, so the cells differ in that band.
+
+`SlotBleed` measures in `cqw` against `main`. `100vw` counts the scrollbar.
+
+A sheet reads the scale's variables and never writes a width query. `WithStylesheetsAt` attaches CSS to a step.
+
+`--qr-measure-text` is `ch`, because a comfortable line belongs to the font. `.prose` is a breakout grid so a figure is not capped with the text.
+
+Every custom property is `--qr-*`. A plugin uses its own prefix. Overriding a `--qr-*` token is a tweak, the same act as `WithScale`.
 
 ## Colour, fonts, diagrams
 

@@ -43,6 +43,25 @@ func TestBracketedSpans(t *testing.T) {
 	}
 }
 
+func TestLinksAndHeadingAnchors(t *testing.T) {
+	for src, want := range map[string]string{
+		"[a](./bake.md)":                `href="./bake"`,
+		"[a](../posts/one.md#part)":     `href="../posts/one#part"`,
+		"[a](https://example.com/x.md)": `href="https://example.com/x.md"`,
+		"[a](/files/x.md)":              `href="/files/x.md"`,
+		"[a](./notes.mdx)":              `href="./notes.mdx"`,
+		"## Shipping it":                `<h2 id="shipping-it">Shipping it<a class="heading-anchor" href="#shipping-it"`,
+	} {
+		html, _, _, err := Render(src, "", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(html, want) {
+			t.Errorf("%q:\n%s", src, html)
+		}
+	}
+}
+
 func TestFencesAreHoles(t *testing.T) {
 	box := journal.Embed{Fence: "box", Info: "Title", Body: "inside\n"}
 	for _, c := range []struct {
@@ -62,6 +81,16 @@ func TestFencesAreHoles(t *testing.T) {
 		if !slices.Equal(embeds, c.want) || strings.Contains(html, c.not) {
 			t.Errorf("%s: %+v\n%s", c.name, embeds, html)
 		}
+	}
+}
+
+func TestOnlyCodeGetsACopyButton(t *testing.T) {
+	html, _, _, err := Render("```go\nx := 1\n```\n\n```\nplain\n```\n\n```box\ny\n```\n", "", []string{"box"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(html, `class="code-copy"`) != 2 || strings.Count(html, "</div>") != 2 {
+		t.Errorf("want a button round each code block and none round the widget:\n%s", html)
 	}
 }
 

@@ -74,7 +74,7 @@ func (e *Engine) preparePage(path string, c templ.Component) {
 func (e *Engine) addNotFound() {
 	page := e.notFound
 	if page == nil {
-		page = e.late(ui.NotFoundPage)
+		page = e.late(ui.NotFound)
 	}
 	e.notFound404 = e.prepare("404", page, http.StatusNotFound)
 	e.route("GET /{path...}", ownerQuire, e.notFound404.ServeHTTP)

@@ -500,3 +500,34 @@ li.tag {
 .toc-link:hover {
   color: var(--qr-neutral-12);
 }
+
+.pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--qr-space-4);
+  padding-top: var(--qr-space-6);
+  border-top: 1px solid var(--qr-neutral-6);
+}
+
+.pager-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qr-space-1);
+  padding: var(--qr-space-4) var(--qr-space-5);
+  font-weight: var(--qr-weight-semibold);
+  color: var(--qr-neutral-12);
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius);
+}
+
+.pager-link:hover {
+  color: var(--qr-neutral-12);
+  border-color: var(--qr-accent-8);
+  background: var(--qr-accent-3);
+}
+
+.pager-link--next {
+  grid-column: 2;
+  align-items: flex-end;
+  text-align: right;
+}

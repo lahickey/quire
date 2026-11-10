@@ -113,7 +113,7 @@ func New(site model.Site, opts ...Option) *Engine {
 		routes:   map[string]string{},
 		images:   map[string]model.Image{},
 		versions: map[string]string{},
-		chrome:   model.Chrome{Site: site.WithDefaults(), Header: ui.Header, Footer: ui.Footer},
+		chrome:   model.Chrome{Site: site.WithDefaults(), Brand: site.Name, Header: ui.Header, Footer: ui.Footer},
 		palette:  model.PaletteEmber,
 		scale:    model.DefaultScale(),
 	}

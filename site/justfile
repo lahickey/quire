@@ -1,0 +1,22 @@
+# The documentation site. From the repo root these are `just site` and `just site dev`.
+root := source_directory() / ".."
+port := env("PORT", "8091")
+
+# Run the site.
+[continue]
+[no-exit-message]
+run:
+    cd {{ root }} && go tool templ generate -path .
+    cd {{ source_directory() }} && go run . --addr :{{ port }}
+
+# Same, with live reload: a change to the engine, the site or its content rebuilds and reloads the page.
+# Needs `wgo` on PATH; see DEVELOPING.md.
+[continue]
+[no-exit-message]
+dev:
+    cd {{ root }} && wgo \
+    	-cd {{ source_directory() }} \
+    	-xfile '_templ\.go$' \
+    	-file '\.go$' -file '\.templ$' -file '\.css$' -file '\.md$' -file '\.svg$' -file '\.js$' -file '\.yaml$' \
+    	go tool templ generate -path {{ root }} \
+    	:: go run . --dev --drafts --addr :{{ port }}

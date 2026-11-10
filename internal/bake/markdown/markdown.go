@@ -24,7 +24,10 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const headerSep = "---"
+const (
+	headerSep = "---"
+	copyOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
+)
 
 var kindRawBlock = ast.NewNodeKind("RawBlock")
 
@@ -68,6 +71,8 @@ type imgTarget struct {
 }
 
 type calloutTransform struct{ src []byte }
+
+type linkTransform struct{}
 
 type fenceTransform struct {
 	src     []byte
@@ -157,7 +162,7 @@ func collectHeadings(n ast.Node, src []byte) []journal.Heading {
 	return out
 }
 
-func remoteImage(dest string) bool {
+func remote(dest string) bool {
 	return strings.HasPrefix(dest, "https://") ||
 		strings.HasPrefix(dest, "http://") ||
 		strings.HasPrefix(dest, "//") ||
@@ -181,7 +186,7 @@ func standaloneImage(p *ast.Paragraph, src []byte) (*ast.Image, bool) {
 			return nil, false
 		}
 	}
-	if img == nil || remoteImage(string(img.Destination)) {
+	if img == nil || remote(string(img.Destination)) {
 		return nil, false
 	}
 	return img, true
@@ -324,7 +329,7 @@ func (t *imgTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Cont
 			return ast.WalkSkipChildren, nil
 		}
 		img, ok := n.(*ast.Image)
-		if !ok || remoteImage(string(img.Destination)) {
+		if !ok || remote(string(img.Destination)) {
 			return ast.WalkContinue, nil
 		}
 		found = append(found, imgTarget{node: img, img: img})
@@ -371,24 +376,50 @@ func (t calloutTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.C
 	}
 }
 
+func (linkTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if h, ok := n.(*ast.Heading); ok && entering && headingID(h) != "" {
+			h.AppendChild(h, &rawInline{html: `<a class="heading-anchor" href="#` + headingID(h) + `" aria-label="Link to this section"></a>`})
+		}
+		l, ok := n.(*ast.Link)
+		if !ok || !entering || remote(string(l.Destination)) || bytes.HasPrefix(l.Destination, []byte("/")) {
+			return ast.WalkContinue, nil
+		}
+		file, frag, _ := bytes.Cut(l.Destination, []byte("#"))
+		if name, ok := bytes.CutSuffix(file, []byte(".md")); ok {
+			l.Destination = name
+			if len(frag) > 0 {
+				l.Destination = slices.Concat(name, []byte("#"), frag)
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+}
+
 func Converts() int64 { return converts.Load() }
 
 func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	var found []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if b, ok := n.(*ast.FencedCodeBlock); ok && entering && t.widgets[string(b.Language(t.src))] != nil {
+		if b, ok := n.(*ast.FencedCodeBlock); ok && entering {
 			found = append(found, b)
 		}
 		return ast.WalkContinue, nil
 	})
 	for _, b := range found {
 		name, info := fenceInfo(b, t.src)
+		p := b.Parent()
+		if t.widgets[name] == nil {
+			p.InsertBefore(p, b, &rawBlock{html: copyOpen})
+			p.InsertAfter(p, b, &rawBlock{html: "</div>"})
+			continue
+		}
 		html, err := t.widgets[name](info, fenceText(b, t.src))
 		if err != nil {
 			t.err = fmt.Errorf("%s: %w", name, err)
 			return
 		}
-		b.Parent().ReplaceChild(b.Parent(), b, &rawBlock{html: html})
+		p.ReplaceChild(p, b, &rawBlock{html: html})
 	}
 }
 
@@ -410,7 +441,7 @@ func Render(src, doc string, fenceNames []string) (string, []journal.Heading, []
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 			parser.WithInlineParsers(util.Prioritized(spanParser{}, 150)),
-			parser.WithASTTransformers(util.Prioritized(ft, 50), util.Prioritized(tf, 100), util.Prioritized(calloutTransform{srcb}, 200)),
+			parser.WithASTTransformers(util.Prioritized(ft, 50), util.Prioritized(tf, 100), util.Prioritized(calloutTransform{srcb}, 200), util.Prioritized(linkTransform{}, 300)),
 		),
 		goldmark.WithRendererOptions(
 			gmhtml.WithUnsafe(),

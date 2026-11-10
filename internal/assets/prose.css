@@ -193,3 +193,63 @@
   min-height: 1.75rem;
   border-radius: var(--qr-radius-s);
 }
+
+.code {
+  position: relative;
+}
+
+.code-copy {
+  position: absolute;
+  top: var(--qr-space-2);
+  right: var(--qr-space-2);
+  padding: var(--qr-space-1) var(--qr-space-2);
+  font: inherit;
+  font-size: var(--qr-text-xs);
+  color: var(--qr-neutral-11);
+  background: var(--qr-neutral-3);
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius-s);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--qr-motion) ease;
+}
+
+.code-copy::before {
+  content: "Copy";
+}
+
+.code-copy--done::before {
+  content: "Copied";
+}
+
+.code:hover .code-copy,
+.code-copy:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .code-copy {
+    opacity: 1;
+  }
+}
+
+a.heading-anchor {
+  margin-left: 0.4em;
+  text-decoration: none;
+  color: var(--qr-neutral-9);
+  opacity: 0;
+  transition: opacity var(--qr-motion) ease;
+}
+
+.heading-anchor::before {
+  content: "#";
+}
+
+.heading-anchor:hover {
+  color: var(--qr-accent-11);
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}

@@ -48,11 +48,8 @@ dev name="1-minimal": generate
     	go tool templ generate -path {{ dir }} \
     	:: go run . --dev --drafts --addr :{{ port }}
 
-# Run Quire's documentation site on the example port.
-[continue]
-[no-exit-message]
-site: generate
-    cd {{ dir }}/site && go run . --addr :{{ port }}
+# The documentation site: `just site` runs it, `just site dev` adds live reload.
+mod site
 
 # List what examples exist.
 examples:

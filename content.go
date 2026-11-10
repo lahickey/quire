@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
@@ -79,6 +80,17 @@ func (e *Engine) documents(pattern string, widgets map[string]model.Widget) ([]j
 		}
 	}
 	return docs, nil
+}
+
+func (e *Engine) Markdown(name string) (templ.Component, error) {
+	docs, err := e.documents(name, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(docs) != 1 {
+		return nil, fmt.Errorf("quire: markdown %s: no such file under the content root", name)
+	}
+	return templ.Raw(docs[0].HTML), nil
 }
 
 func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {

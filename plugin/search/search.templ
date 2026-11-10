@@ -1,0 +1,78 @@
+package search
+
+import "github.com/lahickey/quire/model"
+
+// Up and down move through the box and its results, enter in the box opens the first result, escape leaves.
+const keys = `evt.key === 'Escape' ? document.activeElement.blur() : evt.key === 'Enter' && evt.target === el.elements.q && el.querySelector('a') ? (evt.preventDefault(), el.querySelector('a').click()) : (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') && (evt.preventDefault(), (a => a[(a.indexOf(document.activeElement) + (evt.key === 'ArrowDown' ? 1 : a.length - 1)) % a.length].focus())([el.elements.q, ...el.querySelectorAll('a')]))`
+
+// The nav control. Typing fetches the results, which replace #search-live;
+// without JavaScript, submitting the form loads the results page instead.
+templ (p *Plugin) box() {
+	<form
+		class="search-box"
+		role="search"
+		method="get"
+		action={ p.mount.PageURL("") }
+		data-on:input__debounce.150ms={ "@get('" + p.mount.URL("live") + "', {contentType: 'form'})" }
+		data-on:keydown={ keys }
+	>
+		<input
+			class="search-input"
+			type="search"
+			name="q"
+			placeholder="Search  /"
+			aria-label="Search"
+			autocomplete="off"
+			data-on:keydown__window="evt.key === '/' && !evt.target.closest('input, textarea, select') && (evt.preventDefault(), el.focus())"
+		/>
+		@p.results("", nil)
+	</form>
+}
+
+templ hits(hs []Hit) {
+	<ul class="search-hits">
+		for _, h := range hs {
+			<li>
+				<a class="search-hit" href={ h.URL }>
+					<span class="search-hit-title">
+						{ h.Page }
+						if h.Heading != "" {
+							<span class="search-hit-sep">›</span> { h.Heading }
+						}
+					</span>
+					<span class="search-hit-text">{ h.Before }<mark>{ h.Match }</mark>{ h.After }</span>
+				</a>
+			</li>
+		}
+	</ul>
+}
+
+templ answer(q string, hs []Hit) {
+	if len(hs) > 0 {
+		@hits(hs)
+	} else if q != "" {
+		<p class="search-none">Nothing found for “{ q }”.</p>
+	}
+}
+
+templ (p *Plugin) results(q string, hs []Hit) {
+	<div id="search-live" class="search-live">
+		@answer(q, hs)
+	</div>
+}
+
+templ (p *Plugin) page(q string, hs []Hit) {
+	@p.mount.Shell(model.PageSpec{Title: "Search", Path: p.mount.PageURL(""), NoIndex: true}) {
+		<article class="page">
+			<header class="page-head">
+				<h1>Search</h1>
+				if q != "" {
+					<p class="page-intro">Results for “{ q }”.</p>
+				}
+			</header>
+			<div class="search-page">
+				@answer(q, hs)
+			</div>
+		</article>
+	}
+}

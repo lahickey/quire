@@ -45,6 +45,7 @@ type LiveReload struct {
 type Chrome struct {
 	Site
 
+	Brand string
 	Theme       Theme
 	Header      func(Chrome, PageSpec) templ.Component
 	Footer      func(Chrome, PageSpec) templ.Component

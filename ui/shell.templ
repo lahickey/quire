@@ -64,7 +64,7 @@ templ scripts(c model.Chrome) {
 	}
 }
 
-templ themeToggle() {
+templ ThemeToggle() {
 	<button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
 		<svg class="theme-toggle-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<circle cx="12" cy="12" r="5"></circle>
@@ -94,19 +94,28 @@ templ snippet(c model.Chrome) {
 	}
 }
 
+templ Nav(c model.Chrome, p model.PageSpec) {
+	if c.Brand != "" {
+		<a href="/" class="nav-brand">{ c.Brand }</a>
+	}
+	for _, it := range c.Nav {
+		if c.Brand == "" || it.Href != "/" {
+			<a href={ it.Href } class={ navClass(p.Path, it.Href) }>{ it.Label }</a>
+		}
+	}
+}
+
 templ Header(c model.Chrome, p model.PageSpec) {
 	<header class="site-header">
 		<nav class="site-nav" aria-label="Main navigation">
 			<div class="nav-links">
-				for _, it := range c.Nav {
-					<a href={ it.Href } class={ navClass(p.Path, it.Href) }>{ it.Label }</a>
-				}
+				@Nav(c, p)
 			</div>
 			<div class="nav-end">
 				for _, control := range c.NavEnd {
 					@control
 				}
-				@themeToggle()
+				@ThemeToggle()
 			</div>
 		</nav>
 	</header>

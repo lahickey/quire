@@ -469,6 +469,28 @@ func TestNarrowMasterCollapsesSlots(t *testing.T) {
 	}
 }
 
+func TestMarkdownOutsideACollection(t *testing.T) {
+	files := fstest.MapFS{"home/sample.md": {Data: []byte("---\n---\n\n```go\nx := 1\n```\n")}}
+	var got, missing error
+	var html strings.Builder
+	_, err := served(t, files, model.Site{}, func(e *Engine) error {
+		c, err := e.Markdown("home/sample.md")
+		if err != nil {
+			return err
+		}
+		html.Reset()
+		got = c.Render(t.Context(), &html)
+		_, missing = e.Markdown("home/absent.md")
+		return nil
+	})
+	if err != nil || got != nil || !strings.Contains(html.String(), `<pre class="chroma">`) {
+		t.Fatalf("markdown was not baked and served: %v %v %s", err, got, html.String())
+	}
+	if missing == nil {
+		t.Fatal("a missing file is not an error")
+	}
+}
+
 func TestDiagrams(t *testing.T) {
 	content := t.TempDir()
 	post := "---\ntitle: A\ndate: 2026-02-01\n---\n\n```mermaid\nflowchart LR\n  a[client] --> b[(store)]\n```\n"

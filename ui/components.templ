@@ -165,3 +165,21 @@ templ ForwardLink(text, href, variant string) {
 		</span>
 	}
 }
+
+templ Pager[T model.Metadata](c *model.Collection[T], d model.Document[T]) {
+	{{ prev, next := c.Neighbours(d) }}
+	<nav class="pager" aria-label="Previous and next page">
+		if prev != nil {
+			<a class="pager-link" href={ c.Href(*prev) }>
+				<span class="kicker">Previous</span>
+				{ prev.Meta.Base().Title }
+			</a>
+		}
+		if next != nil {
+			<a class="pager-link pager-link--next" href={ c.Href(*next) }>
+				<span class="kicker">Next</span>
+				{ next.Meta.Base().Title }
+			</a>
+		}
+	</nav>
+}

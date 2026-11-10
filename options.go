@@ -75,6 +75,10 @@ func WithHeader(h func(model.Chrome, model.PageSpec) templ.Component) Option {
 	return func(e *Engine) { e.chrome.Header = h }
 }
 
+func WithBrand(name string) Option {
+	return func(e *Engine) { e.chrome.Brand = name }
+}
+
 func WithFooter(f func(model.Chrome, model.PageSpec) templ.Component) Option {
 	return func(e *Engine) { e.chrome.Footer = f }
 }
