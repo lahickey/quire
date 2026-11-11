@@ -28,12 +28,12 @@ func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []str
 }
 
 func (e *Engine) addAssets() {
-	p := assets.Parts{Scale: e.scale, Palette: e.palette, Sheets: e.sheets}
+	p := assets.Parts{Scale: e.scale, Palette: e.palette, Sheets: e.sheets, Scripts: e.scripts}
 	p.Fonts, e.chrome.FontPreload = fonts.Faces(e.fonts, fonts.Default(), func(file string, body []byte) string {
 		return e.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
 	})
 	e.chrome.StyleURLs = []string{e.addBytes(stylePath, css, assets.Stylesheet(p))}
-	e.chrome.ScriptURL = e.addBytes(scriptPath, javascript, assets.Script())
+	e.chrome.ScriptURL = e.addBytes(scriptPath, javascript, assets.Script(p))
 	e.chrome.ModuleURLs = []string{e.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
 }
 

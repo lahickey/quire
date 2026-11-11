@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
 )
@@ -26,6 +27,11 @@ func (e *Engine) attach(p plugin.Plugin) error {
 	}
 	for _, s := range a.Sheets {
 		e.addSheets("plugin", s.At, s.FS, s.Names)
+	}
+	for _, s := range a.Scripts {
+		for _, n := range s.Names {
+			e.scripts = append(e.scripts, assets.Sheet{FS: s.FS, Name: n})
+		}
 	}
 	e.chrome.NavEnd = append(e.chrome.NavEnd, a.NavEnd...)
 	e.sessions = e.sessions || a.Sessions

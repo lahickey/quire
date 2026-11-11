@@ -13,6 +13,8 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
+const toggleTheme = `document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', document.documentElement.dataset.theme)`
+
 func navActive(path, href string) bool {
 	if href == "/" {
 		return path == "/"

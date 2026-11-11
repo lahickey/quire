@@ -99,9 +99,10 @@ End its handler with `plugin.Done(w, r)`, which answers either kind of caller: `
 - `m.Listen(path)` is the Datastar action that subscribes to a route: `data-init={ m.Listen("events") }`. Quire ships Datastar, so it owns the options too: a subscription reconnects for as long as the page is open and closes when its element is removed.
 - `m.Signals(v)` is a `data-signals` value under the plugin's name, so a page starts with what `Stream.Signals` later patches: `data-signals={ m.Signals(map[string]int{"count": 0}) }`.
 
-### Styles, nav and sessions
+### Styles, scripts, nav and sessions
 
 - `AddStylesheets` / `AddStylesheetsAt` go into the `plugin` cascade layer, so the site can restyle a plugin and never the reverse. `AddStylesheetsAt` is CSS for one step of the scale; Scale writes the query.
+- `AddScripts` adds JavaScript files to `/_quire/quire.js`, each in its own function scope.
 - `AddNavEnd(component)` is a control in the nav.
 - `UseSessions()` gives one `qsid` for every plugin, minted on navigation only. `plugin.Session(r)` reads it. Two cold tabs can race; last cookie wins. That is inherent to HTTP.
 

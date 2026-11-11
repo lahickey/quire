@@ -1,114 +1,77 @@
-
 history.scrollRestoration = "manual";
 
-const scrollPositions = new Map();
-let currentURL = location.href;
+const FADE_MS = 300;
+const nonPage = /[^/]\.(?!html?$)[^./]+$/i;
 
-const hardNav = (url) => { location.href = url.href; };
+let current = new URL(location.href);
+let latest = 0;
+let saving;
+
+const page = (url) => url.pathname.replace(/\/+$/, "") + url.search;
+
+const assetURLs = (doc) =>
+	[...doc.querySelectorAll('head link[rel="stylesheet"][href], head script[src]')]
+		.map((el) => el.getAttribute("href") || el.getAttribute("src"))
+		.sort()
+		.join("|");
+
+const saveScroll = () => history.replaceState({ scroll: scrollY }, "");
 
 function routable(anchor) {
-	if (!anchor || !anchor.href) return null;
+	if (!anchor?.href) return null;
 	if (anchor.target && anchor.target !== "_self") return null;
-	if (anchor.hasAttribute("download")) return null;
-	if (anchor.rel.includes("external")) return null;
-
-	const url = new URL(anchor.href, location.href);
-	if (url.origin !== location.origin) return null;
-
-	if (url.pathname === location.pathname && url.search === location.search && url.hash) {
-		return null;
-	}
-
-	const file = url.pathname.slice(url.pathname.lastIndexOf("/") + 1);
-	const dot = file.lastIndexOf(".");
-	if (dot > 0 && !/^\.html?$/i.test(file.slice(dot))) return null;
-
-	return url;
+	if (anchor.hasAttribute("download") || anchor.rel.includes("external")) return null;
+	const url = new URL(anchor.href);
+	return url.origin === location.origin && !nonPage.test(url.pathname) ? url : null;
 }
 
 async function fetchDocument(url) {
 	const res = await fetch(url.href, { cache: "no-cache" });
-	if (!res.ok) throw new Error(`nav: ${res.status}`);
-	if (!(res.headers.get("content-type") || "").includes("text/html")) {
-		throw new Error("nav: not html");
+	if (!res.ok || !(res.headers.get("content-type") || "").includes("text/html")) {
+		throw new Error(`nav: ${res.status}`);
 	}
 	return new DOMParser().parseFromString(await res.text(), "text/html");
 }
 
-function buildID(doc) {
-	return [...doc.querySelectorAll('head link[rel="stylesheet"][href], head script[src]')]
-		.map((el) => el.getAttribute("href") || el.getAttribute("src"))
-		.sort()
-		.join("|");
-}
-
-function applyScroll(url, push) {
-	if (push) {
-		const target = url.hash && document.querySelector(url.hash);
-		target ? target.scrollIntoView() : window.scrollTo(0, 0);
-	} else {
-		window.scrollTo(0, scrollPositions.get(url.href) || 0);
-	}
-}
-
-function stripSlash(p) {
-	return p.replace(/\/+$/, "") || "/";
-}
-
-function samePage(url) {
-	return stripSlash(url.pathname) === stripSlash(location.pathname) && url.search === location.search;
-}
-
-const FADE_MS = 300;
-
-function fadeIn(main) {
-	if (!FADE_MS || document.hidden ||
-		window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-	main.animate({ opacity: [0, 1] }, { duration: FADE_MS, easing: "ease" });
-}
-
-function focusMain(main) {
-	main.setAttribute("tabindex", "-1");
-	main.focus({ preventScroll: true });
-}
-
 function syncNav(doc) {
-	const incoming = doc.querySelectorAll(".nav-link");
-	document.querySelectorAll(".nav-link").forEach((a, i) => {
-		if (incoming[i]) a.className = incoming[i].className;
-	});
+	for (const a of document.querySelectorAll(".nav-link")) {
+		const twin = doc.querySelector(`.nav-link[href="${CSS.escape(a.getAttribute("href"))}"]`);
+		if (twin) a.className = twin.className;
+	}
 }
 
-let navSeq = 0;
+function place(url, scroll) {
+	const target = scroll === undefined && document.getElementById(decodeURIComponent(url.hash.slice(1)));
+	target ? target.scrollIntoView() : scrollTo(0, scroll ?? 0);
+}
 
-async function navigate(url, push) {
-	const seq = ++navSeq;
-	let doc;
-	try {
-		doc = await fetchDocument(url);
-	} catch {
-		hardNav(url);
-		return;
-	}
-	if (seq !== navSeq) return;
+async function navigate(url, push, scroll) {
+	const seq = ++latest;
+	const doc = await fetchDocument(url).catch(() => null);
+	if (seq !== latest) return;
 
-	const incoming = doc.querySelector("main");
-	const current = document.querySelector("main");
-	if (!incoming || !current || buildID(doc) !== buildID(document)) {
-		hardNav(url);
+	const incoming = doc?.querySelector("main");
+	const main = document.querySelector("main");
+	if (!incoming || !main || assetURLs(doc) !== assetURLs(document)) {
+		location.assign(url.href);
 		return;
 	}
 
-	scrollPositions.set(currentURL, window.scrollY);
+	if (push) {
+		saveScroll();
+		history.pushState(null, "", url.href);
+	}
 	document.title = doc.title;
 	syncNav(doc);
-	current.replaceWith(incoming);
-	if (push) history.pushState({ engineNav: true }, "", url.href);
-	currentURL = url.href;
-	applyScroll(url, push);
+	main.replaceWith(incoming);
+	current = url;
+	place(url, scroll);
 
-	fadeIn(incoming);
-	focusMain(incoming);
+	if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		incoming.animate({ opacity: [0, 1] }, { duration: FADE_MS, easing: "ease" });
+	}
+	incoming.tabIndex = -1;
+	incoming.focus({ preventScroll: true });
 }
 
 document.addEventListener("click", (e) => {
@@ -118,20 +81,25 @@ document.addEventListener("click", (e) => {
 	const url = routable(e.target.closest("a"));
 	if (!url) return;
 	e.preventDefault();
-	if (samePage(url)) return;
-	navigate(url, true);
+	if (page(url) !== page(current)) navigate(url, true);
+	else if (url.hash) location.assign(current.pathname + current.search + url.hash);
 });
 
-window.addEventListener("popstate", () => {
+addEventListener("popstate", (e) => {
 	const url = new URL(location.href);
-	if (url.href === currentURL) return;
-	if (url.pathname === new URL(currentURL).pathname && url.hash) {
-		currentURL = url.href;
+	if (page(url) !== page(current)) {
+		navigate(url, false, e.state?.scroll);
 		return;
 	}
-	navigate(url, false);
+	current = url;
+	place(url, e.state?.scroll);
 });
 
-window.addEventListener("pageshow", (e) => {
-	if (e.persisted) currentURL = location.href;
+addEventListener("scroll", () => {
+	clearTimeout(saving);
+	saving = setTimeout(saveScroll, 200);
+}, { passive: true });
+
+addEventListener("DOMContentLoaded", () => {
+	if (history.state?.scroll) scrollTo(0, history.state.scroll);
 });

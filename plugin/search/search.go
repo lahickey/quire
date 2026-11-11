@@ -23,8 +23,8 @@ const (
 	tail  = 110
 )
 
-//go:embed search.css
-var css embed.FS
+//go:embed search.css search.js
+var files embed.FS
 
 var (
 	heading = regexp.MustCompile(`(?s)<h[23] id="([^"]*)"[^>]*>(.*?)</h[23]>`)
@@ -143,7 +143,8 @@ func (p *Plugin) Name() string { return "search" }
 
 func (p *Plugin) Attach(m *plugin.Mount) error {
 	p.mount = m
-	m.AddStylesheets(css, "search.css")
+	m.AddStylesheets(files, "search.css")
+	m.AddScripts(files, "search.js")
 	m.AddNavEnd(p.box())
 	m.Route("GET", "live", p.live)
 	m.Page("GET", "", p.show)

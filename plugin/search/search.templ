@@ -2,9 +2,6 @@ package search
 
 import "github.com/lahickey/quire/model"
 
-// Up and down move through the box and its results, enter in the box opens the first result, escape leaves.
-const keys = `evt.key === 'Escape' ? document.activeElement.blur() : evt.key === 'Enter' && evt.target === el.elements.q && el.querySelector('a') ? (evt.preventDefault(), el.querySelector('a').click()) : (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') && (evt.preventDefault(), (a => a[(a.indexOf(document.activeElement) + (evt.key === 'ArrowDown' ? 1 : a.length - 1)) % a.length].focus())([el.elements.q, ...el.querySelectorAll('a')]))`
-
 // The nav control. Typing fetches the results, which replace #search-live;
 // without JavaScript, submitting the form loads the results page instead.
 templ (p *Plugin) box() {
@@ -14,7 +11,6 @@ templ (p *Plugin) box() {
 		method="get"
 		action={ p.mount.PageURL("") }
 		data-on:input__debounce.150ms={ "@get('" + p.mount.URL("live") + "', {contentType: 'form'})" }
-		data-on:keydown={ keys }
 	>
 		<input
 			class="search-input"

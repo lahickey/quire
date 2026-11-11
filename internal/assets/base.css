@@ -50,6 +50,12 @@
   :root {
     --qr-motion: 0s;
   }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
 }
 
 html {

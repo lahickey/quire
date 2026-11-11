@@ -35,6 +35,7 @@ type Attached struct {
 	Name     string
 	Routes   []Route
 	Sheets   []Sheet
+	Scripts  []Sheet
 	NavEnd   []templ.Component
 	Sessions bool
 }
@@ -119,6 +120,15 @@ func (m *Mount) AddStylesheets(fsys fs.FS, names ...string) { m.AddStylesheetsAt
 func (m *Mount) AddStylesheetsAt(w model.Width, fsys fs.FS, names ...string) {
 	m.namespaced(fsys, names)
 	m.got.Sheets = append(m.got.Sheets, Sheet{w, fsys, names})
+}
+
+func (m *Mount) AddScripts(fsys fs.FS, names ...string) {
+	for _, n := range names {
+		if _, err := fs.Stat(fsys, n); err != nil {
+			m.err = cmp.Or(m.err, err)
+		}
+	}
+	m.got.Scripts = append(m.got.Scripts, Sheet{FS: fsys, Names: names})
 }
 
 func (m *Mount) AddNavEnd(c templ.Component) {

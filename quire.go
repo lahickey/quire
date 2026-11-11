@@ -50,6 +50,7 @@ type Engine struct {
 	scale    model.Scale
 	siteCard *model.ShareCard
 	sheets   []assets.Sheet
+	scripts  []assets.Sheet
 	shipped  fs.FS
 
 	images map[string]model.Image

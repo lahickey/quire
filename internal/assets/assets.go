@@ -28,6 +28,7 @@ type Parts struct {
 	Palette model.Palette
 	Fonts   []byte
 	Sheets  []Sheet
+	Scripts []Sheet
 }
 
 func own(name string) []byte {
@@ -104,10 +105,13 @@ func Stylesheet(p Parts) []byte {
 	return []byte(b.String())
 }
 
-func Script() []byte {
+func Script(p Parts) []byte {
 	var b strings.Builder
 	appendJS(&b, "theme.js", own("theme.js"))
 	appendJS(&b, "nav.js", own("nav.js"))
+	for _, f := range p.Scripts {
+		appendJS(&b, f.Name, read(f))
+	}
 	return []byte(b.String())
 }
 

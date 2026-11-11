@@ -65,7 +65,7 @@ templ scripts(c model.Chrome) {
 }
 
 templ ThemeToggle() {
-	<button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+	<button type="button" class="theme-toggle" data-on:click__viewtransition={ toggleTheme } aria-label="Toggle theme" title="Toggle theme">
 		<svg class="theme-toggle-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<circle cx="12" cy="12" r="5"></circle>
 			<line x1="12" y1="1" x2="12" y2="3"></line>
@@ -131,7 +131,7 @@ templ Footer(c model.Chrome, p model.PageSpec) {
 
 templ Shell(c model.Chrome, p model.PageSpec) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme={ c.Theme.String() } data-theme-default={ c.Theme.String() }>
+	<html lang="en" data-theme={ c.Theme.String() }>
 		<head>
 			@head(c, p)
 		</head>

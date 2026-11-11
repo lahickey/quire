@@ -111,6 +111,6 @@ A cached body is compressed once, as brotli or gzip, and stored that way. A body
 
 ### Scripts
 
-`/_quire/quire.js` holds the theme and soft navigation. It is a classic script loaded in the head, so the theme is set before the first paint.
+`/_quire/quire.js` holds the stored theme, soft navigation and any plugin scripts. It is a classic script loaded in the head, so the theme is set before the first paint.
 Datastar is an ES module linked beside it.
 Soft navigation replaces `main` and nothing else, so the header and anything in it lasts for the life of the tab.
