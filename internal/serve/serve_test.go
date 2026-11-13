@@ -117,9 +117,11 @@ func TestStore(t *testing.T) {
 	s := NewStore(0, 0, false, "")
 	if err := s.Load(fstest.MapFS{
 		name: {Data: []byte("webp")},
-		journal.JournalName: {Data: journal.WriteJournal([]journal.Record{{Name: "a.jpg", Kind: journal.KindPicture, Formats: []journal.Variants{
-			{Ext: "webp", Type: "image/webp", Out: []journal.Variant{{Name: name, W: 64, Size: 4}}},
-		}}})},
+		journal.JournalName: {Data: journal.WriteJournal([]journal.Record{{
+			Name: "a.jpg", Kind: journal.KindPicture,
+			Files:   []journal.File{{Name: name, W: 64, Size: 4}},
+			Picture: journal.Picture{Format: journal.Format{Ext: "webp", Type: "image/webp"}},
+		}})},
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -2,27 +2,27 @@ package ui
 
 import "github.com/lahickey/quire/model"
 
-templ img(im model.Image, alt string, a templ.Attributes) {
-	if im.Src() != "" {
-		<img { a... } alt={ alt }/>
-	}
-}
-
-templ priorityImg(im model.Image, slot model.Slot, alt string) {
-	@img(im, alt, im.PriorityAttrs(slot))
-}
-
-templ Img(im model.Image, slot model.Slot, alt string) {
-	@img(im, alt, im.Attrs(slot))
-}
-
-templ LazyFigure(im model.Image, alt, caption string) {
+templ figure(im model.Image, slot model.Slot, alt, caption string, priority bool) {
 	if im.Hash != "" {
-		<figure class="figure">
-			@Img(im, model.SlotPage, alt)
+		<figure class={ figureClass(slot) }>
+			<img { im.Attrs(slot, priority)... } alt={ alt }/>
 			if caption != "" {
 				<figcaption>{ caption }</figcaption>
 			}
 		</figure>
 	}
+}
+
+templ Img(im model.Image, slot model.Slot, alt string) {
+	if im.Hash != "" {
+		<img { im.Attrs(slot, false)... } alt={ alt }/>
+	}
+}
+
+templ LazyFigure(im model.Image, alt, caption string) {
+	@figure(im, model.SlotPage, alt, caption, false)
+}
+
+templ HeroFigure(im model.Image, slot model.Slot, alt, caption string) {
+	@figure(im, slot, alt, caption, true)
 }

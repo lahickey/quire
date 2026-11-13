@@ -32,11 +32,10 @@ func Encode(img image.Image, width int, f journal.Format) ([]byte, error) {
 	return encoders[f.Ext].encode(resizeWidth(img, width), f)
 }
 
-func Variants(m journal.MasterMeta) []journal.Variants {
-	f := formatWebP
-	vs := journal.Variants{Ext: f.Ext, Type: f.Type, Q: f.Quality}
+func Variants(m journal.MasterMeta, f journal.Format) []journal.File {
+	var out []journal.File
 	for _, w := range journal.LadderFor(m.W) {
-		vs.Out = append(vs.Out, journal.Variant{Name: fileName(m.Hash, w, f, encoders[f.Ext].codec()), W: w})
+		out = append(out, journal.File{Name: fileName(m.Hash, w, f, encoders[f.Ext].codec()), W: w})
 	}
-	return []journal.Variants{vs}
+	return out
 }

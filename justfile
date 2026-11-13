@@ -10,7 +10,7 @@ _default:
 fmt:
     @cd {{ dir }} && gofmt -w .
     @cd {{ dir }} && go tool templ fmt .
-    @cd {{ dir }} && sed -i 's/\t/  /g' $(git ls-files -co --exclude-standard '*.md')
+    @cd {{ dir }} && sed -i 's/\t/  /g' $(git ls-files '*.md')
 
 # Use the committed hooks in .githooks. Run once per clone.
 hooks:
@@ -22,7 +22,7 @@ generate:
 
 # gopls check prints diagnostics and exits 0; treat any output as failure. A tab in Markdown fails too; `just fmt` expands it.
 check:
-    @cd {{ dir }} && ! git grep --untracked -nP '\t' -- '*.md'
+    @cd {{ dir }} && ! git grep -nP '\t' -- '*.md'
     @cd {{ dir }} && go vet ./...
     @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /site)
     @cd {{ dir }} && go vet -tags release ./internal/bake

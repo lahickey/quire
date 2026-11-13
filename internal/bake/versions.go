@@ -1,10 +1,10 @@
 package bake
 
 var converters = []converter{
-	{"markdown", 3, "ce4c2a038f325008"},
-	{"diagram", 1, "32ff824c256af489"},
-	{"card", 1, "627683148db2ae9f"},
-	{"picture", 1, "8a6626e549e73e11"},
+	{"markdown", 3, "8c403ecbfef34760"},
+	{"diagram", 1, "9664dafd90b39955"},
+	{"card", 1, "62f16c70e3628e9f"},
+	{"picture", 1, "d07796946d6b9e39"},
 }
 
 type converter struct {

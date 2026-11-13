@@ -87,17 +87,6 @@ templ Contents(heads []model.Heading) {
 	}
 }
 
-templ HeroFigure(im model.Image, slot model.Slot, alt, caption string) {
-	if im.Hash != "" {
-		<figure class={ figureClass(slot) }>
-			@priorityImg(im, slot, alt)
-			if caption != "" {
-				<figcaption>{ caption }</figcaption>
-			}
-		</figure>
-	}
-}
-
 templ Tags(ts []model.Marker) {
 	if len(ts) > 0 {
 		<div class="tags-list">

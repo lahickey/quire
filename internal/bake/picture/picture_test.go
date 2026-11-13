@@ -64,7 +64,7 @@ func TestVariantNameCoversTheEncode(t *testing.T) {
 		"quality": fileName("h", 1280, softer, "c"),
 		"width":   fileName("h", 704, formatJPEG, "c"),
 		"master":  fileName("other", 1280, formatJPEG, "c"),
-		"format":  fileName("h", 1280, formatWebP, "c"),
+		"format":  fileName("h", 1280, FormatWebP, "c"),
 		"codec":   fileName("h", 1280, formatJPEG, "c@2"),
 	} {
 		if got == same {

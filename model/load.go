@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"fmt"
 	"path"
 	"strings"
@@ -10,18 +9,14 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-func decodeYAML(data []byte, dst any) error {
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	return dec.Decode(dst)
-}
-
 func load[T any](baked []journal.Document) ([]Document[T], error) {
 	out := make([]Document[T], 0, len(baked))
 	bySlug := map[string]string{}
 	for _, b := range baked {
 		var meta T
-		if err := decodeYAML([]byte(b.Front), &meta); err != nil {
+		dec := yaml.NewDecoder(strings.NewReader(b.Front))
+		dec.KnownFields(true)
+		if err := dec.Decode(&meta); err != nil {
 			return nil, fmt.Errorf("%s: frontmatter: %w", b.Path, err)
 		}
 		slug := strings.TrimSuffix(path.Base(b.Path), path.Ext(b.Path))

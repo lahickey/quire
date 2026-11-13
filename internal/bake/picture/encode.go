@@ -19,7 +19,7 @@ var encodes atomic.Int64
 
 var encoders = map[string]encoder{
 	formatJPEG.Ext: jpegEncoder{},
-	formatWebP.Ext: webpEncoder{},
+	FormatWebP.Ext: webpEncoder{},
 }
 
 type encoder interface {

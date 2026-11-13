@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 	"path"
 	"path/filepath"
 	"slices"
@@ -25,18 +26,6 @@ const (
 	SlotBleed
 )
 
-type SlotSpec struct {
-	Width int
-	Sizes string
-}
-
-type imgRef struct {
-	slot     Slot
-	w        int
-	bot, top int
-	sizes    string
-}
-
 type Image struct {
 	Name   string
 	Hash   string
@@ -44,8 +33,8 @@ type Image struct {
 	Height int
 	Alpha  bool
 	files  map[int]string
-	refs   []imgRef
 	rungs  []int
+	scale  Scale
 }
 
 func window(rungs []int, bot, top int) []int {
@@ -75,32 +64,6 @@ func (im Image) shareURL() string {
 	return ImageURL(im.files[w])
 }
 
-func (im Image) ref(slot Slot) (imgRef, bool) {
-	for _, r := range im.refs {
-		if r.slot == slot {
-			return r, true
-		}
-	}
-	return imgRef{}, false
-}
-
-func (im Image) attrs(slot Slot, priority bool) templ.Attributes {
-	a := templ.Attributes{
-		"src":      im.URL(slot),
-		"srcset":   im.SrcSet(slot),
-		"sizes":    im.Sizes(slot),
-		"width":    strconv.Itoa(im.Width),
-		"height":   strconv.Itoa(im.Height),
-		"decoding": "async",
-	}
-	if priority {
-		a["fetchpriority"] = "high"
-	} else {
-		a["loading"] = "lazy"
-	}
-	return a
-}
-
 func (s Slot) String() string {
 	switch s {
 	case SlotThumb:
@@ -123,81 +86,58 @@ func ImageURL(file string) string { return ImagePath + file }
 
 func NewImage(rec journal.Record, sc Scale) Image {
 	base := path.Base(filepath.ToSlash(rec.Name))
-	stem := strings.TrimSuffix(base, path.Ext(base))
-	m := rec.Prep
-	var rungs []int
 	files := map[int]string{}
-	for _, v := range rec.Formats[len(rec.Formats)-1].Out {
+	for _, v := range rec.Files {
 		files[v.W] = v.Name
-		rungs = append(rungs, v.W)
 	}
-	slices.Sort(rungs)
-	slots := sc.Slots()
-	refs := make([]imgRef, 0, len(slots))
-	for s := SlotThumb; s <= SlotBleed; s++ {
-		spec := slots[s]
-		refs = append(refs, imgRef{
-			slot:  s,
-			w:     journal.Snap(rungs, spec.Width),
-			bot:   min(sc.bottom(s), spec.Width),
-			top:   max(sc.top(s), spec.Width),
-			sizes: spec.Sizes,
-		})
-	}
+	m := rec.Picture.Master
 	return Image{
-		Name:   stem,
+		Name:   strings.TrimSuffix(base, path.Ext(base)),
 		Hash:   m.Hash,
 		Width:  m.W,
 		Height: m.H,
 		Alpha:  m.Alpha,
 		files:  files,
-		refs:   refs,
-		rungs:  rungs,
+		rungs:  slices.Sorted(maps.Keys(files)),
+		scale:  sc,
 	}
 }
 
 func (im Image) URL(slot Slot) string {
-	r, ok := im.ref(slot)
-	if !ok {
-		return ""
-	}
-	name, ok := im.files[r.w]
+	name, ok := im.files[journal.Snap(im.rungs, 2*im.scale.display(slot))]
 	if !ok {
 		return ""
 	}
 	return ImageURL(name)
 }
 
-func (im Image) Src() string {
-	if len(im.refs) == 0 {
-		return ""
-	}
-	return im.URL(im.refs[len(im.refs)-1].slot)
-}
-
 func (im Image) SrcSet(slot Slot) string {
-	r, ok := im.ref(slot)
-	if !ok || len(im.rungs) == 0 {
+	if len(im.rungs) == 0 {
 		return ""
 	}
+	w := 2 * im.scale.display(slot)
 	var parts []string
-	for _, w := range window(im.rungs, r.bot, r.top) {
-		parts = append(parts, fmt.Sprintf("%s %dw", ImageURL(im.files[w]), w))
+	for _, r := range window(im.rungs, min(im.scale.bottom(slot), w), max(im.scale.top(slot), w)) {
+		parts = append(parts, fmt.Sprintf("%s %dw", ImageURL(im.files[r]), r))
 	}
 	return strings.Join(parts, ", ")
 }
 
-func (im Image) Sizes(slot Slot) string {
-	if r, ok := im.ref(slot); ok {
-		return r.sizes
+func (im Image) Sizes(slot Slot) string { return im.scale.sizes(slot) }
+
+func (im Image) Attrs(slot Slot, priority bool) templ.Attributes {
+	a := templ.Attributes{
+		"src":      im.URL(slot),
+		"srcset":   im.SrcSet(slot),
+		"sizes":    im.Sizes(slot),
+		"width":    strconv.Itoa(im.Width),
+		"height":   strconv.Itoa(im.Height),
+		"decoding": "async",
 	}
-	return "100vw"
-}
-
-func (im Image) Attrs(slot Slot) templ.Attributes {
-	return im.attrs(slot, false)
-}
-
-func (im Image) PriorityAttrs(slot Slot) templ.Attributes {
-	return im.attrs(slot, true)
+	if priority {
+		a["fetchpriority"] = "high"
+	} else {
+		a["loading"] = "lazy"
+	}
+	return a
 }

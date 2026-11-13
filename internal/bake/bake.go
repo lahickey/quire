@@ -66,16 +66,16 @@ func apart(content, dir string) error {
 	return nil
 }
 
-func (b *Run) single(name, key string, kind journal.Kind, f journal.Format, make func() ([]byte, error)) ([]byte, error) {
-	if rec, ok := b.made[name]; ok {
-		file, _ := rec.File()
+func (b *Run) single(rec journal.Record, ext string, make func() ([]byte, error)) ([]byte, error) {
+	if made, ok := b.made[rec.Name]; ok {
+		file, _ := made.File()
 		return b.cache.Read(file)
 	}
-	if prev := b.done[name]; prev.Key == key {
+	if prev := b.done[rec.Name]; prev.Key == rec.Key {
 		if file, ok := prev.File(); ok {
 			if body, err := b.cache.Read(file); err == nil {
-				b.made[name] = prev
-				report(name, 0, 1)
+				b.made[rec.Name] = prev
+				report(rec.Name, 0, 1)
 				return body, nil
 			}
 		}
@@ -84,13 +84,13 @@ func (b *Run) single(name, key string, kind journal.Kind, f journal.Format, make
 	if err != nil {
 		return nil, err
 	}
-	file := journal.Hash(body) + "." + f.Ext
+	file := journal.Hash(body) + "." + ext
 	if err := b.cache.Write(file, body); err != nil {
 		return nil, err
 	}
-	out := journal.Variants{Ext: f.Ext, Type: f.Type, Less: f.Lossless, Out: []journal.Variant{{Name: file, Size: int64(len(body))}}}
-	b.made[name] = journal.Record{Name: name, Kind: kind, Key: key, Formats: []journal.Variants{out}}
-	report(name, 1, 0)
+	rec.Files = []journal.File{{Name: file, Size: int64(len(body))}}
+	b.made[rec.Name] = rec
+	report(rec.Name, 1, 0)
 	return body, nil
 }
 
@@ -100,7 +100,7 @@ func (b *Run) document(name string, fences []string) (journal.Document, error) {
 		return journal.Document{}, err
 	}
 	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("markdown"), strings.Join(fences, "\x00"), raw))
-	body, err := b.single(name, key, journal.KindDocument, journal.Format{Ext: "json"}, func() ([]byte, error) {
+	body, err := b.single(journal.Record{Name: name, Kind: journal.KindDocument, Key: key}, "json", func() ([]byte, error) {
 		d, err := markdown.Convert(name, raw, fences)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
@@ -125,7 +125,7 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 		img, err = picture.Read(name, src, journal.MasterCap)
 		return err
 	}
-	m := b.done[name].Prep
+	m := b.done[name].Picture.Master
 	if b.done[name].Key != key {
 		if err := decode(); err != nil {
 			return journal.Record{}, 0, err
@@ -133,35 +133,34 @@ func (b *Run) work(name string) (journal.Record, int, error) {
 		m = picture.Describe(img, src, hash)
 	}
 
-	fmts := picture.Variants(m)
-
+	f := picture.FormatWebP
+	rec := journal.Record{
+		Name: name, Kind: journal.KindPicture, Key: key,
+		Files: picture.Variants(m, f), Picture: journal.Picture{Master: m, Format: f},
+	}
 	made := 0
-	for i := range fmts {
-		f := fmts[i].Format()
-		for j := range fmts[i].Out {
-			v := &fmts[i].Out[j]
-
-			if size, ok := b.cache.Size(v.Name); ok && size > 0 {
-				v.Size = size
-				continue
-			}
-			if img == nil {
-				if err := decode(); err != nil {
-					return journal.Record{}, 0, err
-				}
-			}
-			body, err := picture.Encode(img, v.W, f)
-			if err != nil {
-				return journal.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
-			}
-			if err := b.cache.Write(v.Name, body); err != nil {
+	for i := range rec.Files {
+		v := &rec.Files[i]
+		if size, ok := b.cache.Size(v.Name); ok && size > 0 {
+			v.Size = size
+			continue
+		}
+		if img == nil {
+			if err := decode(); err != nil {
 				return journal.Record{}, 0, err
 			}
-			v.Size = int64(len(body))
-			made++
 		}
+		body, err := picture.Encode(img, v.W, f)
+		if err != nil {
+			return journal.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
+		}
+		if err := b.cache.Write(v.Name, body); err != nil {
+			return journal.Record{}, 0, err
+		}
+		v.Size = int64(len(body))
+		made++
 	}
-	return journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Prep: m, Formats: fmts}, made, nil
+	return rec, made, nil
 }
 
 func (b *Run) encode() (map[string]journal.Record, error) {
@@ -188,7 +187,7 @@ func (b *Run) encode() (map[string]journal.Record, error) {
 					first = err
 				case err == nil:
 					records[rec.Name] = rec
-					report(rec.Name, made, len(rec.Files())-made)
+					report(rec.Name, made, len(rec.Files)-made)
 				}
 				mu.Unlock()
 			}
@@ -236,12 +235,13 @@ func (b *Run) Master(name string) (journal.Record, error) {
 		return journal.Record{}, err
 	}
 	b.wanted[name] = st.Size()
-	return journal.Record{Name: name, Formats: picture.Variants(journal.MasterMeta{})}, nil
+	return journal.Record{Name: name}, nil
 }
 
 func (b *Run) Diagram(src string) (string, error) {
 	name := journal.DiagramName(src, b.draw.FontID())
-	svg, err := b.single(name, journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram"))), journal.KindDiagram, journal.Format{Ext: "svg"}, func() ([]byte, error) {
+	key := journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram")))
+	svg, err := b.single(journal.Record{Name: name, Kind: journal.KindDiagram, Key: key}, "svg", func() ([]byte, error) {
 		svg, err := b.draw.Render(src)
 		if err != nil {
 			first, _, _ := strings.Cut(strings.TrimSpace(src), "\n")
@@ -290,7 +290,8 @@ func (b *Run) Finish() error {
 func (b *Run) Card(name string, c model.ShareCard) error {
 	text, _ := json.Marshal(c)
 	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("card"), b.draw.FontID(), text))
-	_, err := b.single(name, key, journal.KindPicture, picture.FormatPNG, func() ([]byte, error) {
+	f := picture.FormatPNG
+	_, err := b.single(journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Picture: journal.Picture{Format: f}}, f.Ext, func() ([]byte, error) {
 		img, err := card.Draw(c, b.draw)
 		if err != nil {
 			return nil, fmt.Errorf("quire: %s: %w", name, err)

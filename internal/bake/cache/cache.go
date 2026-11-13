@@ -90,7 +90,7 @@ func (d Dir) CopyOut(dest string, records []journal.Record) error {
 	}
 	out := Dir(tmp)
 	for _, r := range records {
-		for _, v := range r.Files() {
+		for _, v := range r.Files {
 			if err := d.link(out, v.Name); err != nil {
 				return err
 			}

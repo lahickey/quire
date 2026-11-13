@@ -1,9 +1,6 @@
 package journal
 
-import (
-	"fmt"
-	"slices"
-)
+import "fmt"
 
 const (
 	MasterCap  = 2560
@@ -14,10 +11,8 @@ const (
 var ladder = []int{64, 128, 232, 408, 680, 1096, 1704, MasterCap}
 
 func PictureKey(version int, srcDigest string) string {
-	return Hash(fmt.Appendf(nil, "v=%d\nsrc=%s\nladder=%v\n", version, srcDigest, ladder))
+	return Hash(fmt.Appendf(nil, "v=%d\nsrc=%s\n", version, srcDigest))
 }
-
-func Ladder() []int { return slices.Clone(ladder) }
 
 func LadderFor(masterW int) []int {
 	if masterW < 1 {

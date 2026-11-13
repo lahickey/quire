@@ -17,7 +17,7 @@ import (
 const (
 	JournalName    = "journal.jsonl"
 	journalMagic   = "quire-variants"
-	journalVersion = 3
+	journalVersion = 4
 )
 
 const SiteCard = "card"
@@ -31,42 +31,38 @@ const (
 )
 
 type Format struct {
-	Ext      string
-	Type     string
-	Quality  int
-	Alpha    bool
-	Lossless bool
+	Ext      string `json:"ext"`
+	Type     string `json:"type"`
+	Quality  int    `json:"quality,omitzero"`
+	Lossless bool   `json:"lossless,omitzero"`
 }
 
 type MasterMeta struct {
-	Hash  string `json:"h"`
-	W     int    `json:"w"`
-	H     int    `json:"y"`
-	SrcW  int    `json:"sw,omitzero"`
-	SrcH  int    `json:"sh,omitzero"`
-	Alpha bool   `json:"a,omitzero"`
+	Hash  string `json:"hash"`
+	W     int    `json:"width"`
+	H     int    `json:"height"`
+	SrcW  int    `json:"srcWidth,omitzero"`
+	SrcH  int    `json:"srcHeight,omitzero"`
+	Alpha bool   `json:"alpha,omitzero"`
 }
 
-type Variant struct {
-	Name string `json:"k"`
-	W    int    `json:"w"`
-	Size int64  `json:"n"`
+type Picture struct {
+	Master MasterMeta `json:"master,omitzero"`
+	Format Format     `json:"format"`
 }
 
-type Variants struct {
-	Ext  string    `json:"f"`
-	Type string    `json:"t"`
-	Q    int       `json:"q,omitzero"`
-	Less bool      `json:"l,omitzero"`
-	Out  []Variant `json:"out"`
+type File struct {
+	Name string `json:"name"`
+	W    int    `json:"width,omitzero"`
+	Size int64  `json:"size"`
 }
 
 type Record struct {
-	Name    string     `json:"name"`
-	Kind    Kind       `json:"kind"`
-	Key     string     `json:"key"`
-	Prep    MasterMeta `json:"prep,omitzero"`
-	Formats []Variants `json:"formats"`
+	Name    string  `json:"name"`
+	Kind    Kind    `json:"kind"`
+	Key     string  `json:"key"`
+	Files   []File  `json:"files"`
+	Picture Picture `json:"picture,omitzero"`
 }
 
 type journalHeader struct {
@@ -111,23 +107,11 @@ func DiagramName(src, fontID string) string {
 	return "mermaid/" + Hash([]byte(fontID+"\x00"+strings.TrimSpace(src)))
 }
 
-func (vs Variants) Format() Format {
-	return Format{Ext: vs.Ext, Type: vs.Type, Quality: vs.Q, Lossless: vs.Less}
-}
-
 func (r Record) File() (string, bool) {
-	if len(r.Formats) != 1 || len(r.Formats[0].Out) != 1 {
+	if len(r.Files) != 1 {
 		return "", false
 	}
-	return r.Formats[0].Out[0].Name, true
-}
-
-func (r Record) Files() []Variant {
-	var out []Variant
-	for _, vs := range r.Formats {
-		out = append(out, vs.Out...)
-	}
-	return out
+	return r.Files[0].Name, true
 }
 
 func LoadJournal(fsys fs.FS) (map[string]Record, error) {

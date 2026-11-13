@@ -73,7 +73,7 @@ func TestDirectoriesMustNotOverlap(t *testing.T) {
 func TestAMissingVariantIsEncodedAgain(t *testing.T) {
 	s := model.BakeSpec{Content: photoMasters(t, "a.png"), Dir: t.TempDir()}
 	bakeCounted(t, s)
-	name := testkit.ReadJournal(t, s.Cache())["a.png"].Formats[0].Out[0].Name
+	name := testkit.ReadJournal(t, s.Cache())["a.png"].Files[0].Name
 	if err := os.Remove(filepath.Join(s.Cache(), name)); err != nil {
 		t.Fatal(err)
 	}

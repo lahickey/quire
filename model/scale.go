@@ -117,11 +117,3 @@ func (s Scale) Measure() int { return s.pageWidth(pageCols) }
 func (s Scale) Wide() int { return s.pageWidth(wideCols) }
 
 func (s Scale) Full() int { return s.pageWidth(fullCols) }
-
-func (s Scale) Slots() map[Slot]SlotSpec {
-	out := map[Slot]SlotSpec{}
-	for slot := SlotThumb; slot <= SlotBleed; slot++ {
-		out[slot] = SlotSpec{Width: journal.Snap(journal.Ladder(), 2*s.display(slot)), Sizes: s.sizes(slot)}
-	}
-	return out
-}

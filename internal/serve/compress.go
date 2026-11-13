@@ -3,6 +3,7 @@ package serve
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,46 +34,26 @@ func compressible(ct string, n int) bool {
 	return false
 }
 
-func gzipBody(body []byte, ct string) []byte {
+func compressed(body []byte, ct, coding string, quality int) ([]byte, string) {
 	if !compressible(ct, len(body)) {
-		return nil
+		return body, ""
 	}
 	var buf bytes.Buffer
-	zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	var zw io.WriteCloser
+	switch coding {
+	case "br":
+		zw = brotli.NewWriterLevel(&buf, quality)
+	case "gzip":
+		zw, _ = gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	default:
+		return body, ""
+	}
 	_, _ = zw.Write(body)
 	_ = zw.Close()
 	if buf.Len() >= len(body) {
-		return nil
-	}
-	return buf.Bytes()
-}
-
-func brotliBytes(body []byte, quality int) []byte {
-	var buf bytes.Buffer
-	bw := brotli.NewWriterLevel(&buf, quality)
-	_, _ = bw.Write(body)
-	_ = bw.Close()
-	if buf.Len() >= len(body) {
-		return nil
-	}
-	return bytes.Clone(buf.Bytes())
-}
-
-func compressed(body []byte, ct, coding string, quality int) ([]byte, string) {
-	if coding == "" || !compressible(ct, len(body)) {
 		return body, ""
 	}
-	var out []byte
-	switch coding {
-	case "br":
-		out = brotliBytes(body, quality)
-	case "gzip":
-		out = gzipBody(body, ct)
-	}
-	if len(out) == 0 {
-		return body, ""
-	}
-	return out, coding
+	return buf.Bytes(), coding
 }
 
 func accepted(r *http.Request, offer ...string) string {

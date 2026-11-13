@@ -73,7 +73,7 @@ func mounted(t *testing.T, files fs.FS, name string) (model.Image, *Engine) {
 }
 
 func rungFile(r journal.Record, w int) string {
-	for _, v := range r.Formats[len(r.Formats)-1].Out {
+	for _, v := range r.Files {
 		if v.W == w {
 			return v.Name
 		}
@@ -528,7 +528,7 @@ func TestDiagrams(t *testing.T) {
 			continue
 		}
 		kept = append(kept, r)
-		for _, v := range r.Files() {
+		for _, v := range r.Files {
 			body, err := os.ReadFile(filepath.Join(out, v.Name))
 			if err != nil {
 				t.Fatal(err)

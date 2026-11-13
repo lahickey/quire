@@ -109,20 +109,14 @@ func modified(m Meta) string {
 }
 
 func images[T Metadata](image func(string) (Image, error), id string, docs []Document[T]) error {
-	seen := map[string]Image{}
 	for i, d := range docs {
 		name := d.Meta.Base().Image
 		if name == "" {
 			continue
 		}
-		name = journal.Resolve(d.Path, name)
-		im, ok := seen[name]
-		if !ok {
-			var err error
-			if im, err = image(name); err != nil {
-				return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
-			}
-			seen[name] = im
+		im, err := image(journal.Resolve(d.Path, name))
+		if err != nil {
+			return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
 		}
 		docs[i].Image = im
 	}

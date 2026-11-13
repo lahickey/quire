@@ -84,10 +84,8 @@ func (s *Store) Load(fsys fs.FS) error {
 		if rec.Kind != journal.KindPicture {
 			continue
 		}
-		for _, vs := range rec.Formats {
-			for _, v := range vs.Out {
-				s.byKey[v.Name] = variant{format: vs.Format(), size: v.Size}
-			}
+		for _, v := range rec.Files {
+			s.byKey[v.Name] = variant{format: rec.Picture.Format, size: v.Size}
 		}
 	}
 	return nil

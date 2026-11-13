@@ -27,9 +27,6 @@ func (e *Engine) addImage(name string) (model.Image, error) {
 	if err != nil {
 		return model.Image{}, err
 	}
-	if len(r.Formats) == 0 {
-		return model.Image{}, fmt.Errorf("quire: image %s names no formats", name)
-	}
 	im := model.NewImage(r, e.scale)
 	e.images[name] = im
 	return im, nil
@@ -37,7 +34,7 @@ func (e *Engine) addImage(name string) (model.Image, error) {
 
 func (e *Engine) picture(name, alt, caption string, figure bool) (string, error) {
 	im, err := e.addImage(name)
-	if err != nil || im.Hash == "" {
+	if err != nil {
 		return "", err
 	}
 	c := ui.Img(im, model.SlotPage, alt)
