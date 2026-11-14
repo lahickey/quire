@@ -39,7 +39,7 @@ An `Option` changes engine behaviour.
 - `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
 - `WithSiteCard` changes the share card the bake draws.
 - `WithBake` says where the content and the bake's output live. See [Baking](./bake.md).
-- `WithMode` and `WithDrafts` are what `--dev` and `--drafts` set.
+- `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
 
 Datastar is always linked.
 `Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.

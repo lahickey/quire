@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/journal"
 )
 
 type Marker struct {
@@ -31,7 +30,11 @@ type Meta struct {
 	Tags     []string `yaml:"tag"`
 }
 
-type Heading = journal.Heading
+type Heading struct {
+	Level int
+	Text  string
+	ID    string
+}
 
 type Widget = func(info, body string) (string, error)
 
@@ -54,7 +57,7 @@ type Collection[T Metadata] struct {
 	bySlug map[string]Document[T]
 	site   Site
 	kicker func(Document[T]) string
-	tags   *Classifier
+	kinds  map[string]string
 }
 
 type Spec[T Metadata] struct {
@@ -63,7 +66,7 @@ type Spec[T Metadata] struct {
 	Description string
 	Markdown    string
 	Widgets     map[string]Widget
-	Classifier  *Classifier
+	Tags        Tags
 	Kicker      func(Document[T]) string
 	Sort        func(a, b Document[T]) int
 	Index       func(Shell, *Collection[T]) templ.Component
@@ -87,40 +90,11 @@ func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	return docs[:n]
 }
 
-func checkTags[T Metadata](id string, docs []Document[T], c *Classifier) error {
-	if c == nil {
-		return nil
-	}
-	var tags []string
-	for _, d := range docs {
-		tags = append(tags, d.Meta.Base().Tags...)
-	}
-	if err := c.check(tags...); err != nil {
-		return fmt.Errorf("%s: %w", id, err)
-	}
-	return nil
-}
-
 func modified(m Meta) string {
 	if mod := m.LastMod(); !mod.Equal(m.Date.Time) {
 		return mod.ISO()
 	}
 	return ""
-}
-
-func images[T Metadata](image func(string) (Image, error), id string, docs []Document[T]) error {
-	for i, d := range docs {
-		name := d.Meta.Base().Image
-		if name == "" {
-			continue
-		}
-		im, err := image(journal.Resolve(d.Path, name))
-		if err != nil {
-			return fmt.Errorf("%s/%s: %w", id, d.Slug, err)
-		}
-		docs[i].Image = im
-	}
-	return nil
 }
 
 func (m Meta) Base() Meta { return m }
@@ -215,21 +189,33 @@ func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
 
 func (c *Collection[T]) Kicker(d Document[T]) string { return c.kicker(d) }
 
-func (c *Collection[T]) Tags(d Document[T]) []Marker { return c.tags.Markers(d.Meta.Base().Tags) }
+func (c *Collection[T]) Tags(d Document[T]) []Marker {
+	tags := d.Meta.Base().Tags
+	out := make([]Marker, len(tags))
+	for i, t := range tags {
+		out[i] = Marker{Text: t, Kind: c.kinds[tagKey(t)]}
+	}
+	return out
+}
 
-func Collect[T Metadata](spec Spec[T], baked []journal.Document, image func(string) (Image, error), site Site, drafts bool) (*Collection[T], error) {
+func Collect[T Metadata](spec Spec[T], docs []Document[T], site Site, drafts bool) (*Collection[T], error) {
 	if spec.ID == "" {
 		return nil, fmt.Errorf("collection: empty ID")
 	}
-	docs, err := load[T](baked)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkTags(spec.ID, docs, spec.Classifier); err != nil {
-		return nil, err
-	}
-	if err := images(image, spec.ID, docs); err != nil {
-		return nil, err
+	kinds := spec.Tags.kinds()
+	if spec.Tags != nil {
+		var unknown []string
+		for _, d := range docs {
+			for _, t := range d.Meta.Base().Tags {
+				if _, ok := kinds[tagKey(t)]; !ok && tagKey(t) != "" {
+					unknown = append(unknown, t)
+				}
+			}
+		}
+		if len(unknown) > 0 {
+			slices.Sort(unknown)
+			return nil, fmt.Errorf("%s: unclassified: %s", spec.ID, strings.Join(slices.Compact(unknown), ", "))
+		}
 	}
 	docs = published(docs, drafts)
 	sort := spec.Sort
@@ -240,7 +226,7 @@ func Collect[T Metadata](spec Spec[T], baked []journal.Document, image func(stri
 	col := &Collection[T]{
 		id: spec.ID, title: spec.Title, desc: spec.Description, site: site,
 		docs: docs, bySlug: make(map[string]Document[T], len(docs)),
-		kicker: spec.Kicker, tags: spec.Classifier,
+		kicker: spec.Kicker, kinds: kinds,
 	}
 	for _, d := range docs {
 		col.bySlug[d.Slug] = d

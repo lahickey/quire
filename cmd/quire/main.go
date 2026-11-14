@@ -12,6 +12,7 @@ import (
 
 const usage = `usage: quire <command>
 commands:
+  new [flags] <dir>             start a site from an example
   ingest <dir> <name> <file>    write a web master
 
 A site bakes itself when it runs; go run . bake bakes and exits.`
@@ -52,6 +53,8 @@ func main() {
 		log.Fatal(usage)
 	}
 	switch os.Args[1] {
+	case "new":
+		newSite(os.Args[2:])
 	case "ingest":
 		ingest(os.Args[2:])
 	default:

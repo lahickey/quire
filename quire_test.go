@@ -216,7 +216,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 		e.AddPage("/contact", body("contact"))
 		e.AddPage("/", body("home"))
 		return err
-	}, WithMode(Dev))
+	}, WithDev(true))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,6 +298,16 @@ func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	}
 }
 
+func TestFrontmatterFailsLoad(t *testing.T) {
+	if _, err := load[note]([]journal.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
+		t.Error("an unknown frontmatter field loaded")
+	}
+	docs := []journal.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
+	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
+		t.Errorf("two documents with one slug loaded: %v", err)
+	}
+}
+
 func (p testPlugin) Name() string { return p.name }
 
 func (p testPlugin) Attach(m *plugin.Mount) error { return p.attach(m) }
@@ -352,7 +362,7 @@ func TestPluginScoping(t *testing.T) {
 	if err := New(model.Site{}).Use(testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
 		t.Error("a name that would break the prefix was accepted")
 	}
-	if err := New(model.Site{}, WithMode(Dev)).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
+	if err := New(model.Site{}, WithDev(true)).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
 		t.Error("a site plugin took the name reserved for Quire's own")
 	}
 

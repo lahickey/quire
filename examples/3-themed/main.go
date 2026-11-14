@@ -19,7 +19,7 @@ var static embed.FS
 
 // The tag vocabulary. Every tag in the frontmatter must be one of these or the
 // site fails to load, and each renders with a class for its kind (tag-lang, tag-topic).
-var kinds = model.NewClassifier(model.Exact("lang", "Go"), model.Exact("topic", "Design"))
+var kinds = model.Tags{"lang": {"Go"}, "topic": {"Design"}}
 
 // A widget turns a named markdown fence into HTML: a ```swatch fence becomes a
 // coloured chip. It runs at serve time, so changing it needs no rebake.
@@ -32,16 +32,16 @@ var widgets = map[string]model.Widget{
 // mount declares the site's content and pages. It runs at bake and at boot.
 func mount(e *quire.Engine) error {
 	// content/writing/*.md at /writing, with the default index and article.
-	notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing", Classifier: kinds, Widgets: widgets})
+	notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds, Widgets: widgets})
 	if err != nil {
 		return err
 	}
 	// content/projects/*.md at /projects, with its own index: a grid of cards.
 	projects, err := e.AddCollection(model.Basic{
-		ID:         "projects",
-		Title:      "Projects",
-		Classifier: kinds,
-		Index:      projectsPage,
+		ID:    "projects",
+		Title: "Projects",
+		Tags:  kinds,
+		Index: projectsPage,
 	})
 	if err != nil {
 		return err

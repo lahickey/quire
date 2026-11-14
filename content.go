@@ -16,7 +16,32 @@ import (
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/ui"
+	"go.yaml.in/yaml/v3"
 )
+
+func load[T any](baked []journal.Document) ([]model.Document[T], error) {
+	out := make([]model.Document[T], 0, len(baked))
+	bySlug := map[string]string{}
+	for _, b := range baked {
+		var meta T
+		dec := yaml.NewDecoder(strings.NewReader(b.Front))
+		dec.KnownFields(true)
+		if err := dec.Decode(&meta); err != nil {
+			return nil, fmt.Errorf("%s: frontmatter: %w", b.Path, err)
+		}
+		slug := strings.TrimSuffix(path.Base(b.Path), path.Ext(b.Path))
+		if other, taken := bySlug[slug]; taken {
+			return nil, fmt.Errorf("%s and %s share the slug %q", other, b.Path, slug)
+		}
+		bySlug[slug] = b.Path
+		headings := make([]model.Heading, len(b.Headings))
+		for i, h := range b.Headings {
+			headings[i] = model.Heading(h)
+		}
+		out = append(out, model.Document[T]{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: headings})
+	}
+	return out, nil
+}
 
 func (e *Engine) addImage(name string) (model.Image, error) {
 	name = path.Clean(filepath.ToSlash(name))
@@ -27,7 +52,12 @@ func (e *Engine) addImage(name string) (model.Image, error) {
 	if err != nil {
 		return model.Image{}, err
 	}
-	im := model.NewImage(r, e.scale)
+	files := map[int]string{}
+	for _, v := range r.Files {
+		files[v.W] = v.Name
+	}
+	m, base := r.Picture.Master, path.Base(name)
+	im := model.Image{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: e.scale}
 	e.images[name] = im
 	return im, nil
 }
@@ -95,11 +125,24 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	if err != nil {
 		return nil, err
 	}
-	col, err := model.Collect(spec, baked, e.addImage, e.chrome.Site, e.drafts)
+	docs, err := load[T](baked)
 	if err != nil {
 		return nil, err
 	}
-	docs := col.Docs()
+	for i, d := range docs {
+		name := d.Meta.Base().Image
+		if name == "" {
+			continue
+		}
+		if docs[i].Image, err = e.addImage(journal.Resolve(d.Path, name)); err != nil {
+			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
+		}
+	}
+	col, err := model.Collect(spec, docs, e.chrome.Site, e.drafts)
+	if err != nil {
+		return nil, err
+	}
+	docs = col.Docs()
 	if len(docs) == 0 {
 		return col, nil
 	}

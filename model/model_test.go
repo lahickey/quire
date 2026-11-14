@@ -3,16 +3,10 @@ package model
 import (
 	"fmt"
 	"math"
-	"strings"
 	"testing"
 
-	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/radix"
 )
-
-type note struct {
-	Meta `yaml:",inline"`
-}
 
 func apca(t *testing.T, text, bg string) float64 {
 	t.Helper()
@@ -33,12 +27,6 @@ func apca(t *testing.T, text, bg string) float64 {
 		return ((math.Pow(yb, 0.56)-math.Pow(yt, 0.57))*1.14 - 0.027) * 100
 	}
 	return ((math.Pow(yb, 0.65)-math.Pow(yt, 0.62))*1.14 + 0.027) * 100
-}
-
-func TestUnknownFrontmatterField(t *testing.T) {
-	if _, err := load[note]([]journal.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
-		t.Fatal("expected error")
-	}
 }
 
 func TestPalettes(t *testing.T) {
@@ -77,20 +65,17 @@ func TestPalettes(t *testing.T) {
 	Palette{Neutral: "slte"}.Check()
 }
 
-func TestDuplicateSlugFailsLoad(t *testing.T) {
-	docs := []journal.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
-	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
-		t.Fatalf("two documents with one slug loaded: %v", err)
+func TestTags(t *testing.T) {
+	tags := Tags{"lang": {"go", "c"}, "gfx": {" Vulkan "}}
+	doc := func(tags ...string) []Document[Meta] { return []Document[Meta]{{Slug: "a", Meta: Meta{Tags: tags}}} }
+	col, err := Collect(Basic{ID: "x", Tags: tags}, doc("Go", "vulkan"), Site{}, false)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestClassify(t *testing.T) {
-	c := NewClassifier(Exact("lang", "go", "c"), Exact("gfx", " Vulkan "))
-	for tag, want := range map[string]string{
-		"Go": "lang", "golang": "", "c": "lang", "cobol": "", "vulkan": "gfx", "": "",
-	} {
-		if got, _ := c.Classify(tag); got != want {
-			t.Errorf("%q classified %q, want %q", tag, got, want)
-		}
+	if got := col.Tags(col.Docs()[0]); got[0].Kind != "lang" || got[1].Kind != "gfx" {
+		t.Errorf("kinds %v", got)
+	}
+	if _, err := Collect(Basic{ID: "x", Tags: tags}, doc("golang"), Site{}, false); err == nil {
+		t.Error("a tag outside the vocabulary loaded")
 	}
 }

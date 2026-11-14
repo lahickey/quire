@@ -44,7 +44,7 @@ type source interface {
 
 type Engine struct {
 	chrome   model.Chrome
-	mode     Mode
+	dev      bool
 	drafts   bool
 	palette  model.Palette
 	scale    model.Scale
@@ -73,7 +73,7 @@ type Engine struct {
 }
 
 func (e *Engine) cacheControl(r *http.Request) string {
-	if e.mode == Dev || r.URL.Path == healthPath {
+	if e.dev || r.URL.Path == healthPath {
 		return "no-store"
 	}
 	return serve.CacheControl(r, e.versions)
@@ -143,11 +143,11 @@ func New(site model.Site, opts ...Option) *Engine {
 		panic("quire: fonts: " + err.Error())
 	}
 	e.fonts = set
-	e.bundle = serve.NewStore(imageMemory, imageMemoryLimit, e.mode == Dev, e.fonts.ID)
+	e.bundle = serve.NewStore(imageMemory, imageMemoryLimit, e.dev, e.fonts.ID)
 	e.from = e.bundle
-	e.pages = serve.NewPages(pageCache, e.mode == Dev)
+	e.pages = serve.NewPages(pageCache, e.dev)
 	e.route("GET "+healthPath, ownerQuire, serve.Health)
-	if e.mode == Dev {
+	if e.dev {
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			panic("quire: boot id: " + err.Error())
@@ -162,10 +162,10 @@ func New(site model.Site, opts ...Option) *Engine {
 func (e *Engine) Handler() http.Handler {
 	e.mountDefaults()
 	apex := e.chrome.Host()
-	if e.mode == Dev {
+	if e.dev {
 		apex = ""
 	}
-	secure := e.mode != Dev && strings.HasPrefix(e.chrome.BaseURL, "https://")
+	secure := !e.dev && strings.HasPrefix(e.chrome.BaseURL, "https://")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if target, ok := serve.Redirect(r, apex); ok {
 			w.Header().Set("Cache-Control", "no-cache")
@@ -197,11 +197,7 @@ func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
 	if flag.NArg() > 1 || (flag.NArg() == 1 && !baking) {
 		log.Fatalf("usage: %s [flags] [bake]", os.Args[0])
 	}
-	mode := Prod
-	if *dev {
-		mode = Dev
-	}
-	opts := append([]Option{WithMode(mode), WithDrafts(*drafts)}, extra...)
+	opts := append([]Option{WithDev(*dev), WithDrafts(*drafts)}, extra...)
 	if baking || (shipped == nil && canBake) {
 		if err := New(site, opts...).bake(mount); err != nil {
 			log.Fatal(err)

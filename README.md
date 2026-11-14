@@ -54,12 +54,19 @@ The result is one binary that carries the whole site and none of the image or di
 ## Examples
 
 Each example is a complete site, commented part by part, and each adds to the one before.
-To start a site of your own, copy the one nearest what you want, give the copy a `go.mod` as above, and `go run .` in it.
+`quire new` starts a site of your own from the one nearest what you want:
+
+```sh
+go run github.com/lahickey/quire/cmd/quire@latest new --from 3-themed mysite
+cd mysite && go run .
+```
+
+The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves that out). Without `--from` it is `1-minimal`.
 
 1. [`1-minimal`](./examples/1-minimal) — the site above.
 2. [`2-pictures`](./examples/2-pictures) — pictures and a diagram, from the markdown alone.
 3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
-4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates. A copy also changes the basket's import path to its own module.
+4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates.
 
 ## Documentation
 

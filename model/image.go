@@ -3,8 +3,6 @@ package model
 import (
 	"fmt"
 	"maps"
-	"path"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,9 +30,8 @@ type Image struct {
 	Width  int
 	Height int
 	Alpha  bool
-	files  map[int]string
-	rungs  []int
-	scale  Scale
+	Files  map[int]string
+	Scale  Scale
 }
 
 func window(rungs []int, bot, top int) []int {
@@ -51,17 +48,20 @@ func window(rungs []int, bot, top int) []int {
 	return rungs[min(lo, hi) : hi+1]
 }
 
+func (im Image) rungs() []int { return slices.Sorted(maps.Keys(im.Files)) }
+
 func (im Image) shareURL() string {
-	if len(im.rungs) == 0 {
+	rungs := im.rungs()
+	if len(rungs) == 0 {
 		return ""
 	}
-	w := im.rungs[0]
-	for _, r := range im.rungs {
+	w := rungs[0]
+	for _, r := range rungs {
 		if r <= journal.ShareWidth {
 			w = r
 		}
 	}
-	return ImageURL(im.files[w])
+	return ImageURL(im.Files[w])
 }
 
 func (s Slot) String() string {
@@ -84,27 +84,8 @@ func (s Slot) String() string {
 
 func ImageURL(file string) string { return ImagePath + file }
 
-func NewImage(rec journal.Record, sc Scale) Image {
-	base := path.Base(filepath.ToSlash(rec.Name))
-	files := map[int]string{}
-	for _, v := range rec.Files {
-		files[v.W] = v.Name
-	}
-	m := rec.Picture.Master
-	return Image{
-		Name:   strings.TrimSuffix(base, path.Ext(base)),
-		Hash:   m.Hash,
-		Width:  m.W,
-		Height: m.H,
-		Alpha:  m.Alpha,
-		files:  files,
-		rungs:  slices.Sorted(maps.Keys(files)),
-		scale:  sc,
-	}
-}
-
 func (im Image) URL(slot Slot) string {
-	name, ok := im.files[journal.Snap(im.rungs, 2*im.scale.display(slot))]
+	name, ok := im.Files[journal.Snap(im.rungs(), 2*im.Scale.display(slot))]
 	if !ok {
 		return ""
 	}
@@ -112,18 +93,19 @@ func (im Image) URL(slot Slot) string {
 }
 
 func (im Image) SrcSet(slot Slot) string {
-	if len(im.rungs) == 0 {
+	rungs := im.rungs()
+	if len(rungs) == 0 {
 		return ""
 	}
-	w := 2 * im.scale.display(slot)
+	w := 2 * im.Scale.display(slot)
 	var parts []string
-	for _, r := range window(im.rungs, min(im.scale.bottom(slot), w), max(im.scale.top(slot), w)) {
-		parts = append(parts, fmt.Sprintf("%s %dw", ImageURL(im.files[r]), r))
+	for _, r := range window(rungs, min(im.Scale.bottom(slot), w), max(im.Scale.top(slot), w)) {
+		parts = append(parts, fmt.Sprintf("%s %dw", ImageURL(im.Files[r]), r))
 	}
 	return strings.Join(parts, ", ")
 }
 
-func (im Image) Sizes(slot Slot) string { return im.scale.sizes(slot) }
+func (im Image) Sizes(slot Slot) string { return im.Scale.sizes(slot) }
 
 func (im Image) Attrs(slot Slot, priority bool) templ.Attributes {
 	a := templ.Attributes{

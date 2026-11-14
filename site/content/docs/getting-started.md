@@ -51,6 +51,9 @@ summary: The first post.
 Some words.
 ```
 
+> [!TIP]
+> `go run github.com/lahickey/quire/cmd/quire@latest new site` writes all of this for you, with a Dockerfile and a justfile beside it. See [Start from an example](#start-from-an-example).
+
 ## Run it
 
 ```sh
@@ -138,9 +141,24 @@ See [Baking](./bake.md) for the other ways to ship.
 - [Wiring](./wiring.md): the site's settings, options and routes.
 - [Plugins](./plugins.md): add behaviour, such as a basket or search.
 
+## Start from an example
+
 The repository's `examples/` are complete sites, each adding to the one before:
 
 - `1-minimal` is the site on this page.
 - `2-pictures` is the same code with pictures and a diagram in its content.
 - `3-themed` has a look of its own.
 - `4-plugin` is a shop with a basket plugin.
+
+`quire new` copies one into a new directory as a site of its own:
+
+```sh
+go run github.com/lahickey/quire/cmd/quire@latest new --from 4-plugin shop
+```
+
+- `--from` names the example. The default is `1-minimal`.
+- `--module` sets the module path. The default is the directory's name.
+- `--no-just` leaves out the justfile, which has `dev`, `serve`, `test`, `bake`, `build` and `run`.
+- `--replace <dir>` builds against a Quire checkout instead of a release.
+
+The copy also gets a Dockerfile that builds the shipped binary. Bake before building the image: `go run . bake`, or `just build`, which does both.

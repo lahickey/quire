@@ -5,16 +5,15 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/model"
 )
 
 func TestAddSplitsADocumentAtItsHeadings(t *testing.T) {
-	c, err := model.Collect(model.Basic{ID: "docs"}, []journal.Document{{
-		Path:  "docs/look.md",
-		Front: "title: The look\nsummary: Palette and fonts.",
-		HTML:  `<p>Intro &amp; more.</p><figure><svg><text>drawn</text></svg></figure><h2 id="palette">Palette</h2><pre><code><span>quire</span><span>.</span><span>Run</span></code></pre><h3 id="fonts">Fonts</h3><p>Inter.</p>`,
-	}}, nil, model.Site{}, false)
+	c, err := model.Collect(model.Basic{ID: "docs"}, []model.Document[model.Meta]{{
+		Slug: "look",
+		Meta: model.Meta{Title: "The look", Summary: "Palette and fonts."},
+		HTML: `<p>Intro &amp; more.</p><figure><svg><text>drawn</text></svg></figure><h2 id="palette">Palette</h2><pre><code><span>quire</span><span>.</span><span>Run</span></code></pre><h3 id="fonts">Fonts</h3><p>Inter.</p>`,
+	}}, model.Site{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

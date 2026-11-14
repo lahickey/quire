@@ -171,16 +171,22 @@ func TestExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	quire := build(t, "../cmd/quire")
 	for _, m := range mains {
-		dir, err := filepath.Abs(filepath.Dir(m))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Run(filepath.Base(dir), func(t *testing.T) {
+		name := filepath.Dir(m)
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cs, ok := checks[filepath.Base(dir)]
+			cs, ok := checks[name]
 			if !ok {
 				t.Fatal("no checks for this example")
+			}
+			dir := filepath.Join(t.TempDir(), name)
+			if out, err := exec.Command(quire, "new", "--from", name, "--replace", root, dir).CombinedOutput(); err != nil {
+				t.Fatalf("quire new: %v\n%s", err, out)
 			}
 			if !t.Run("bakes", func(t *testing.T) { serve(t, build(t, dir), dir, cs) }) {
 				return

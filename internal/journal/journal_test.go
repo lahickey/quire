@@ -15,7 +15,7 @@ func TestReadJournalRefusesDamage(t *testing.T) {
 	for what, body := range map[string]string{
 		"torn tail":       good + `{"name":"b.jpg","ke`,
 		"no header":       `{"name":"a.jpg","key":"k"}` + "\n",
-		"foreign version": `{"journal":"quire-variants","version":99}` + "\n" + strings.SplitN(good, "\n", 2)[1],
+		"foreign version": `{"journal":"quire-journal","version":99}` + "\n" + strings.SplitN(good, "\n", 2)[1],
 		"empty":           "",
 	} {
 		if _, err := readJournal(strings.NewReader(body)); err == nil {

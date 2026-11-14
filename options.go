@@ -8,17 +8,10 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-type Mode int
-
-const (
-	Prod Mode = iota
-	Dev
-)
-
 type Option func(*Engine)
 
-func WithMode(m Mode) Option {
-	return func(e *Engine) { e.mode = m }
+func WithDev(on bool) Option {
+	return func(e *Engine) { e.dev = on }
 }
 
 func WithDrafts(on bool) Option {

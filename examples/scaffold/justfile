@@ -1,0 +1,48 @@
+dir := source_directory()
+port := env("PORT", "8090")
+image := file_name(dir)
+
+_default:
+    @just --list
+
+# Regenerate *_templ.go from the .templ files.
+generate:
+    @cd {{ dir }} && go tool templ generate -log-level warn
+
+# Bake what changed, then serve.
+[continue]
+[no-exit-message]
+serve: generate
+    cd {{ dir }} && go run . --addr :{{ port }}
+
+# Needs wgo on PATH: go install github.com/bokwoon95/wgo@latest
+# .quire is not a watch trigger: the site rebakes on every start.
+# Serve with live reload and drafts.
+[continue]
+[no-exit-message]
+dev:
+    cd {{ dir }} && wgo \
+        -xfile '_templ\.go$' -xdir '\.quire' \
+        -file '\.go$' -file '\.templ$' -file '\.css$' -file '\.md$' -file '\.svg$' -file '\.jpg$' -file '\.webp$' -file '\.js$' \
+        go tool templ generate -log-level warn \
+        :: go run . --dev --drafts --addr :{{ port }}
+
+test: generate
+    @cd {{ dir }} && go vet ./...
+    @cd {{ dir }} && go test ./...
+
+# Bake and exit, for the image build.
+bake: generate
+    cd {{ dir }} && go run . bake
+
+# Build the image, named after this directory.
+build: bake
+    cd {{ dir }} && docker build -t {{ image }} .
+
+# Run the image on :8080.
+run: build
+    docker run --rm -p 8080:8080 {{ image }}
+
+# Free the port after a bad exit.
+free:
+    -fuser -k {{ port }}/tcp

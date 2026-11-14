@@ -16,8 +16,8 @@ import (
 
 const (
 	JournalName    = "journal.jsonl"
-	journalMagic   = "quire-variants"
-	journalVersion = 4
+	journalMagic   = "quire-journal"
+	journalVersion = 5
 )
 
 const SiteCard = "card"
@@ -127,7 +127,7 @@ func WriteJournal(records []Record) []byte {
 	b, err := json.Marshal(journalHeader{
 		Journal: journalMagic,
 		Version: journalVersion,
-		Note:    "generated variants — everything here is rebuildable and safe to delete",
+		Note:    "written by the bake — everything here is rebuildable and safe to delete",
 	})
 	if err != nil {
 		panic("quire: journal header: " + err.Error())

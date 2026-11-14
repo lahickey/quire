@@ -162,7 +162,7 @@ The fields of a `Spec`:
 - `Index` and `Item` replace the index and document pages. Nil renders `Listing` and `Article`, which show the title, date, tags, hero, contents and body, and link back to the index. Each is handed `model.Shell` as well as the collection, so it needs no closure over the engine.
 - `Sort` orders the documents: a comparison, as `slices.SortFunc` takes. Without it they are newest first. Documentation has no dates, so this site keeps one list of its pages in order and sorts on a document's place in it.
 - `Kicker` labels each document in `Entries` rows and cards. Nil uses `ShortMonthYear`. `Entries(c, docs)` renders the same rows anywhere.
-- `Widgets` and `Classifier` are covered on this page.
+- `Widgets` and `Tags` are covered on this page.
 
 Other things to know:
 
@@ -174,18 +174,18 @@ Other things to know:
 
 ## Tags
 
-A tag is typed by hand, so it is whatever the writer typed. A classifier is the site's tag vocabulary: it says which tags are which kind.
+A tag is typed by hand, so it is whatever the writer typed. `model.Tags` is the site's tag vocabulary: each kind, and the tags of that kind.
 
 ```go
-var kinds = model.NewClassifier(
-  model.Exact("lang", "Go"),
-  model.Exact("topic", "Design"),
-)
+var kinds = model.Tags{
+  "lang":  {"Go"},
+  "topic": {"Design"},
+}
 ```
 
-Set it as `Spec.Classifier`. Every `tag` must then classify or the load fails, so a new term cannot ship unstyled.
-`NewClassifier` takes `Exact(category, needles…)` rules, tried in order, and the first match wins. A needle matches the whole value, ignoring case.
-`Collection.Tags(d)` is a document's tags as markers carrying their category, ready for `ui.Tags`, which gives each a class for its kind (`tag-lang`, `tag-topic`).
+Set it as `Spec.Tags`. Every `tag` must then be in it or the load fails, so a new term cannot ship unstyled.
+A tag matches the whole value, ignoring case.
+`Collection.Tags(d)` is a document's tags as markers carrying their kind, ready for `ui.Tags`, which gives each a class for its kind (`tag-lang`, `tag-topic`).
 
 ## Markdown outside a collection
 
