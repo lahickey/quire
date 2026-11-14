@@ -42,7 +42,7 @@ func (p pen) face(size float64) (font.Face, error) {
 func wrap(f font.Face, s string, width fixed.Int26_6, max int) []string {
 	var lines []string
 	line := ""
-	for _, w := range strings.Fields(s) {
+	for w := range strings.FieldsSeq(s) {
 		next := strings.TrimSpace(line + " " + w)
 		if line != "" && font.MeasureString(f, next) > width {
 			lines = append(lines, line)

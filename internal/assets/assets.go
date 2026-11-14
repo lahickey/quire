@@ -9,7 +9,7 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const layerOrder = "@layer quire, plugin, site;\n"
+const layerOrder = "@layer quire, plugin, pack, site;\n"
 
 //go:embed *.css *.js
 var files embed.FS
@@ -94,7 +94,7 @@ func Stylesheet(p Parts) []byte {
 		if w != 0 {
 			q = media(p.Scale, w)
 		}
-		for _, layer := range []string{"plugin", "site"} {
+		for _, layer := range []string{"plugin", "pack", "site"} {
 			for _, f := range p.Sheets {
 				if f.At == w && f.Layer == layer {
 					appendCSS(&b, layer, f.Name, q, read(f))

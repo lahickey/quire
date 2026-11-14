@@ -10,6 +10,12 @@ This page goes from the smallest change to the largest.
 
 ## Change the colours
 
+The palette is roles, each a scale of twelve steps. These are this site's, drawn by the `palette` fence:
+
+```palette
+neutral accent spot
+```
+
 Pick another palette with an option:
 
 ```go
@@ -74,7 +80,8 @@ templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
 }
 ```
 
-The components it can use, also in `ui`: `Card` `Entries` `HeroFigure` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Pager` `Nav` `ThemeToggle`.
+The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Pager` `Nav` `ThemeToggle`.
+`Code(text)` is a code block with the copy button a fenced block gets; the install line on this site's home page is one.
 `Pager(c, d)` links to the documents before and after `d` in its collection. `Nav(c, p)` is the header's links: the site's name as the link home (see `WithBrand`), then each section.
 `DocCard(c, d)` fills a `Card` from a document: its link, the collection's kicker, title, summary, draft and featured flags, image, badges and tags. A site changes the fields it wants different.
 
@@ -108,7 +115,33 @@ These sit on `:root` in `base.css`. Override the custom properties.
 ### Primitives
 
 Quire's own sheets are `base` `toggle` `nav` `layout` `prose` `highlight`, in that order.
+A class Quire ships works in a template of your own and in raw HTML in a document.
+
 `.kicker` is the small accent label cards and entries use for their dates; put it on any element.
+
+```html
+<div class="kicker">Feb 2026</div>
+```
+
+<div class="kicker">Feb 2026</div>
+
+`.btn-primary` and `.btn-secondary` are links drawn as buttons, and `.btn-row` spaces them.
+
+```html
+<div class="btn-row">
+  <a class="btn-primary" href="/docs">Read the docs</a>
+  <a class="btn-secondary" href="/">Home</a>
+</div>
+```
+
+<div class="btn-row">
+  <a class="btn-primary" href="/docs">Read the docs</a>
+  <a class="btn-secondary" href="/">Home</a>
+</div>
+
+`.card-grid` lays out `ui.Card`s in columns of `Col`. The [documentation index](/docs) is one, and so are the features on the home page.
+
+`.page` is the page's width, with `.page--wide` and `.page--full` for three and four columns. This page is a `.page--wide` with a sidebar in it.
 
 ### The document
 
@@ -118,6 +151,6 @@ The table of contents lists H2 and H3 only.
 
 ## In depth
 
-The stylesheet is one file in three cascade layers, `@layer quire, plugin, site`. That fixes precedence: a site can restyle anything, and a plugin can never overrule the site it is a guest in. See [Plugins](./plugins.md#css).
+The stylesheet is one file in four cascade layers, `@layer quire, plugin, pack, site`. That fixes precedence: a site can restyle anything, and neither a plugin nor a pack can overrule the site it is a guest in. See [Plugins](./plugins.md#css).
 
 Why the column is 336, why the text measure is in `ch`, and why the scales are Radix are on the [Design](./architecture.md) page.

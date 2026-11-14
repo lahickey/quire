@@ -55,7 +55,7 @@ and mounts the collection as `model.Spec[Piece]` instead of `model.Basic`.
 
 Dates are parsed once at load into `Date`. Anything that is not ISO fails the build, so a bad date never reaches a page.
 `Site.Dates` is the layouts dates render in, day first by default, and a collection's `LongDate`, `ShortDate` and `ShortMonthYear` format a `Date` to it.
-`Date.ISO()` is the machine form. Sitemaps and structured data always use it.
+`Date.ISO()` is the machine form. The sitemap and the dates in a page's head always use it.
 A custom formatter takes a parsed `Date`, so it only formats.
 
 ### Drafts, featured and other state
@@ -74,11 +74,30 @@ A picture in a paragraph of its own becomes a `.figure`; one inside a sentence s
 A figure's text is both its caption and its alt text, as in Pandoc. Write `![alt](path "caption")` when the two should differ.
 An `http(s):` picture is left alone, and a missing file fails the load.
 
-The frontmatter `image` resolves the same way. The default look renders it as a listing thumbnail, an article hero and the share image, with no CSS of your own.
+This line:
+
+```markdown
+![The ridge at first light](ridge.jpg "Dawn on the ridge")
+```
+
+is this figure:
+
+![The ridge at first light](ridge.jpg "Dawn on the ridge")
+
+The frontmatter `image` resolves the same way. The default look renders it as a listing thumbnail, an article hero and the share image, with no CSS of your own. [A blog](./blog.md) shows all three, and [Images](./images.md) covers how a picture is encoded and served.
 
 ### Code
 
 A fenced code block is highlighted, and gets a copy button that shows on hover.
+
+### Tables
+
+A pipe table is a table. A wide one scrolls sideways rather than widening the page.
+
+| Field | Does |
+|-|-|
+| `draft` | Leaves the document out unless `--drafts` |
+| `featured` | Marks it to be selected and badged |
 
 ### Headings
 
@@ -101,8 +120,27 @@ flowchart LR
 ```
 ````
 
+```mermaid
+flowchart LR
+  a[client] --> b[(store)]
+```
+
 It is drawn by the bake and inlined as SVG, so the palette and the fonts reach it.
 Nodes take a light tint of the accent. `class n swatch2` or `n:::swatch2` tints one with any role (`accent` `spot` `swatch1`…`4` `red` `green` `amber`), and a forge's preview just ignores the class.
+
+````markdown
+```mermaid
+flowchart LR
+  ok[baked]:::green --> warn[stale]:::amber --> bad[missing]:::red
+  ok --> plain[default]
+```
+````
+
+```mermaid
+flowchart LR
+  ok[baked]:::green --> warn[stale]:::amber --> bad[missing]:::red
+  ok --> plain[default]
+```
 A diagram the bundle does not hold fails the load, as does one measured in other fonts than the site serves.
 
 ### Callouts
@@ -114,11 +152,38 @@ A blockquote that opens with one of GitHub's markers renders as a `.callout`:
 > Mind the gap.
 ```
 
-The markers are `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and `[!CAUTION]`. Any other blockquote is still a quote.
+> [!WARNING]
+> Mind the gap.
+
+The markers are `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and `[!CAUTION]`. Each has its own colour and label:
+
+> [!NOTE]
+> Something worth knowing in passing.
+
+> [!TIP]
+> A better way to do it.
+
+> [!IMPORTANT]
+> What the reader must not miss.
+
+> [!CAUTION]
+> What goes wrong if they do.
+
+Any other blockquote is still a quote:
+
+> A plain blockquote, with no marker.
 
 ### Styled spans
 
 `[text]{.class}` is a span with those classes, Pandoc's bracketed span. It styles a few characters with the site's CSS without writing HTML. The text is literal and the braces take classes only.
+
+```markdown
+Released today. [New]{.kicker}
+```
+
+Released today. [New]{.kicker}
+
+`.kicker` is one of Quire's own classes. A class of the site's needs a rule in the site's stylesheet.
 
 ### Raw HTML
 
@@ -138,6 +203,29 @@ var widgets = map[string]model.Widget{
 ```
 
 A fence named `swatch` in that collection's documents now renders as the chip.
+This site has that widget, and a rule for `.swatch` in its stylesheet:
+
+````markdown
+```swatch
+ember
+```
+````
+
+```swatch
+ember
+```
+
+`palette` is built in:
+
+````markdown
+```palette
+neutral accent spot
+```
+````
+
+```palette
+neutral accent spot
+```
 
 - `mermaid` and `palette` are Quire's own widgets, and a site's widget of either name replaces it. `palette` draws each role it names (`neutral accent spot`, …) as its twelve steps, from the page's own custom properties.
 - A fence shown inside a longer fence stays code, so a page can show a widget's syntax without running it.
@@ -171,6 +259,7 @@ Other things to know:
 - A missing slug is the site's 404. Two documents with one slug fail the load.
 - `Featured()` selects from a collection, and `Docs()` is all of it, in order.
 - `Neighbours(d)` is the documents before and after `d` in that order; either is nil at an end. `ui.Pager` renders them as previous and next links.
+- A document carries `Words`, the count of words in its body, and `Headings`. `ui.ReadingTime(d.Words)` is "4 min read", at 200 words a minute.
 
 ## Tags
 
@@ -195,8 +284,10 @@ A page built in Go can still use baked markdown. `e.Markdown(name)` returns one 
 sample, err := e.Markdown("home/sample.md")
 ```
 
-The file is an ordinary document, frontmatter fences included, even when they are empty. Everything on this page works in it: highlighted code, pictures and diagrams.
-This site's landing page gets its code sample that way.
+The file is an ordinary document. Everything on this page works in it: highlighted code, pictures and diagrams.
+
+`e.Document[T](name)` returns the same file with its frontmatter read into `T`, so a page's copy can sit in content rather than in Go. An unknown field fails the load.
+The [docs pack](./packs.md) reads this site's landing page that way.
 
 ## In depth
 

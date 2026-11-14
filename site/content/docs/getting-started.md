@@ -136,10 +136,13 @@ See [Baking](./bake.md) for the other ways to ship.
 
 ## Where next
 
+- [A blog](./blog.md): what the default look does with posts, pictures and tags.
 - [Content](./content.md): frontmatter, markdown, collections and tags.
 - [The look](./look.md): change the palette, fonts and CSS, or replace a page.
 - [Wiring](./wiring.md): the site's settings, options and routes.
 - [Plugins](./plugins.md): add behaviour, such as a basket or search.
+- [Packs](./packs.md): a documentation site with no templates or CSS of your own.
+- [Deploying](./deploy.md): build the binary and run it.
 
 ## Start from an example
 
@@ -149,14 +152,15 @@ The repository's `examples/` are complete sites, each adding to the one before:
 - `2-pictures` is the same code with pictures and a diagram in its content.
 - `3-themed` has a look of its own.
 - `4-plugin` is a shop with a basket plugin.
+- `5-docs` is a documentation site, made by the [docs pack](./packs.md).
 
 `quire new` copies one into a new directory as a site of its own:
 
 ```sh
-go run github.com/lahickey/quire/cmd/quire@latest new --from 4-plugin shop
+go run github.com/lahickey/quire/cmd/quire@latest new --from plugin shop
 ```
 
-- `--from` names the example. The default is `1-minimal`.
+- `--from` names the example, with or without its number. The default is `minimal`.
 - `--module` sets the module path. The default is the directory's name.
 - `--no-just` leaves out the justfile, which has `dev`, `serve`, `test`, `bake`, `build` and `run`.
 - `--replace <dir>` builds against a Quire checkout instead of a release.

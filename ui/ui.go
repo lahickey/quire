@@ -45,6 +45,10 @@ func Render(c templ.Component) http.HandlerFunc {
 	}
 }
 
+func Code(text string) templ.Component {
+	return templ.Raw(model.CodeOpen + "<pre><code>" + templ.EscapeString(text) + "</code></pre>" + model.CodeClose)
+}
+
 func CurrentYear() string { return strconv.Itoa(time.Now().Year()) }
 
 func ReadingTime(words int) string {

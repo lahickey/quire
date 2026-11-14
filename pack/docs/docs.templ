@@ -1,0 +1,135 @@
+package docs
+
+import (
+	"cmp"
+
+	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/ui"
+)
+
+templ repoLink(repo string) {
+	<a class="site-repo" href={ repo } rel="external">Source</a>
+}
+
+templ footer(l Landing) {
+	<footer class="site-footer">
+		<div class="footer-inner">
+			<span>{ l.Footer }</span>
+			if l.Repo != "" {
+				<a href={ l.Repo } rel="external">Source</a>
+			}
+		</div>
+	</footer>
+}
+
+templ Home(shell model.Shell, site model.Site, landing model.Document[Landing], c *Collection) {
+	{{ l := landing.Meta }}
+	@shell(model.PageSpec{Title: site.Name, Path: "/"}) {
+		<div class="page page--wide">
+			<header class="home-hero">
+				if l.Kicker != "" {
+					<p class="kicker">{ l.Kicker }</p>
+				}
+				<h1>{ cmp.Or(l.Title, site.Name) }</h1>
+				if l.Lede != "" {
+					<p class="home-lede">{ l.Lede }</p>
+				}
+				if c.Len() > 0 {
+					<div class="btn-row">
+						<a class="btn-primary" href={ c.Href(c.Docs()[0]) }>Get started</a>
+						<a class="btn-secondary" href={ c.IndexPage().Path }>{ c.Title() }</a>
+					</div>
+				}
+				if l.Install != "" {
+					<div class="home-install">
+						@ui.Code(l.Install)
+					</div>
+				}
+			</header>
+			if len(l.Features) > 0 {
+				<section class="card-grid">
+					for _, f := range l.Features {
+						@ui.Card(f)
+					}
+				</section>
+			}
+			if landing.HTML != "" {
+				<section class="home-body prose">
+					@templ.Raw(landing.HTML)
+				</section>
+			}
+		</div>
+	}
+}
+
+// The sidebar is behind a button until the page is wide enough to show it.
+templ Sidebar(c *Collection, current string) {
+	<aside class="docs-side" data-signals="{site: {menu: false}}" data-class="{'docs-side--open': $site.menu}" data-on:quirenavigate__window="$site.menu = false">
+		<button type="button" class="docs-menu" data-on:click="$site.menu = !$site.menu">Menu</button>
+		<nav class="docs-nav" aria-label={ c.Title() }>
+			for _, g := range groups(c) {
+				if g.Title != "" {
+					<p class="docs-label">{ g.Title }</p>
+				}
+				<ul>
+					for _, d := range g.Docs {
+						<li>
+							<a
+								class="docs-link"
+								href={ c.Href(d) }
+								if d.Slug == current {
+									aria-current="page"
+								}
+							>{ d.Meta.Title }</a>
+						</li>
+					}
+				</ul>
+			}
+		</nav>
+	</aside>
+}
+
+templ Index(shell model.Shell, c *Collection) {
+	@shell(c.IndexPage()) {
+		<div class="page page--wide docs">
+			@Sidebar(c, "")
+			<div class="docs-main" data-region="docs">
+				<header class="page-head">
+					<h1>{ c.Title() }</h1>
+					if c.Description() != "" {
+						<p class="page-intro">{ c.Description() }</p>
+					}
+				</header>
+				<div class="card-grid">
+					for _, d := range c.Docs() {
+						@ui.Card(ui.DocCard(c, d))
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ Item(shell model.Shell, c *Collection, d Document) {
+	@shell(c.ItemPage(d)) {
+		<div class="page page--wide docs">
+			@Sidebar(c, d.Slug)
+			<article class="docs-main" data-region="docs">
+				<header class="page-head">
+					if k := c.Kicker(d); k != "" {
+						<p class="kicker">{ k }</p>
+					}
+					<h1>{ d.Meta.Title }</h1>
+					if d.Meta.Summary != "" {
+						<p class="page-intro">{ d.Meta.Summary }</p>
+					}
+				</header>
+				@ui.Contents(d.Headings)
+				<div class="prose">
+					@templ.Raw(d.HTML)
+				</div>
+				@ui.Pager(c, d)
+			</article>
+		</div>
+	}
+}

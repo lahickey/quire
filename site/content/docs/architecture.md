@@ -46,6 +46,9 @@ Layers only point down, and a test holds them to it.
 flowchart TD
   site[a site or a command] --> quire
   site --> plugins[its plugins]
+  site --> pack[a pack]
+  pack --> quire
+  pack --> plugins
   quire --> ui
   quire --> plugin
   plugins --> ui
@@ -57,9 +60,11 @@ flowchart TD
 
 `model` is the data. Of Quire's it imports only the bundle format (`internal/journal`) and the colour scales.
 `ui` and `plugin` import `model` and nothing else of Quire's.
-`quire` is what a site calls. A site or a command is the only importer.
+`quire` is what a site calls. A site, a command or a pack is the only importer.
 
 A plugin sits beside `ui`, and a site opts in with `Use`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
+
+A pack sits above the engine: it is a mount somebody else wrote, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
 
 ## Scale
 
@@ -87,7 +92,7 @@ Mermaid is the diagram format editors already preview. The renderer is heavy, so
 
 ## Layers
 
-Base is the engine and the default look. `examples/1-minimal` is the proof. A template pack is opt-in and is not the base. A site is not a pack.
+Base is the engine and the default look. `examples/1-minimal` is the proof. A pack is opt-in and is not the base. A site is not a pack.
 
 Quire ships a class only if it ships the rules for it.
 

@@ -14,6 +14,7 @@ import (
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	gmhtml "github.com/yuin/goldmark/renderer/html"
@@ -24,10 +25,7 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const (
-	headerSep = "---"
-	copyOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
-)
+const headerSep = "---"
 
 var kindRawBlock = ast.NewNodeKind("RawBlock")
 
@@ -410,8 +408,8 @@ func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Co
 		name, info := fenceInfo(b, t.src)
 		p := b.Parent()
 		if t.widgets[name] == nil {
-			p.InsertBefore(p, b, &rawBlock{html: copyOpen})
-			p.InsertAfter(p, b, &rawBlock{html: "</div>"})
+			p.InsertBefore(p, b, &rawBlock{html: model.CodeOpen})
+			p.InsertAfter(p, b, &rawBlock{html: model.CodeClose})
 			continue
 		}
 		html, err := t.widgets[name](info, fenceText(b, t.src))
@@ -433,6 +431,7 @@ func Render(src, doc string, fenceNames []string) (string, []journal.Heading, []
 	ft := &fenceTransform{src: srcb, widgets: fences(fenceNames, em)}
 	md := goldmark.New(
 		goldmark.WithExtensions(
+			extension.Table,
 			highlighting.NewHighlighting(
 				highlighting.WithStyle("github-dark"),
 				highlighting.WithFormatOptions(chromahtml.WithClasses(true)),

@@ -67,8 +67,14 @@ What it can add:
 - `SetNotFound(component)` replaces the default not-found page. Like any fixed page it is rendered once at boot and never handed the request, so every missing URL gets the same bytes and none of them reaches the page cache.
 - `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
-- `Markdown(name)` returns one baked markdown file as a component. See [Content](./content.md#markdown-outside-a-collection).
+- `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
+- `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
+- `SetFooter(component)` and `AddNavEnd(components…)` do what `WithFooter` and `WithNavEnd` do.
+- `Site()` is the site the engine was made with.
 - `Use(plugins…)` attaches plugins. See [Plugins](./plugins.md).
+
+Nothing can be added once the mount is over: a call after the handler is taken panics.
+A mount is a function, so one can be shipped as a package. That is a [pack](./packs.md).
 
 ## Engine, Chrome and Shell
 
@@ -77,6 +83,36 @@ Three names come up in every template.
 - The `Engine` is the mount: what the site holds (collections, pages, routes, files, plugins), then the handler that serves it. A page template does not need it.
 - `Chrome` is the frame's data: the site, nav, plugin controls, assets, icons and theme. It is complete only once the mount is done. The frame reads it: the document, a custom header, the default home and not-found pages.
 - `Shell` (`e.Shell`, `model.Shell`) wraps a page body in the document, reading Chrome when the page renders rather than when it is declared. It is all a page template needs of the engine; everything else it shows is handed to it as data.
+
+## The head
+
+A page hands the shell a `model.PageSpec`, and the shell writes the head from it.
+
+| Field | Does |
+|-|-|
+| `Title` | The title, and the share title |
+| `Description` | The description; `Site.Description` when empty |
+| `Path` | The page's address, for the canonical URL |
+| `NoIndex` | Keeps the page out of search engines |
+
+- **Canonical.** A page with a `Path` gets `<link rel="canonical">` and `og:url`, made from `BaseURL`. A page with no `Path`, a `NoIndex` page and a draft get `<meta name="robots" content="noindex">` instead.
+- **Sharing.** Every page gets Open Graph and Twitter card tags: title, description, site name and a large image.
+- **The share image** is `ShareImage` when set, else the site's share card, which the bake draws. A document with an `image` shares that picture. See [Images](./images.md#share-images).
+- **Articles.** `Article` marks a page as one: `og:type` is `article` and its published and modified dates are written in ISO form.
+- **Author.** `Site.Author` becomes `<meta name="author">`.
+
+`Collection.IndexPage()` and `Collection.ItemPage(d)` fill a `PageSpec` for a collection's pages, so a template of your own rarely builds one by hand.
+The sitemap lists every fixed page and every published document, with a document's `updated` or `date` as its last change.
+
+## Dev mode
+
+`--dev`, or `WithDev(true)`, is for writing, not for serving visitors.
+
+- **Live reload.** The page reloads when the binary restarts. Restarting on a change is a watcher's job: the `dev` recipe in a site's justfile runs `wgo`.
+- **Nothing is cached.** Every response is `no-store`, pictures included, and the page cache is off, so a reload always shows the current state.
+- **No `www` redirect, and no secure cookie**, so the site works on `localhost`.
+
+Drafts are a separate flag, `--drafts`, so a draft can be checked with production's caching too.
 
 ## Reserved paths
 
@@ -119,3 +155,24 @@ A cached body is compressed once, as brotli or gzip, and stored that way. A body
 `/_quire/quire.js` holds the stored theme, soft navigation and any plugin scripts. It is a classic script loaded in the head, so the theme is set before the first paint.
 Datastar is an ES module linked beside it.
 Soft navigation replaces `main` and nothing else, so the header and anything in it lasts for the life of the tab.
+
+A page can keep more than the header. Put `data-region="name"` on the element inside `main` that holds what changes:
+
+```html
+<main>
+  <aside>a sidebar</aside>
+  <article data-region="docs">the page</article>
+</main>
+```
+
+Between two pages that both have that region, only the region is replaced, and everything round it stays as it was: its scroll position, its open panels, anything a plugin is streaming into it.
+Between any other two pages `main` is replaced, as before.
+A link outside what was replaced takes its `class` and `aria-current` from the same link in the new page, so the header and a sidebar both show where the reader now is.
+The sidebar on this site is kept that way: follow a link in it and only the page beside it changes.
+
+While the next page is on its way, `html` carries `data-navigating`. Quire's own sheet draws a thin bar across the top after a moment, so a quick page shows nothing and a slow one shows the click was taken. When the page arrives the bar runs to the end and fades, with `data-navigating="done"` for that moment. A second click on the link already being fetched does nothing, and a click on another link drops the first.
+Once the new page is in, `quirenavigate` fires on `window`. Anything kept across the swap can listen for it, as this site's sidebar does to close its menu on a narrow screen:
+
+```html
+<aside data-on:quirenavigate__window="$site.menu = false">
+```

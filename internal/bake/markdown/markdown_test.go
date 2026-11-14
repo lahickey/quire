@@ -94,6 +94,13 @@ func TestOnlyCodeGetsACopyButton(t *testing.T) {
 	}
 }
 
+func TestTables(t *testing.T) {
+	html, _, _, err := Render("| Key | Does |\n|-|-|\n| `a` | Annotate |\n", "", nil)
+	if err != nil || !strings.Contains(html, "<th>Key</th>") || !strings.Contains(html, "<td><code>a</code></td>") {
+		t.Errorf("a table with a one-dash separator did not render: %v\n%s", err, html)
+	}
+}
+
 func TestFrontmatter(t *testing.T) {
 	long := strings.Repeat("x", 200*1024)
 	for _, c := range []struct{ name, raw, front, html string }{

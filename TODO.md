@@ -8,6 +8,7 @@ One list. The model is [the design page](./site/content/docs/architecture.md).
 
 ## Later
 
+- **lexis in place of chroma.** archr's highlighter: faster, fixes edge cases chroma has, and reads templ properly.
 - **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
 - **Full-bleed and the scrollbar.** `.figure--bleed` measures in `cqw` against `main`, because `100vw` counts the scrollbar and would put a horizontal scrollbar on every desktop. The price is `container-type: inline-size` on `main`, whose layout containment makes it the containing block for any `position: fixed` descendant. Revisit against the two alternatives: hiding the document scrollbar in CSS (`scrollbar-width: none`, which costs every visitor their scroll position indicator), or setting the gutter width once from the classic script. Measured and written up in this session; no decision taken.
 - **A bleed hero on a short screen.** Full width, a hero can fill a laptop screen with no text in sight. The usual answers: cap its height (50–60% of the screen, cropped with `object-fit: cover`) so text always shows below; a focal point per image so the crop keeps what matters; different crops per screen size through `<picture>`. Height cap and focal point are engine options on the bleed figure; laying title and buttons over the picture is a site's layout choice. Tried with 884px art, which also showed the page padding left between nav and a bleed hero.
@@ -29,15 +30,7 @@ One list. The model is [the design page](./site/content/docs/architecture.md).
   - **A slot wider than the 2560 floor.** The cap follows the widest slot, so one slot silently makes every master on the site bigger. Intended when someone wants a full-bleed hero on a large desktop; an accident when a width was typed with an extra digit.
   - **A public-bucket URL for a variant the bucket does not hold.** Once the browser is sent to the bucket, the engine is out of the loop: the visitor gets a broken image. The bake did not run.
 
-- **First tagged release.** Install `govulncheck`, then `just release v0.1.0` and run the push it prints.
 - **Dev re-bakes in-process.** A site already bakes before it serves; with `--dev` it could also re-bake when content or masters change, so a watcher is only for Go and templ. A CMS needs the same thing: re-bake after an upload and swap the bundle, rather than a second bundle beside the first.
 - **Pre-rendered pages.** The bake mounts the site, so after the make a serving engine over the new bundle can render every page the page cache would render once for everyone into the bundle, as Astro's `dist/` and Hugo's `public/` do, and the shipped binary serves finished HTML. Plugin routes and anything per visitor stay live, the per-route split Astro and Next make. It is a third axis beside `quire_nobake` and the ship overlay: whether its pages are pre-rendered (a light site's would be). A site with no live routes at all needs no server, only its bundle on a static host. Documents are already converted in the bake, so the gain is boot time and static hosting rather than weight.
 - **Settings at the call site.** A picture's conversion is chosen where it is placed, in the markdown or the template: lossless, a quality, a second format such as AVIF, a shorter ladder. Variant names already cover every setting and a record already lists formats, so the bake's `Master` takes the options and nothing else moves. Every variant is lossy WebP until then.
 - **A ladder from use.** The bake renders its mount too, records which rungs each placement can pick, and encodes only those rather than the whole ladder for every master. It is the same record as the call-site settings.
-
-## Parked
-
-Do not start a template pack by lifting a live site into Quire.
-A pack is opt-in, bringing its own Go and CSS, and whichever site motivates it is not the pack.
-`examples/` has `1-minimal`; a pack would bring its own.
-The justfile already takes a name.

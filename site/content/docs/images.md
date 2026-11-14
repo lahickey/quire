@@ -21,12 +21,22 @@ image: ridge.jpg
 - `image:` in the frontmatter is the document's picture: its thumbnail in listings, the hero on its page and its share image.
 - `![](…)` in the body is a figure in the text.
 
+The body line above is this figure. Its `srcset` offers each width the bake made, and the browser fetches one.
+
+![The ridge at first light](ridge.jpg "Dawn on the ridge")
+
+A picture inside a sentence, such as ![a small ridge](ridge.jpg), stays in the line and takes no caption.
+
 The markup carries `width` and `height`, so nothing shifts while a picture loads.
 In a template of your own, place a document's picture with a component:
 
 ```templ
 @ui.Img(doc.Image, model.SlotPage, title)
 ```
+
+- `ui.Img(image, slot, alt)` is the picture alone.
+- `ui.LazyFigure(image, alt, caption)` is a figure at page width that loads when it nears the screen. A picture in a document's body is one of these.
+- `ui.HeroFigure(image, slot, alt, caption)` is a figure fetched at high priority, for the picture at the top of a page. It draws nothing when the document has no image.
 
 ## Masters
 

@@ -108,7 +108,7 @@ End its handler with `plugin.Done(w, r)`, which answers either kind of caller: `
 
 ## CSS
 
-The stylesheet is one sheet in three layers, `@layer quire, plugin, site`, which fixes precedence but not collision: two plugins both styling `.line` still clash.
+The stylesheet is one sheet in four layers, `@layer quire, plugin, pack, site`, which fixes precedence but not collision: two plugins both styling `.line` still clash.
 So a plugin prefixes every class with its own name (`.basket-line`, not `.line`), and `Use` fails on a stylesheet with a class outside that prefix.
 
 > [!IMPORTANT]
@@ -147,7 +147,7 @@ Element patches need the element to exist, and Datastar warns `PatchElementsNoTa
 
 ### Where a subscription lives
 
-Put a page-global subscription (a count, a badge) on chrome that is not swapped: a soft-nav replaces `main` and nothing else.
+Put a page-global subscription (a count, a badge) on chrome that is not swapped: a soft-nav replaces `main`, or a [region](./wiring.md#scripts) inside it, and nothing else.
 A view-specific subscription lives on the view's own element, inside `main`, so leaving the page cancels it.
 
 Two standing streams per tab stall HTTP/1.1 (six connections per host) at three tabs; a second stream only while that view is open does not. Production over TLS is HTTP/2 and multiplexes, so this bites in dev first and looks like the site hanging.

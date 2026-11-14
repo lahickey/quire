@@ -57,16 +57,17 @@ Each example is a complete site, commented part by part, and each adds to the on
 `quire new` starts a site of your own from the one nearest what you want:
 
 ```sh
-go run github.com/lahickey/quire/cmd/quire@latest new --from 3-themed mysite
+go run github.com/lahickey/quire/cmd/quire@latest new --from themed mysite
 cd mysite && go run .
 ```
 
-The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves that out). Without `--from` it is `1-minimal`.
+The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves that out). `--from` takes the name with or without its number; without it the copy is `1-minimal`.
 
 1. [`1-minimal`](./examples/1-minimal) — the site above.
 2. [`2-pictures`](./examples/2-pictures) — pictures and a diagram, from the markdown alone.
 3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
 4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates.
+5. [`5-docs`](./examples/5-docs) — a documentation site from the docs pack: a landing page, a sidebar and search, with no templates or CSS.
 
 ## Documentation
 

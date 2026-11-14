@@ -21,6 +21,10 @@ dev:
     	go tool templ generate -path {{ root }} \
     	:: go run . --dev --drafts --addr :{{ port }}
 
+# Retake the screenshots in content/docs/shots from the examples. Needs chromium.
+shots:
+    sh {{ source_directory() }}/shots.sh
+
 # Bake and exit, for the image build.
 bake:
     cd {{ root }} && go tool templ generate -path .

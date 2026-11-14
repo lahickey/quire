@@ -73,6 +73,6 @@ func main() {
 	}
 	run("git", "tag", "-a", v, "-m", v)
 	fmt.Printf("tagged %s; push it, then fetch it through the proxy so pkg.go.dev has it:\n", v)
-	fmt.Printf("  git push public master %s\n", v)
+	fmt.Printf("  git push origin master %s\n", v)
 	fmt.Printf("  GOPROXY=https://proxy.golang.org go list -m %s@%s\n", mod.Module.Mod.Path, v)
 }

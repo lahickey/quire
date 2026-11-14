@@ -32,6 +32,16 @@ func starters() []string {
 	return out
 }
 
+func starter(name string) string {
+	for _, s := range starters() {
+		if _, short, _ := strings.Cut(s, "-"); name == s || name == short {
+			return s
+		}
+	}
+	log.Fatalf("quire: no example %q; there is %s", name, strings.Join(starters(), ", "))
+	return ""
+}
+
 func engineVersion() string {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok || !strings.HasPrefix(bi.Main.Version, "v") || strings.Contains(bi.Main.Version, "+dirty") {
@@ -73,7 +83,7 @@ func rename(dir, from, to string) error {
 
 func newSite(args []string) {
 	fl := flag.NewFlagSet("new", flag.ExitOnError)
-	from := fl.String("from", "1-minimal", "the example to start from: "+strings.Join(starters(), ", "))
+	name := fl.String("from", "minimal", "the example to start from, with or without its number: "+strings.Join(starters(), ", "))
 	module := fl.String("module", "", "the site's module path (default: the directory's name)")
 	replace := fl.String("replace", "", "build against the Quire checkout in this directory")
 	noJust := fl.Bool("no-just", false, "write no justfile")
@@ -90,20 +100,18 @@ func newSite(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if _, err := fs.Stat(examples.Files, *from+"/main.go"); err != nil {
-		log.Fatalf("quire: no example %q; there is %s", *from, strings.Join(starters(), ", "))
-	}
+	from := starter(*name)
 	if entries, _ := os.ReadDir(dir); len(entries) > 0 {
 		log.Fatalf("quire: %s is not empty", dir)
 	}
 
-	copyInto(dir, *from)
+	copyInto(dir, from)
 	copyInto(dir, scaffold)
 	if *noJust {
 		_ = os.Remove(filepath.Join(dir, "justfile"))
 	}
 	mod := cmp.Or(*module, filepath.Base(dir))
-	if err := rename(dir, engine+"/examples/"+*from, mod); err != nil {
+	if err := rename(dir, engine+"/examples/"+from, mod); err != nil {
 		log.Fatal(err)
 	}
 
@@ -119,5 +127,5 @@ func newSite(args []string) {
 	}
 	goTool(dir, "mod", "edit", "-tool", "github.com/a-h/templ/cmd/templ")
 	goTool(dir, "mod", "tidy")
-	fmt.Printf("%s is a copy of %s. In it, `go run .` serves the site on :8090.\n", fl.Arg(0), *from)
+	fmt.Printf("%s is a copy of %s. In it, `go run .` serves the site on :8090.\n", fl.Arg(0), from)
 }

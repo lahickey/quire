@@ -63,7 +63,7 @@
   margin-bottom: 0;
 }
 
-.prose a {
+.prose a:not([class]) {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -79,6 +79,34 @@
   background: var(--qr-neutral-3);
   padding: 0.2em 0.4em;
   border-radius: var(--qr-radius-s);
+}
+
+.prose blockquote:not(.callout) {
+  padding-left: var(--qr-space-4);
+  border-left: 3px solid var(--qr-neutral-6);
+  color: var(--qr-neutral-11);
+}
+
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.prose th,
+.prose td {
+  padding: var(--qr-space-2) var(--qr-space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--qr-neutral-6);
+}
+
+.prose th {
+  font-weight: var(--qr-weight-semibold);
+  color: var(--qr-neutral-12);
+  border-bottom-color: var(--qr-neutral-8);
 }
 
 .prose pre {

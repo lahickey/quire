@@ -72,6 +72,25 @@ func (e *Engine) late(page func(model.Chrome) templ.Component) templ.Component {
 	})
 }
 
+func (e *Engine) Site() model.Site { return e.chrome.Site }
+
+func (e *Engine) AddStylesheets(fsys fs.FS, names ...string) { e.AddStylesheetsAt(0, fsys, names...) }
+
+func (e *Engine) AddStylesheetsAt(w model.Width, fsys fs.FS, names ...string) {
+	mustBeOpen(e.mounted, "a stylesheet")
+	e.addSheets("pack", w, fsys, names)
+}
+
+func (e *Engine) AddNavEnd(cs ...templ.Component) {
+	mustBeOpen(e.mounted, "a nav control")
+	e.chrome.NavEnd = append(e.chrome.NavEnd, cs...)
+}
+
+func (e *Engine) SetFooter(f func(model.Chrome, model.PageSpec) templ.Component) {
+	mustBeOpen(e.mounted, "the footer")
+	e.chrome.Footer = f
+}
+
 func (e *Engine) Shell(p model.PageSpec) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		return ui.Shell(e.chrome, p).Render(ctx, w)

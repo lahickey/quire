@@ -9,6 +9,12 @@ import (
 	"github.com/a-h/templ"
 )
 
+// A code block is wrapped in these, which give it its copy button.
+const (
+	CodeOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
+	CodeClose = `</div>`
+)
+
 type Marker struct {
 	Text string
 	Kind string

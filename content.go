@@ -3,7 +3,9 @@ package quire
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"path"
@@ -26,7 +28,7 @@ func load[T any](baked []journal.Document) ([]model.Document[T], error) {
 		var meta T
 		dec := yaml.NewDecoder(strings.NewReader(b.Front))
 		dec.KnownFields(true)
-		if err := dec.Decode(&meta); err != nil {
+		if err := dec.Decode(&meta); err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("%s: frontmatter: %w", b.Path, err)
 		}
 		slug := strings.TrimSuffix(path.Base(b.Path), path.Ext(b.Path))
@@ -109,15 +111,24 @@ func (e *Engine) documents(pattern string, widgets map[string]model.Widget) ([]j
 	return docs, nil
 }
 
-func (e *Engine) Markdown(name string) (templ.Component, error) {
-	docs, err := e.documents(name, nil)
+func (e *Engine) Document[T any](name string) (model.Document[T], error) {
+	baked, err := e.documents(name, nil)
+	if err == nil && len(baked) != 1 {
+		err = fmt.Errorf("quire: markdown %s: no such file under the content root", name)
+	}
 	if err != nil {
-		return nil, err
+		return model.Document[T]{}, err
 	}
-	if len(docs) != 1 {
-		return nil, fmt.Errorf("quire: markdown %s: no such file under the content root", name)
+	docs, err := load[T](baked)
+	if err != nil {
+		return model.Document[T]{}, err
 	}
-	return templ.Raw(docs[0].HTML), nil
+	return docs[0], nil
+}
+
+func (e *Engine) Markdown(name string) (templ.Component, error) {
+	d, err := e.Document[map[string]any](name)
+	return templ.Raw(d.HTML), err
 }
 
 func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {

@@ -657,7 +657,7 @@ func TestLayers(t *testing.T) {
 			if !strings.HasPrefix(imp, q) {
 				continue
 			}
-			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && pkg != q+"/site" {
+			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && !strings.HasPrefix(pkg, q+"/pack/") && pkg != q+"/site" {
 				t.Errorf("%s imports the engine", pkg)
 			}
 			if rule, ok := may[pkg]; ok && !rule(imp) {
