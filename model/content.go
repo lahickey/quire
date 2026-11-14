@@ -34,6 +34,7 @@ type Meta struct {
 	Summary  string   `yaml:"summary"`
 	Image    string   `yaml:"image"`
 	Tags     []string `yaml:"tag"`
+	Aliases  []string `yaml:"aliases"`
 }
 
 type Heading struct {

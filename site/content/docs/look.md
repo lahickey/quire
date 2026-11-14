@@ -80,10 +80,26 @@ templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
 }
 ```
 
-The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Pager` `Nav` `ThemeToggle`.
+The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle`.
 `Code(text)` is a code block with the copy button a fenced block gets; the install line on this site's home page is one.
 `Pager(c, d)` links to the documents before and after `d` in its collection. `Nav(c, p)` is the header's links: the site's name as the link home (see `WithBrand`), then each section.
 `DocCard(c, d)` fills a `Card` from a document: its link, the collection's kicker, title, summary, draft and featured flags, image, badges and tags. A site changes the fields it wants different.
+
+### Links
+
+`ui.Link(l, class)` draws a `model.Link`, a label and a URL, as an anchor with the class it is given: a button with `btn-primary` or `btn-secondary`, plain text with none.
+A link to GitHub or LinkedIn gets that site's mark before its label.
+The mark is drawn in the text's own colour and at its size, so it follows the theme and the class.
+The Source link in this site's header is one, as is the Source button on its home page.
+
+```templ
+@ui.Link(model.Link{Label: "GitHub", URL: "https://github.com/lahickey/quire"}, "btn-secondary")
+```
+
+With the class `link-mark` a link that has a mark shows the mark alone, as the footer's links do (the one at the foot of this page is this site's repository); its label stays for screen readers and as the tooltip, and a link with no mark keeps its text.
+A link that leaves the site opens in a new tab.
+A store that requires its own badge is the one case a label and a mark do not cover: set `Badge` to the URL of the badge's image and the link is drawn as that image alone, with the label as its alt text.
+`model.Link` has `label` and `url` yaml keys, so a site's own frontmatter can carry a list of them.
 
 ## Reference
 

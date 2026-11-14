@@ -1,6 +1,7 @@
 ---
 title: Content
 summary: Documents, frontmatter, what markdown can do, collections and tags.
+aliases: [/docs/frontmatter]
 ---
 
 A site's words live in a `content` folder, as markdown files.
@@ -34,6 +35,7 @@ The stock fields are `model.Meta`:
 - `tag`: a YAML list, `tag: [Go, NATS]`.
 - `draft`: leaves the document out unless the site runs with `--drafts`.
 - `featured`: marks the document so a page can select and badge it.
+- `aliases`: other addresses that redirect here. See [Aliases](#aliases).
 
 An unknown key is a load error, so a typo cannot pass silently.
 A `---` in the body is an ordinary rule.
@@ -62,6 +64,18 @@ A custom formatter takes a parsed `Date`, so it only formats.
 
 `draft` and `featured` are the two states the engine acts on. Drafts are filtered from the build and the sitemap unless `WithDrafts`. Featured is only ever selected and badged.
 Anything else a document says about its own state is the site's vocabulary: override `Badges() []Marker` on the site's type and Quire renders what it is handed, knowing none of the words.
+
+### Aliases
+
+A document that moves keeps its old address by naming it:
+
+```yaml
+aliases: [/writing/quire]
+```
+
+Each alias answers with a permanent redirect to the document, wherever the document now lives.
+This page names `/docs/frontmatter`, so [/docs/frontmatter](/docs/frontmatter) lands here.
+An alias that is already a page or a document, or that two documents both name, is a load error.
 
 ## Markdown
 

@@ -31,6 +31,12 @@ type ArticleSEO struct {
 	Draft     bool
 }
 
+type Link struct {
+	Label string `yaml:"label"`
+	URL   string `yaml:"url"`
+	Badge string `yaml:"-"`
+}
+
 type NavItem struct {
 	Label string
 	Href  string
@@ -49,6 +55,8 @@ type Chrome struct {
 	Theme       Theme
 	Header      func(Chrome, PageSpec) templ.Component
 	Footer      func(Chrome, PageSpec) templ.Component
+	FooterText  string
+	FooterLinks []Link
 	ScriptURL   string
 	ModuleURLs  []string
 	NavEnd      []templ.Component

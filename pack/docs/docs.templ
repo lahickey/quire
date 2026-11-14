@@ -7,19 +7,8 @@ import (
 	"github.com/lahickey/quire/ui"
 )
 
-templ repoLink(repo string) {
-	<a class="site-repo" href={ repo } rel="external">Source</a>
-}
-
-templ footer(l Landing) {
-	<footer class="site-footer">
-		<div class="footer-inner">
-			<span>{ l.Footer }</span>
-			if l.Repo != "" {
-				<a href={ l.Repo } rel="external">Source</a>
-			}
-		</div>
-	</footer>
+func source(repo string) model.Link {
+	return model.Link{Label: "Source", URL: repo}
 }
 
 templ Home(shell model.Shell, site model.Site, landing model.Document[Landing], c *Collection) {
@@ -38,6 +27,9 @@ templ Home(shell model.Shell, site model.Site, landing model.Document[Landing], 
 					<div class="btn-row">
 						<a class="btn-primary" href={ c.Href(c.Docs()[0]) }>Get started</a>
 						<a class="btn-secondary" href={ c.IndexPage().Path }>{ c.Title() }</a>
+						if l.Repo != "" {
+							@ui.Link(source(l.Repo), "btn-secondary")
+						}
 					</div>
 				}
 				if l.Install != "" {

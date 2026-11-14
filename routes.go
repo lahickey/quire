@@ -30,7 +30,7 @@ func mustBeOpen(closed bool, what string) {
 	}
 }
 
-func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
+func (e *Engine) reserve(pattern, owner string) error {
 	mustBeOpen(e.mounted, "route "+pattern)
 	_, path, _ := strings.Cut(pattern, " ")
 	if strings.HasPrefix(path, "/_") && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
@@ -40,6 +40,13 @@ func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
 		return fmt.Errorf("%s is already mounted by %s", path, o)
 	}
 	e.routes[pattern] = owner
+	return nil
+}
+
+func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
+	if err := e.reserve(pattern, owner); err != nil {
+		return err
+	}
 	e.mux.HandleFunc(pattern, h)
 	return nil
 }

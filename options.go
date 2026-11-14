@@ -62,6 +62,14 @@ func WithFooter(f func(model.Chrome, model.PageSpec) templ.Component) Option {
 	return func(e *Engine) { e.chrome.Footer = f }
 }
 
+func WithFooterText(text string) Option {
+	return func(e *Engine) { e.chrome.FooterText = text }
+}
+
+func WithFooterLinks(links ...model.Link) Option {
+	return func(e *Engine) { e.chrome.FooterLinks = append(e.chrome.FooterLinks, links...) }
+}
+
 func WithNavEnd(cs ...templ.Component) Option {
 	return func(e *Engine) { e.chrome.NavEnd = append(e.chrome.NavEnd, cs...) }
 }

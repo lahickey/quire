@@ -126,10 +126,11 @@ func (p Pack) Mount(e *quire.Engine) error {
 	e.AddStylesheets(css, "docs.css")
 	e.AddStylesheetsAt(model.WidthWide, css, "docs-wide.css")
 	if l.Repo != "" {
-		e.AddNavEnd(repoLink(l.Repo))
+		e.AddNavEnd(ui.Link(source(l.Repo), "site-repo"))
+		e.AddFooterLinks(source(l.Repo))
 	}
 	if l.Footer != "" {
-		e.SetFooter(func(model.Chrome, model.PageSpec) templ.Component { return footer(l) })
+		e.SetFooterText(l.Footer)
 	}
 	e.AddPage("/", home(e.Shell, e.Site(), landing, c))
 	s := search.New()

@@ -178,6 +178,18 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 		ui.Render(item(e.Shell, col, doc))(w, r)
 	}))
 	for _, d := range docs {
+		href := col.Href(d)
+		if err := e.reserve("GET "+href, ownerSite); err != nil {
+			return nil, err
+		}
+		for _, alias := range d.Meta.Base().Aliases {
+			if !strings.HasPrefix(alias, "/") {
+				return nil, fmt.Errorf("%s/%s: alias %q must start with /", spec.ID, d.Slug, alias)
+			}
+			if err := e.claim("GET "+alias, ownerSite, http.RedirectHandler(href, http.StatusMovedPermanently).ServeHTTP); err != nil {
+				return nil, fmt.Errorf("%s/%s: alias %w", spec.ID, d.Slug, err)
+			}
+		}
 		if !d.Meta.Base().Draft {
 			e.sitemap = append(e.sitemap, serve.Loc{Path: col.Href(d), LastMod: d.Meta.Base().LastMod().ISO()})
 		}

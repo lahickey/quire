@@ -59,7 +59,7 @@ docs:
 
 - `title` is the headline. Without it the headline is the site's name.
 - `install` is drawn as a shell command.
-- `repo` puts a Source link in the nav and the footer.
+- `repo` puts a Source link in the nav, beside the two buttons and in the footer. Each is a [`ui.Link`](./look.md#links), so a repository on GitHub gets its mark.
 - `footer` replaces the footer's text. Without it the footer is the engine's.
 - `features` are cards under the hero.
 - `docs.sections` is the sidebar. See below.

@@ -175,6 +175,11 @@
   color: var(--qr-neutral-10);
 }
 
+.footer-links {
+  display: flex;
+  gap: var(--qr-space-5);
+}
+
 .footer-inner a {
   color: var(--qr-neutral-10);
 }
@@ -220,6 +225,34 @@
   color: var(--qr-neutral-12);
   border-color: var(--qr-neutral-11);
   transition: border-color var(--qr-motion) ease;
+}
+
+.link-icon {
+  width: 1em;
+  height: 1em;
+  margin-right: 0.45em;
+  vertical-align: -0.125em;
+}
+
+.link-mark .link-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0;
+}
+
+.link-mark .link-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.link-badge img {
+  display: block;
+  height: 2.5rem;
+  width: auto;
 }
 
 .status-badge {
@@ -364,7 +397,7 @@ li.tag {
 }
 
 .card-image {
-  margin: calc(-1 * var(--qr-space-5)) calc(-1 * var(--qr-space-5)) 0;
+  margin: calc(-1 * var(--qr-space-5)) calc(-1 * var(--qr-space-5)) calc(var(--qr-space-5) - var(--qr-space-2));
   border: none;
   border-radius: var(--qr-radius) var(--qr-radius) 0 0;
   background: var(--qr-neutral-3);

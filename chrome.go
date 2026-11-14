@@ -91,6 +91,16 @@ func (e *Engine) SetFooter(f func(model.Chrome, model.PageSpec) templ.Component)
 	e.chrome.Footer = f
 }
 
+func (e *Engine) SetFooterText(text string) {
+	mustBeOpen(e.mounted, "the footer")
+	e.chrome.FooterText = text
+}
+
+func (e *Engine) AddFooterLinks(links ...model.Link) {
+	mustBeOpen(e.mounted, "a footer link")
+	e.chrome.FooterLinks = append(e.chrome.FooterLinks, links...)
+}
+
 func (e *Engine) Shell(p model.PageSpec) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		return ui.Shell(e.chrome, p).Render(ctx, w)

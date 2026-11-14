@@ -298,6 +298,25 @@ func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	}
 }
 
+func TestAliases(t *testing.T) {
+	doc := func(front string) *fstest.MapFile {
+		return &fstest.MapFile{Data: []byte("---\ntitle: T\ndate: 2026-01-01\n" + front + "---\n")}
+	}
+	e, err := served(t, fstest.MapFS{"posts/new.md": doc("aliases: [/old/name]\n")}, model.Site{}, posts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/old/name", nil))
+	if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/posts/new" {
+		t.Errorf("alias answered %d to %q", rec.Code, rec.Header().Get("Location"))
+	}
+	shadow := fstest.MapFS{"posts/a.md": doc(""), "posts/b.md": doc("aliases: [/posts/a]\n")}
+	if _, err := served(t, shadow, model.Site{}, posts); err == nil {
+		t.Error("an alias shadowing a live document loaded")
+	}
+}
+
 func TestFrontmatterFailsLoad(t *testing.T) {
 	if _, err := load[note]([]journal.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
 		t.Error("an unknown frontmatter field loaded")

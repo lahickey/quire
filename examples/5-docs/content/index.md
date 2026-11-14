@@ -3,7 +3,7 @@ kicker: What kind of thing it is
 title: The one line a visitor should remember.
 lede: Two sentences on what the project does and who it is for. This file is content/index.md, and everything on this page comes from it.
 install: go install example.com/project@latest
-repo: https://example.com/project
+repo: https://github.com/example/project
 footer: Example is MIT licensed.
 features:
   - href: /docs/getting-started

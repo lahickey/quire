@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"cmp"
 	"fmt"
 	"github.com/lahickey/quire/model"
 )
@@ -124,7 +125,14 @@ templ Header(c model.Chrome, p model.PageSpec) {
 templ Footer(c model.Chrome, p model.PageSpec) {
 	<footer class="site-footer">
 		<div class="footer-inner">
-			<span>© { CurrentYear() } { c.Name }</span>
+			<span>{ cmp.Or(c.FooterText, "© "+CurrentYear()+" "+cmp.Or(c.Author, c.Name)) }</span>
+			if len(c.FooterLinks) > 0 {
+				<span class="footer-links">
+					for _, l := range c.FooterLinks {
+						@Link(l, "link-mark")
+					}
+				</span>
+			}
 		</div>
 	</footer>
 }
