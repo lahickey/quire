@@ -29,6 +29,13 @@ var widgets = map[string]model.Widget{
 	},
 }
 
+// A palette of the site's own: a name, and the Radix hue behind each role.
+var harbour = model.Palette{
+	Name: "Harbour", Neutral: "olive", Accent: "teal", Spot: "tomato",
+	Swatch: [4]string{"sky", "violet", "brown", "pink"},
+	Red:    "red", Green: "grass", Amber: "amber",
+}
+
 // mount declares the site's content and pages. It runs at bake and at boot.
 func mount(e *quire.Engine) error {
 	// content/writing/*.md at /writing, with the default index and article.
@@ -63,6 +70,9 @@ func main() {
 		quire.WithTheme(model.ThemeDark),
 		quire.WithFooter(siteFooter),
 		quire.WithPalette(model.PaletteInk),
+		// A control in the navigation switches between Ink, the site's own
+		// palette and two more of the built-in ones.
+		quire.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk),
 		quire.WithIcons(static, "favicon.svg"),
 		// site.css applies at every width, site-narrow.css only on narrow screens.
 		quire.WithStylesheets(static, "site.css"),

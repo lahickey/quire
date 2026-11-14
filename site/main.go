@@ -26,5 +26,8 @@ func main() {
 		Description: "A Go engine that turns a folder of markdown into a finished website, served from a single binary.",
 	}, docs.Pack{Widgets: widgets}.Mount,
 		quire.WithStylesheets(css, "site.css"),
+		quire.WithPalettePicker(),
+		quire.WithFooterLinks(model.Link{Label: "A Hidden Bridge project", URL: "https://hiddenbridge.io"}),
+		quire.WithPalette(model.PaletteWine),
 	)
 }

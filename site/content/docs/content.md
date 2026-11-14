@@ -242,6 +242,7 @@ neutral accent spot
 ```
 
 - `mermaid` and `palette` are Quire's own widgets, and a site's widget of either name replaces it. `palette` draws each role it names (`neutral accent spot`, …) as its twelve steps, from the page's own custom properties.
+- A name after `palette` draws that palette whatever the visitor has picked, if it is one the site's [picker](./look.md#let-the-visitor-choose) offers: `palette moss`.
 - A fence shown inside a longer fence stays code, so a page can show a widget's syntax without running it.
 - A widget runs when the page is composed, not in the bake, so changing one needs no rebake. The bake records only where each fence sits.
 - A widget that returns an error fails the load, the same as bad frontmatter.

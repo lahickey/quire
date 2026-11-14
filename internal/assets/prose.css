@@ -76,7 +76,7 @@
 .prose code {
   font-family: var(--qr-font-mono);
   font-size: 0.9em;
-  background: var(--qr-neutral-3);
+  background: var(--qr-surface-strong);
   padding: 0.2em 0.4em;
   border-radius: var(--qr-radius-s);
 }
@@ -110,7 +110,7 @@
 }
 
 .prose pre {
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
   padding: var(--qr-space-4);
   border-radius: var(--qr-radius);
   overflow-x: auto;
@@ -191,7 +191,7 @@
 :is(.pele-node.accent, .pele-node.spot, .pele-node.swatch1, .pele-node.swatch2, .pele-node.swatch3, .pele-node.swatch4, .pele-node.red, .pele-node.green, .pele-node.amber) > :not(text, [fill="none"]) { fill: var(--qr-node-fill); }
 
 .prose pre.chroma {
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
 }
 
 .prose img,
@@ -234,7 +234,7 @@
   font: inherit;
   font-size: var(--qr-text-xs);
   color: var(--qr-neutral-11);
-  background: var(--qr-neutral-3);
+  background: var(--qr-surface-strong);
   border: 1px solid var(--qr-neutral-6);
   border-radius: var(--qr-radius-s);
   cursor: pointer;

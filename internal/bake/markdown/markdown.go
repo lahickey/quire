@@ -230,13 +230,17 @@ func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
 	return kind, marker
 }
 
-func palette(_, body string) (string, error) {
+func palette(name, body string) (string, error) {
 	var roles []string
 	for _, r := range (model.Palette{}).Roles() {
 		roles = append(roles, r.Name)
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="palette"><span></span>`)
+	if name == "" {
+		b.WriteString(`<div class="palette"><span></span>`)
+	} else {
+		fmt.Fprintf(&b, `<div class="palette" data-palette="%s"><span>%[1]s</span>`, html.EscapeString(name))
+	}
 	for i := range 12 {
 		fmt.Fprintf(&b, `<span>%d</span>`, i+1)
 	}

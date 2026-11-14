@@ -30,9 +30,9 @@ func apca(t *testing.T, text, bg string) float64 {
 }
 
 func TestPalettes(t *testing.T) {
-	palettes := map[string]Palette{"ember": PaletteEmber, "moss": PaletteMoss, "ink": PaletteInk, "dusk": PaletteDusk}
 	accents := map[string]string{}
-	for name, p := range palettes {
+	for _, p := range Palettes {
+		name := p.Name
 		p.Check()
 		for _, mode := range []string{"dark", "light"} {
 			steps := func(hue string) [12]string {
@@ -42,9 +42,13 @@ func TestPalettes(t *testing.T) {
 				return radix.Scales[hue].Light
 			}
 			n := steps(p.Neutral)
+			page := 0
+			if mode == "light" {
+				page = 1
+			}
 			for _, r := range p.Roles() {
 				text := steps(r.Hue)[10]
-				for _, bg := range []string{n[0], n[1]} {
+				for _, bg := range n[page : page+2] {
 					// APCA Lc 60 is the floor for body text; 59.5 allows for hex rounding.
 					if lc := math.Abs(apca(t, text, bg)); lc < 59.5 {
 						t.Errorf("%s %s: %s-11 %s on %s is Lc %.1f, under 60", name, mode, r.Name, text, bg, lc)
@@ -57,12 +61,18 @@ func TestPalettes(t *testing.T) {
 		}
 		accents[p.Accent] = name
 	}
-	defer func() {
-		if recover() == nil {
-			t.Error("a misspelt hue loaded")
-		}
-	}()
-	Palette{Neutral: "slte"}.Check()
+	twice := PaletteEmber
+	twice.Spot = twice.Amber
+	for name, p := range map[string]Palette{"a misspelt hue": {Neutral: "slte"}, "a hue in two roles": twice} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Error(name + " loaded")
+				}
+			}()
+			p.Check()
+		}()
+	}
 }
 
 func TestTags(t *testing.T) {

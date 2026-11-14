@@ -1,13 +1,14 @@
 
 
 html {
-  scroll-padding-top: calc(var(--qr-space-8) * 2);
+  scroll-padding-top: calc(var(--qr-header) + var(--qr-space-6));
 }
 
 .site-header {
   position: sticky;
   top: 0;
   z-index: 100;
+  height: var(--qr-header);
   background: var(--qr-bg);
 }
 
@@ -17,7 +18,7 @@ html {
   align-items: center;
   border-bottom: 1px solid var(--qr-neutral-6);
   background: var(--qr-bg);
-  padding: var(--qr-space-4) 0;
+  height: calc(100% - var(--qr-space-4));
   margin-bottom: var(--qr-space-4);
 }
 

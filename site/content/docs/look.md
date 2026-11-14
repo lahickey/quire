@@ -22,18 +22,90 @@ Pick another palette with an option:
 quire.Run(site, mount, quire.WithPalette(model.PaletteMoss))
 ```
 
-The built-in palettes are Ember (the default), Moss, Ink and Dusk. `WithTheme(model.ThemeDark)` makes dark the scheme a visitor sees when neither they nor their system has chosen one.
+The built-in palettes are Ember (the default), Brass, Moss, Tide, Ink, Dusk, Bloom, Wine and Ash; `model.Palettes` is all of them.
+Each is drawn here with a fence such as `palette moss`:
+
+```palette ember
+neutral accent spot
+```
+
+```palette brass
+neutral accent spot
+```
+
+```palette moss
+neutral accent spot
+```
+
+```palette tide
+neutral accent spot
+```
+
+```palette ink
+neutral accent spot
+```
+
+```palette dusk
+neutral accent spot
+```
+
+```palette bloom
+neutral accent spot
+```
+
+```palette wine
+neutral accent spot
+```
+
+```palette ash
+neutral accent spot
+```
+
+`WithTheme(model.ThemeDark)` makes dark the scheme a visitor sees when neither they nor their system has chosen one.
 
 A `Palette` names the Radix hue behind each role, so a palette of your own is a struct of hue names.
+Each role needs a hue of its own, or two callouts or two chart series would come out the same colour; a palette that repeats one fails at startup.
+
+```go
+var harbour = model.Palette{
+  Name: "Harbour", Neutral: "olive", Accent: "teal", Spot: "tomato",
+  Swatch: [4]string{"sky", "violet", "brown", "pink"},
+  Red:    "red", Green: "grass", Amber: "amber",
+}
+```
+
 Each role is a twelve-step scale:
 
 - `--qr-neutral-*` for surfaces, borders and text;
 - `--qr-accent-*` for the brand and everything interactive;
-- `--qr-spot-*` for a second brand colour;
+- `--qr-spot-*` for the one thing that must stand out, such as a draft badge or an important callout;
 - `--qr-swatch1-*`…`4` for telling things apart;
 - `--qr-red-*`, `--qr-green-*` and `--qr-amber-*` for meaning.
 
 A step's number is its job: 1–2 backgrounds, 3–5 component backgrounds, 6–8 borders, 9–10 solid fills, 11–12 text. `--qr-<role>-contrast` is the text on a step-9 fill.
+
+## Let the visitor choose
+
+`WithPalettePicker` puts a control in the navigation that switches the palette, and the browser remembers the choice.
+This site has one: the drop beside the theme toggle.
+
+```go
+quire.Run(site, mount, quire.WithPalettePicker())
+```
+
+With no arguments it offers every built-in palette. Name the ones to offer, your own among them, to offer fewer:
+
+```go
+quire.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk)
+```
+
+- The site's own palette, from `WithPalette`, is always offered and is what a new visitor sees.
+- A palette in the picker needs a `Name`.
+- The stylesheet carries only the palettes offered, about 1 KB compressed for each.
+- Share cards are drawn at bake time, so they stay in the site's own palette.
+- A header of your own, from `WithHeader`, draws the control itself with `ui.PalettePicker(c.Palettes)`, as it does `ui.ThemeToggle()`.
+
+The `themed` example offers its own palette and two built-in ones.
 
 ## Add your own CSS
 
@@ -80,7 +152,7 @@ templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
 }
 ```
 
-The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle`.
+The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle` `PalettePicker`.
 `Code(text)` is a code block with the copy button a fenced block gets; the install line on this site's home page is one.
 `Pager(c, d)` links to the documents before and after `d` in its collection. `Nav(c, p)` is the header's links: the site's name as the link home (see `WithBrand`), then each section.
 `DocCard(c, d)` fills a `Card` from a document: its link, the collection's kicker, title, summary, draft and featured flags, image, badges and tags. A site changes the fields it wants different.
@@ -124,6 +196,8 @@ These sit on `:root` in `base.css`. Override the custom properties.
 
 - `--qr-text-xs`…`xl`, `--qr-space-*`, `--qr-weight-*`, `--qr-lead-*`, `--qr-track-*` and `--qr-measure-text`.
 - `--qr-section-gap` is the space between a page's sections. A rule dividing them pads by it, so the space either side matches.
+- `--qr-surface` is the background of a quiet surface such as a code block or a card, and `--qr-surface-strong` of a stronger one such as inline code or a tag. With `--qr-bg` they set how bright a site is: light starts a step further from white than dark does from black, and a site that wants otherwise overrides the three under `[data-theme="light"]` or `:root`.
+- `--qr-header` is the height of the header, which stays at the top of the window. Anchors and the docs sidebar sit below it by this much, so a header of your own that is taller or shorter sets it.
 - `--qr-bg` is the colour behind whatever is drawn there. A surface that paints its own background sets it (as `.callout` does), and diagrams read it to mask lines behind their labels.
 
 `.prose` is a breakout grid: body text holds `--qr-measure-text` on any page, and a `.figure` or `.diagram` in it spans the page inner.

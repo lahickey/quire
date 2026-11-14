@@ -72,22 +72,47 @@ func contrast(hue string) string {
 	return "#fff"
 }
 
-func paletteCSS(p model.Palette) []byte {
-	var b strings.Builder
-	block := func(sel, scheme string, steps func(radix.Scale) [12]string, contrasts bool) {
-		fmt.Fprintf(&b, "%s {\n", sel)
-		for _, r := range p.Roles() {
-			for i, v := range steps(radix.Scales[r.Hue]) {
-				fmt.Fprintf(&b, "  --qr-%s-%d: %s;\n", r.Name, i+1, v)
-			}
-			if contrasts {
-				fmt.Fprintf(&b, "  --qr-%s-contrast: %s;\n", r.Name, contrast(r.Hue))
-			}
+func paletteBlock(b *strings.Builder, sel string, p model.Palette, light bool) {
+	fmt.Fprintf(b, "%s {\n", sel)
+	for _, r := range p.Roles() {
+		steps := radix.Scales[r.Hue].Dark
+		if light {
+			steps = radix.Scales[r.Hue].Light
 		}
-		fmt.Fprintf(&b, "  color-scheme: %s;\n}\n", scheme)
+		for i, v := range steps {
+			fmt.Fprintf(b, "  --qr-%s-%d: %s;\n", r.Name, i+1, v)
+		}
+		if !light {
+			fmt.Fprintf(b, "  --qr-%s-contrast: %s;\n", r.Name, contrast(r.Hue))
+		}
 	}
-	block(":root", "dark", func(s radix.Scale) [12]string { return s.Dark }, true)
-	b.WriteString("\n")
-	block(`[data-theme="light"]`, "light", func(s radix.Scale) [12]string { return s.Light }, false)
+	b.WriteString("}\n")
+}
+
+func paletteCSS(site model.Palette, offered []model.Palette) []byte {
+	var b strings.Builder
+	const light = `[data-theme="light"]`
+	named := func(p model.Palette) string { return fmt.Sprintf("[data-palette=%q]", p.ID()) }
+	root, rootLight := ":root", light
+	if slices.Contains(offered, site) {
+		root += ", " + named(site)
+		rootLight += ", " + light + " " + named(site)
+	}
+	paletteBlock(&b, root, site, false)
+	paletteBlock(&b, rootLight, site, true)
+	b.WriteString(":root { color-scheme: dark; }\n[data-theme=\"light\"] { color-scheme: light; }\n")
+	for _, p := range offered {
+		if p != site {
+			paletteBlock(&b, named(p), p, false)
+			paletteBlock(&b, named(p)+light+", "+light+" "+named(p), p, true)
+		}
+	}
+	if len(offered) > 0 {
+		picked := []string{fmt.Sprintf(":root:not([data-palette]) .palette-menu > [value=%q]", site.ID())}
+		for _, p := range offered {
+			picked = append(picked, fmt.Sprintf("%s .palette-menu > [value=%q]", named(p), p.ID()))
+		}
+		fmt.Fprintf(&b, "%s { background: var(--qr-accent-3); }\n", strings.Join(picked, ",\n"))
+	}
 	return []byte(b.String())
 }

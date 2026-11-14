@@ -13,7 +13,10 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const toggleTheme = `document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', document.documentElement.dataset.theme)`
+const (
+	toggleTheme = `document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', document.documentElement.dataset.theme)`
+	pickPalette = `document.documentElement.dataset.palette = el.value; localStorage.setItem('palette', el.value); el.closest('details').open = false`
+)
 
 func navActive(path, href string) bool {
 	if href == "/" {

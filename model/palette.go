@@ -10,13 +10,21 @@ import (
 )
 
 var (
-	PaletteEmber = Palette{Neutral: "sand", Accent: "orange", Spot: "yellow", Swatch: [4]string{"orange", "tomato", "amber", "brown"}, Red: "tomato", Green: "grass", Amber: "amber"}
-	PaletteMoss  = Palette{Neutral: "sage", Accent: "grass", Spot: "lime", Swatch: [4]string{"grass", "teal", "sky", "amber"}, Red: "red", Green: "green", Amber: "amber"}
-	PaletteInk   = Palette{Neutral: "slate", Accent: "indigo", Spot: "crimson", Swatch: [4]string{"blue", "violet", "cyan", "amber"}, Red: "red", Green: "grass", Amber: "amber"}
-	PaletteDusk  = Palette{Neutral: "mauve", Accent: "purple", Spot: "amber", Swatch: [4]string{"purple", "ruby", "sky", "pink"}, Red: "red", Green: "jade", Amber: "amber"}
+	PaletteEmber = Palette{Name: "Ember", Neutral: "sand", Accent: "orange", Spot: "cyan", Swatch: [4]string{"brown", "plum", "indigo", "yellow"}, Red: "tomato", Green: "grass", Amber: "amber"}
+	PaletteBrass = Palette{Name: "Brass", Neutral: "sand", Accent: "gold", Spot: "indigo", Swatch: [4]string{"plum", "crimson", "teal", "orange"}, Red: "tomato", Green: "grass", Amber: "amber"}
+	PaletteMoss  = Palette{Name: "Moss", Neutral: "sage", Accent: "grass", Spot: "violet", Swatch: [4]string{"lime", "brown", "blue", "orange"}, Red: "red", Green: "teal", Amber: "amber"}
+	PaletteTide  = Palette{Name: "Tide", Neutral: "slate", Accent: "cyan", Spot: "orange", Swatch: [4]string{"indigo", "pink", "brown", "yellow"}, Red: "red", Green: "grass", Amber: "amber"}
+	PaletteInk   = Palette{Name: "Ink", Neutral: "slate", Accent: "indigo", Spot: "crimson", Swatch: [4]string{"blue", "violet", "cyan", "yellow"}, Red: "tomato", Green: "grass", Amber: "amber"}
+	PaletteDusk  = Palette{Name: "Dusk", Neutral: "mauve", Accent: "purple", Spot: "orange", Swatch: [4]string{"indigo", "pink", "sky", "yellow"}, Red: "red", Green: "jade", Amber: "amber"}
+	PaletteBloom = Palette{Name: "Bloom", Neutral: "mauve", Accent: "pink", Spot: "iris", Swatch: [4]string{"violet", "cyan", "brown", "lime"}, Red: "tomato", Green: "jade", Amber: "amber"}
+	PaletteWine  = Palette{Name: "Wine", Neutral: "mauve", Accent: "ruby", Spot: "indigo", Swatch: [4]string{"plum", "violet", "teal", "gold"}, Red: "tomato", Green: "grass", Amber: "amber"}
+	PaletteAsh   = Palette{Name: "Ash", Neutral: "gray", Accent: "blue", Spot: "plum", Swatch: [4]string{"cyan", "pink", "violet", "orange"}, Red: "red", Green: "grass", Amber: "amber"}
+
+	Palettes = []Palette{PaletteEmber, PaletteBrass, PaletteMoss, PaletteTide, PaletteInk, PaletteDusk, PaletteBloom, PaletteWine, PaletteAsh}
 )
 
 type Palette struct {
+	Name    string
 	Neutral string
 	Accent  string
 	Spot    string
@@ -30,6 +38,8 @@ type Role struct {
 	Hue  string
 }
 
+func (p Palette) ID() string { return strings.ToLower(p.Name) }
+
 func (p Palette) Roles() []Role {
 	rs := []Role{{"neutral", p.Neutral}, {"accent", p.Accent}, {"spot", p.Spot}}
 	for i, h := range p.Swatch {
@@ -39,11 +49,16 @@ func (p Palette) Roles() []Role {
 }
 
 func (p Palette) Check() {
+	roles := map[string]string{}
 	for _, r := range p.Roles() {
 		if _, ok := radix.Scales[r.Hue]; !ok {
 			panic(fmt.Sprintf("quire: palette %s is %q, not a Radix hue: %s",
 				r.Name, r.Hue, strings.Join(slices.Sorted(maps.Keys(radix.Scales)), " ")))
 		}
+		if other, taken := roles[r.Hue]; taken {
+			panic(fmt.Sprintf("quire: palette %s and %s are both %q; each role needs a hue of its own", other, r.Name, r.Hue))
+		}
+		roles[r.Hue] = r.Name
 	}
 }
 

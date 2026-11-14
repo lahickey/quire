@@ -20,7 +20,7 @@
 
 ## Testing
 
-`just test` regenerates templ, runs vet, golangci-lint and gopls, rejects a tab in any Markdown file, then runs the tests.
+`just test` regenerates templ, runs vet, golangci-lint and gopls, rejects a tab in any Markdown file, checks the converter fingerprints, then runs the tests.
 `just fmt` turns each of those tabs into two spaces. GitHub draws a raw tab eight columns wide.
 `examples/examples_test.go` makes a site from every example with `quire new`, then builds, bakes and fetches it, both as it runs in dev and as it ships; `-short` skips it.
 `examples/scaffold` holds what `quire new` adds to a copy: the Dockerfile, `.dockerignore` and justfile.
@@ -37,4 +37,7 @@ Generated `*_templ.go` is committed, so `go run` works without templ.
 `just release-check` names each converter (markdown, diagram, card, picture) whose code or dependencies changed since the table in `internal/bake/versions.go` was last set.
 Bump the version of any whose output changed, which rebuilds exactly those artifacts in every site's next bake, and paste the fingerprints it prints.
 
+`just test` runs it, so a stale fingerprint shows before the commit, not at the release.
+
 `just release vX.Y.Z` runs every check and the tests, then tags `HEAD` on master. It prints the push rather than doing it.
+It refuses when master has diverged from `origin/master`, which is what amending a pushed commit does.

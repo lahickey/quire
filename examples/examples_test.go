@@ -45,6 +45,8 @@ var checks = map[string][]check{
 		{"GET", "/favicon.svg", 200, "<svg"},
 		{"GET", "/", 200, `type="image/svg+xml"`},
 		{"GET", "/_quire/style.css", 200, "site-narrow.css"},
+		{"GET", "/", 200, "palette-picker"},
+		{"GET", "/_quire/style.css", 200, `[data-palette="harbour"][data-theme="light"]`},
 		{"GET", "/missing", 404, "never written"},
 	},
 	"4-plugin": {

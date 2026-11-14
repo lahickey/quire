@@ -7,9 +7,11 @@
 
 .docs-side {
   position: sticky;
-  top: 6rem;
-  max-height: calc(100vh - 7rem);
+  top: calc(var(--qr-header) + var(--qr-space-6));
+  max-height: calc(100vh - var(--qr-header) - var(--qr-space-6));
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--qr-neutral-6) transparent;
 }
 
 .docs-menu {

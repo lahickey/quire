@@ -53,6 +53,7 @@ type Chrome struct {
 
 	Brand       string
 	Theme       Theme
+	Palettes    []Palette
 	Header      func(Chrome, PageSpec) templ.Component
 	Footer      func(Chrome, PageSpec) templ.Component
 	FooterText  string

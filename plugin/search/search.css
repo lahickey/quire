@@ -9,7 +9,7 @@
   font: inherit;
   font-size: var(--qr-text-xs);
   color: var(--qr-neutral-12);
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
   border: 1px solid var(--qr-neutral-6);
   border-radius: var(--qr-radius-s);
 }
@@ -31,7 +31,7 @@
   max-height: 70vh;
   overflow-y: auto;
   padding: var(--qr-space-2);
-  background: var(--qr-neutral-1);
+  background: var(--qr-bg);
   border: 1px solid var(--qr-neutral-6);
   border-radius: var(--qr-radius);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);

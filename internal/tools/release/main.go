@@ -48,6 +48,10 @@ func main() {
 	if output("git", "status", "--porcelain") != "" {
 		log.Fatal("the tree has uncommitted changes")
 	}
+	run("git", "fetch", "origin", "master")
+	if exec.Command("git", "merge-base", "--is-ancestor", "origin/master", "HEAD").Run() != nil {
+		log.Fatal("master has diverged from origin/master: a pushed commit was amended or rebased")
+	}
 	data, err := os.ReadFile("go.mod")
 	if err != nil {
 		log.Fatal(err)
@@ -65,7 +69,6 @@ func main() {
 	if _, err := exec.LookPath("govulncheck"); err != nil {
 		log.Fatal("govulncheck is not installed: go install golang.org/x/vuln/cmd/govulncheck@latest")
 	}
-	run("just", "release-check")
 	run("govulncheck", "./...")
 	run("just", "test")
 	if output("git", "status", "--porcelain") != "" {

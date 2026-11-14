@@ -4,7 +4,7 @@ title: A folder of markdown in. A finished website out.
 lede: Quire bakes your words, pictures and diagrams into one binary and serves them. It looks good by default, and every layer of it can be replaced.
 install: go get github.com/lahickey/quire
 repo: https://github.com/lahickey/quire
-footer: Quire is MIT licensed. This site is built with it.
+footer: Quire is open source, under the MIT licence.
 features:
   - href: /docs/bake
     kicker: Shipping

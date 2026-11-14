@@ -37,7 +37,7 @@ An `Option` changes engine behaviour.
 - `WithFooterLinks(links…)` adds links to the footer, each drawn as its mark alone when it has one. See [Links](./look.md#links).
 - `WithFooter(component)` replaces the whole footer.
 - `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
-- `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd` and `ui.ThemeToggle`.
+- `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd`, `ui.PalettePicker` and `ui.ThemeToggle`.
 - `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
 - `WithSiteCard` changes the share card the bake draws.
 - `WithBake` says where the content and the bake's output live. See [Baking](./bake.md).

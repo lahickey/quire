@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -138,6 +139,17 @@ func New(site model.Site, opts ...Option) *Engine {
 	}
 
 	e.palette.Check()
+	if e.chrome.Palettes != nil && !slices.Contains(e.chrome.Palettes, e.palette) {
+		e.chrome.Palettes = slices.Insert(slices.Clone(e.chrome.Palettes), 0, e.palette)
+	}
+	ids := map[string]bool{}
+	for _, p := range e.chrome.Palettes {
+		p.Check()
+		if p.Name == "" || ids[p.ID()] {
+			panic("quire: every palette in the picker needs a name of its own")
+		}
+		ids[p.ID()] = true
+	}
 	set, err := fonts.ReadFontSet(fonts.Default())
 	if err != nil {
 		panic("quire: fonts: " + err.Error())

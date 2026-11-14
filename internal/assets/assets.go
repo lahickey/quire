@@ -24,11 +24,12 @@ type File struct {
 }
 
 type Parts struct {
-	Scale   model.Scale
-	Palette model.Palette
-	Fonts   []byte
-	Sheets  []File
-	Scripts []File
+	Scale    model.Scale
+	Palette  model.Palette
+	Palettes []model.Palette
+	Fonts    []byte
+	Sheets   []File
+	Scripts  []File
 }
 
 func own(name string) []byte {
@@ -84,7 +85,7 @@ func Stylesheet(p Parts) []byte {
 	var b strings.Builder
 	appendCSS(&b, "quire", "scale", "", scaleCSS(p.Scale))
 	appendCSS(&b, "quire", "fonts", "", p.Fonts)
-	appendCSS(&b, "quire", "palette", "", paletteCSS(p.Palette))
+	appendCSS(&b, "quire", "palette", "", paletteCSS(p.Palette, p.Palettes))
 	for _, name := range ownSheets {
 		appendCSS(&b, "quire", name, "", own(name))
 	}

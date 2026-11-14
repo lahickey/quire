@@ -18,7 +18,7 @@
 
 .theme-toggle:hover {
   color: var(--qr-neutral-12);
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
 }
 
 .theme-toggle-light {
@@ -33,3 +33,52 @@
   display: initial;
 }
 
+
+.palette-picker {
+  position: relative;
+}
+
+.palette-picker > summary {
+  list-style: none;
+}
+
+.palette-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.palette-menu {
+  position: absolute;
+  top: calc(100% + var(--qr-space-2));
+  right: 0;
+  z-index: 1;
+  display: grid;
+  padding: var(--qr-space-2);
+  background: var(--qr-bg);
+  border: 1px solid var(--qr-neutral-6);
+  border-radius: var(--qr-radius-s);
+}
+
+.palette-menu > button {
+  display: flex;
+  align-items: center;
+  gap: var(--qr-space-3);
+  padding: var(--qr-space-2) var(--qr-space-3);
+  font: inherit;
+  font-size: var(--qr-text-sm);
+  color: var(--qr-accent-11);
+  background: transparent;
+  border: none;
+  border-radius: var(--qr-radius-s);
+  cursor: pointer;
+}
+
+.palette-menu > button:hover {
+  background: var(--qr-accent-4);
+}
+
+.palette-chip {
+  width: var(--qr-space-4);
+  height: var(--qr-space-4);
+  border-radius: 30%;
+  background: linear-gradient(135deg, var(--qr-accent-9) 62%, var(--qr-spot-9) 62%);
+}

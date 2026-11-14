@@ -45,7 +45,7 @@
   font-family: var(--qr-font-mono);
   font-size: var(--qr-text-sm);
   color: var(--qr-neutral-11);
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
   border: 1px solid var(--qr-neutral-6);
   border-radius: var(--qr-radius-s);
   overflow-x: auto;
@@ -71,7 +71,7 @@
   font: inherit;
   font-weight: var(--qr-weight-medium);
   color: var(--qr-neutral-12);
-  background: var(--qr-neutral-2);
+  background: var(--qr-surface);
   border: 1px solid var(--qr-neutral-6);
   border-radius: var(--qr-radius-s);
   cursor: pointer;
@@ -97,6 +97,9 @@
 
 .docs-nav ul {
   list-style: none;
+}
+
+.docs-nav ul:not(:last-child) {
   margin-bottom: var(--qr-space-5);
 }
 

@@ -22,6 +22,15 @@ func WithPalette(p model.Palette) Option {
 	return func(e *Engine) { e.palette = p }
 }
 
+func WithPalettePicker(ps ...model.Palette) Option {
+	return func(e *Engine) {
+		if len(ps) == 0 {
+			ps = model.Palettes
+		}
+		e.chrome.Palettes = ps
+	}
+}
+
 func WithScale(s model.Scale) Option {
 	return func(e *Engine) { e.scale = s }
 }

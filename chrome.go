@@ -30,7 +30,7 @@ func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []str
 }
 
 func (e *Engine) addAssets() {
-	p := assets.Parts{Scale: e.scale, Palette: e.palette, Sheets: e.sheets, Scripts: e.scripts}
+	p := assets.Parts{Scale: e.scale, Palette: e.palette, Palettes: e.chrome.Palettes, Sheets: e.sheets, Scripts: e.scripts}
 	p.Fonts, e.chrome.FontPreload = fonts.Faces(e.fonts, fonts.Default(), func(file string, body []byte) string {
 		return e.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
 	})

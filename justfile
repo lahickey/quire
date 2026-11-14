@@ -29,7 +29,7 @@ check:
     @cd {{ dir }} && golangci-lint run --show-stats=false ./...
     @cd {{ dir }} && sh -c 'out=$(gopls check -severity=hint $(find . -name "*.go" ! -path "./vendor/*")); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'
 
-test: generate check
+test: generate check release-check
     @cd {{ dir }} && go test ./...
 
 # Before a release: fails on any converter whose code or dependencies changed since its version was set.

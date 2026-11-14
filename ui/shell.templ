@@ -84,6 +84,24 @@ templ ThemeToggle() {
 	</button>
 }
 
+templ PalettePicker(ps []model.Palette) {
+	<details class="palette-picker" data-on:click__outside="el.open = false">
+		<summary class="theme-toggle" aria-label="Choose palette" title="Choose palette">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M12 2.7s6 6.3 6 11a6 6 0 0 1-12 0c0-4.7 6-11 6-11z"></path>
+			</svg>
+		</summary>
+		<div class="palette-menu">
+			for _, p := range ps {
+				<button type="button" value={ p.ID() } data-palette={ p.ID() } data-on:click__viewtransition={ pickPalette }>
+					<span class="palette-chip"></span>
+					{ p.Name }
+				</button>
+			}
+		</div>
+	</details>
+}
+
 templ snippet(c model.Chrome) {
 	if r := c.LiveReload; r.On {
 		<div
@@ -115,6 +133,9 @@ templ Header(c model.Chrome, p model.PageSpec) {
 			<div class="nav-end">
 				for _, control := range c.NavEnd {
 					@control
+				}
+				if len(c.Palettes) > 0 {
+					@PalettePicker(c.Palettes)
 				}
 				@ThemeToggle()
 			</div>

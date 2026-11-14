@@ -10,6 +10,9 @@
 
 :root {
   --qr-bg: var(--qr-neutral-1);
+  --qr-surface: var(--qr-neutral-2);
+  --qr-surface-strong: var(--qr-neutral-3);
+  --qr-header: 6rem;
   --qr-text-xl: 2.5rem;
   --qr-text-lg: 1.75rem;
   --qr-text-md: 1.125rem;
@@ -44,6 +47,12 @@
   --qr-radius: 0.5rem;
   --qr-radius-s: 0.25rem;
   --qr-motion: 0.2s;
+}
+
+[data-theme="light"] {
+  --qr-bg: var(--qr-neutral-2);
+  --qr-surface: var(--qr-neutral-3);
+  --qr-surface-strong: var(--qr-neutral-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
