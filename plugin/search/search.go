@@ -100,8 +100,17 @@ func (p *Plugin) find(q string) []Hit {
 	if len(terms) == 0 {
 		return nil
 	}
-	found := slices.DeleteFunc(slices.Clone(p.sections), func(s section) bool { return s.score(terms) == 0 })
-	slices.SortStableFunc(found, func(a, b section) int { return b.score(terms) - a.score(terms) })
+	type scored struct {
+		section
+		score int
+	}
+	var found []scored
+	for _, s := range p.sections {
+		if n := s.score(terms); n > 0 {
+			found = append(found, scored{s, n})
+		}
+	}
+	slices.SortStableFunc(found, func(a, b scored) int { return b.score - a.score })
 	var hits []Hit
 	for _, s := range found[:min(limit, len(found))] {
 		hits = append(hits, s.hit(terms[0]))

@@ -37,25 +37,20 @@ func media(s model.Scale, w model.Width) string {
 }
 
 func scaleCSS(s model.Scale) []byte {
-	tokens := []cssVar{
+	return rootVars([]cssVar{
 		{"--qr-text-root", strconv.Itoa(s.Root) + "px"},
 		{"--qr-col", s.Rem(s.Col)},
 		{"--qr-gutter", s.Rem(s.Gutter())},
 		{"--qr-measure", strconv.Itoa(s.Measure()) + "px"},
+		{"--qr-measure-wide", strconv.Itoa(s.Wide()) + "px"},
+		{"--qr-measure-full", strconv.Itoa(s.Full()) + "px"},
 		{"--qr-thumb", s.Rem(s.Thumb())},
 		{"--qr-nav-columns", "1fr auto 1fr"},
 		{"--qr-nav-links-column", "2"},
 		{"--qr-nav-end-column", "3"},
 		{"--qr-nav-justify", "center"},
-	}
-	if s.Widest >= model.WidthWide {
-		tokens = append(tokens, cssVar{"--qr-measure-wide", strconv.Itoa(s.Wide()) + "px"})
-	}
-	if s.Widest >= model.WidthFull {
-		tokens = append(tokens, cssVar{"--qr-measure-full", strconv.Itoa(s.Full()) + "px"})
-	}
-	tokens = append(tokens, cssVar{"--qr-bleed", "calc(50% - 50cqw)"})
-	return rootVars(tokens)
+		{"--qr-bleed", "calc(50% - 50cqw)"},
+	})
 }
 
 func breakpointCSS(s model.Scale) []byte {

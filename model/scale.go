@@ -26,9 +26,8 @@ const narrowest = 320
 var Widths = []Width{WidthNarrow, WidthWide, WidthFull}
 
 type Scale struct {
-	Root   int
-	Col    int
-	Widest Width
+	Root int
+	Col  int
 }
 
 func (s Scale) inner(cols int) int {

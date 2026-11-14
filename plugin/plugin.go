@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -132,9 +133,10 @@ func (m *Mount) AddScripts(fsys fs.FS, names ...string) {
 }
 
 func (m *Mount) AddNavEnd(c templ.Component) {
-	if c != nil {
-		m.got.NavEnd = append(m.got.NavEnd, c)
+	if c == nil {
+		m.err = cmp.Or(m.err, errors.New("nil nav control"))
 	}
+	m.got.NavEnd = append(m.got.NavEnd, c)
 }
 
 func (m *Mount) UseSessions() { m.got.Sessions = true }

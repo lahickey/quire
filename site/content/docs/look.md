@@ -87,13 +87,12 @@ Sheets read `--qr-font` and `--qr-font-mono`.
 
 ### Scale
 
-The page grid is three numbers: `Root`, `Col` and `Widest`.
+The page grid is two numbers: `Root` and `Col`.
 
 - Gutter and thumb are rem from `Root`.
 - A `.page` is two columns of `Col`, `.page--wide` three, `.page--full` four. `Col` defaults to 336.
-- `Widest` is the widest page the site builds (`WidthWide`, `WidthFull`; zero is a plain `.page`). A page token past it is not emitted, so `.page--wide` on a site that never declared it stays a `.page`. It gates the CSS only: every image offers every slot.
 
-`WithScale` sets all three, and `WithWidest` only the last. Page widths, the breakpoint and the slot sizes follow.
+`WithScale` sets both. Page widths, the breakpoint and the slot sizes follow.
 Read the properties with `var()`; never restate the number.
 
 ### Tokens

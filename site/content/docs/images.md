@@ -35,6 +35,10 @@ The bake encodes it; the site embeds the bundle and never a master.
 A master is JPEG, or lossless WebP when it has alpha. Every variant is lossy WebP.
 
 Most sites commit their pictures as they are and never think about this.
+
+> [!CAUTION]
+> A picture committed by hand keeps its EXIF, XMP and ICC profile in the repository, GPS from a phone included. Quire strips them only from what it writes, so run a phone picture through `quire ingest` first.
+
 For a source too big to commit, `quire ingest` writes a master from it: 8-bit, long edge at most `max(2560, widest slot)`, EXIF/XMP/ICC stripped, and nothing beside it.
 A source already under the cap is not upscaled, and shrinking one says so.
 

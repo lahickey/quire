@@ -62,8 +62,6 @@ func main() {
 		// Dark unless the visitor or their system says otherwise.
 		quire.WithTheme(model.ThemeDark),
 		quire.WithFooter(siteFooter),
-		// Without this, .page--wide (the card grids) is no wider than a plain page.
-		quire.WithWidest(model.WidthWide),
 		quire.WithPalette(model.PaletteInk),
 		quire.WithIcons(static, "favicon.svg"),
 		// site.css applies at every width, site-narrow.css only on narrow screens.

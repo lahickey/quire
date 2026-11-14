@@ -56,9 +56,6 @@ func main() {
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",
 	}, mount,
-		// The widest page the site builds: without it .page--wide and .page--full
-		// are no wider than a plain page.
-		quire.WithWidest(model.WidthFull),
 		quire.WithPalette(model.PaletteDusk),
 		quire.WithStylesheets(css, "site.css"),
 	)

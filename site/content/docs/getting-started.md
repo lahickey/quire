@@ -115,7 +115,8 @@ Three ideas cover most of Quire.
 - **The bake.** Before it serves, the binary bakes. It runs the mount, converts the markdown it asked for, encodes the pictures, draws the diagrams, and writes the results into `.quire`. A second run only redoes what changed.
 - **The bundle.** What the bake wrote is the bundle. The site serves from the bundle and never converts anything while serving.
 
-Everything under `.quire` is made by the bake, so deleting it is a clean start.
+> [!TIP]
+> Everything under `.quire` is made by the bake, so deleting it is a clean start.
 
 ## Ship it
 

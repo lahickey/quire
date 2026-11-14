@@ -16,7 +16,7 @@ var files embed.FS
 
 var ownSheets = []string{"base.css", "toggle.css", "nav.css", "layout.css", "prose.css", "highlight.css"}
 
-type Sheet struct {
+type File struct {
 	FS    fs.FS
 	Name  string
 	Layer string
@@ -27,8 +27,8 @@ type Parts struct {
 	Scale   model.Scale
 	Palette model.Palette
 	Fonts   []byte
-	Sheets  []Sheet
-	Scripts []Sheet
+	Sheets  []File
+	Scripts []File
 }
 
 func own(name string) []byte {
@@ -39,7 +39,7 @@ func own(name string) []byte {
 	return body
 }
 
-func read(f Sheet) []byte {
+func read(f File) []byte {
 	body, err := fs.ReadFile(f.FS, f.Name)
 	if err != nil {
 		panic("quire: " + f.Name + ": " + err.Error())

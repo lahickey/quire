@@ -55,7 +55,7 @@ func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) erro
 	if err := New(site, append(opts, WithBake(spec))...).bake(mount); err != nil {
 		return nil, err
 	}
-	e := New(site, append(opts, withBundle(os.DirFS(spec.Bundle())))...)
+	e := New(site, opts...).load(os.DirFS(spec.Bundle()))
 	return e, mount(e)
 }
 
@@ -109,7 +109,7 @@ func TestShareImages(t *testing.T) {
 		t.Errorf("the bake left .quire without its .gitignore: %v", err)
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(site, withBundle(bundle))
+	e := New(site).load(bundle)
 	col, err := e.AddCollection(model.Basic{ID: "posts"})
 	if err != nil {
 		t.Fatal(err)
@@ -221,10 +221,15 @@ func TestRobotsAndSitemap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if g := e.robotsTxt(); !strings.Contains(g, "Sitemap: https://example.com/sitemap.xml") {
+	get := func(path string) string {
+		rec := httptest.NewRecorder()
+		e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		return rec.Body.String()
+	}
+	if g := get("/robots.txt"); !strings.Contains(g, "Sitemap: https://example.com/sitemap.xml") {
 		t.Fatalf("robots: %s", g)
 	}
-	sm := e.sitemapXML()
+	sm := get("/sitemap.xml")
 	for _, loc := range []string{
 		"https://example.com/",
 		"https://example.com/contact",
@@ -237,12 +242,6 @@ func TestRobotsAndSitemap(t *testing.T) {
 	}
 	if strings.Contains(sm, "/writing/d") {
 		t.Fatal("draft in sitemap")
-	}
-
-	rec := httptest.NewRecorder()
-	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/sitemap.xml", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<urlset") {
-		t.Fatalf("sitemap route %d %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -506,7 +505,7 @@ func TestDiagrams(t *testing.T) {
 		t.Fatal(err)
 	}
 	load := func(bundle fs.FS) (string, error) {
-		col, err := New(model.Site{}, withBundle(bundle)).AddCollection(model.Basic{ID: "posts"})
+		col, err := New(model.Site{}).load(bundle).AddCollection(model.Basic{ID: "posts"})
 		if err != nil {
 			return "", err
 		}
@@ -605,7 +604,7 @@ func TestBakeIsWhatTheMountAsked(t *testing.T) {
 		t.Fatal("the mount's document is not in the journal")
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(model.Site{}, withBundle(bundle))
+	e := New(model.Site{}).load(bundle)
 	if err := posts(e); err != nil {
 		t.Fatalf("serving from the bake's bundle: %v", err)
 	}

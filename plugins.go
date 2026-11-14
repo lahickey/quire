@@ -21,7 +21,7 @@ func (e *Engine) attach(p plugin.Plugin) error {
 		return err
 	}
 	for _, r := range a.Routes {
-		if err := e.claim(r.Method+" "+pagePattern(r.Path), r.Path, a.Name, r.Handler); err != nil {
+		if err := e.claim(r.Method+" "+pagePattern(r.Path), a.Name, r.Handler); err != nil {
 			return fmt.Errorf("plugin %s: %w", a.Name, err)
 		}
 	}
@@ -30,7 +30,7 @@ func (e *Engine) attach(p plugin.Plugin) error {
 	}
 	for _, s := range a.Scripts {
 		for _, n := range s.Names {
-			e.scripts = append(e.scripts, assets.Sheet{FS: s.FS, Name: n})
+			e.scripts = append(e.scripts, assets.File{FS: s.FS, Name: n})
 		}
 	}
 	e.chrome.NavEnd = append(e.chrome.NavEnd, a.NavEnd...)

@@ -2,11 +2,9 @@ package quire
 
 import (
 	"io/fs"
-	"mime"
-	"path"
-	"strings"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/model"
 )
 
@@ -35,18 +33,10 @@ func WithScale(s model.Scale) Option {
 	return func(e *Engine) { e.scale = s }
 }
 
-func WithWidest(w model.Width) Option {
-	return func(e *Engine) { e.scale.Widest = w }
-}
-
 func WithIcons(fsys fs.FS, names ...string) Option {
 	return func(e *Engine) {
 		for _, n := range names {
-			rel := "icon"
-			if strings.HasPrefix(path.Base(n), "apple-touch-icon") {
-				rel = "apple-touch-icon"
-			}
-			e.chrome.Icons = append(e.chrome.Icons, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(n)), Href: e.AddFile("/"+n, fsys, n)})
+			e.icons = append(e.icons, assets.File{FS: fsys, Name: n})
 		}
 	}
 }
@@ -57,10 +47,6 @@ func WithStylesheets(fsys fs.FS, names ...string) Option {
 
 func WithStylesheetsAt(w model.Width, fsys fs.FS, names ...string) Option {
 	return func(e *Engine) { e.addSheets("site", w, fsys, names) }
-}
-
-func withBundle(fsys fs.FS) Option {
-	return func(e *Engine) { e.shipped = fsys }
 }
 
 func WithBake(s model.BakeSpec) Option {

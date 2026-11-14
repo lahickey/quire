@@ -49,9 +49,9 @@ type Engine struct {
 	palette  model.Palette
 	scale    model.Scale
 	siteCard *model.ShareCard
-	sheets   []assets.Sheet
-	scripts  []assets.Sheet
-	shipped  fs.FS
+	sheets   []assets.File
+	scripts  []assets.File
+	icons    []assets.File
 
 	images map[string]model.Image
 	fonts  fonts.FontSet
@@ -84,6 +84,7 @@ func (e *Engine) mountDefaults() {
 		return
 	}
 	e.addAssets()
+	e.addIcons()
 	e.addSiteFiles()
 	e.route("GET "+model.ImagePath+"{file}", ownerQuire, e.bundle.ServeHTTP)
 	if _, taken := e.routes["GET "+pagePattern("/")]; !taken {
@@ -108,6 +109,20 @@ func (e *Engine) siteCardText() model.ShareCard {
 	return c
 }
 
+func (e *Engine) load(bundle fs.FS) *Engine {
+	if bundle == nil {
+		bundle = os.DirFS(e.bakeSpec.WithDefaults().Bundle())
+	}
+	if err := e.bundle.Load(bundle); err != nil {
+		panic("quire: bundle: " + err.Error() + "; run the site's bake")
+	}
+	rec, _ := e.bundle.Record(journal.SiteCard)
+	if file, ok := rec.File(); ok {
+		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
+	}
+	return e
+}
+
 func New(site model.Site, opts ...Option) *Engine {
 	e := &Engine{
 		mux:      http.NewServeMux(),
@@ -130,25 +145,15 @@ func New(site model.Site, opts ...Option) *Engine {
 	e.fonts = set
 	e.bundle = serve.NewStore(imageMemory, imageMemoryLimit, e.mode == Dev, e.fonts.ID)
 	e.from = e.bundle
-
-	if e.shipped != nil {
-		if err := e.bundle.Load(e.shipped); err != nil {
-			panic("quire: bundle: " + err.Error() + "; run the site's bake")
-		}
-	}
-	rec, _ := e.bundle.Record(journal.SiteCard)
-	if file, ok := rec.File(); ok {
-		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
-	}
 	e.pages = serve.NewPages(pageCache, e.mode == Dev)
 	e.route("GET "+healthPath, ownerQuire, serve.Health)
 	if e.mode == Dev {
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
-			panic("engine: boot id: " + err.Error())
+			panic("quire: boot id: " + err.Error())
 		}
 		if err := e.attach(liveReload{e, hex.EncodeToString(b[:])}); err != nil {
-			panic("engine: live reload: " + err.Error())
+			panic("quire: live reload: " + err.Error())
 		}
 	}
 	return e
@@ -197,20 +202,15 @@ func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
 		mode = Dev
 	}
 	opts := append([]Option{WithMode(mode), WithDrafts(*drafts)}, extra...)
-	b := New(site, opts...)
 	if baking || (shipped == nil && canBake) {
-		if err := b.bake(mount); err != nil {
+		if err := New(site, opts...).bake(mount); err != nil {
 			log.Fatal(err)
 		}
 		if baking {
 			return
 		}
 	}
-	bundle := shipped
-	if bundle == nil {
-		bundle = os.DirFS(b.bakeSpec.WithDefaults().Bundle())
-	}
-	e := New(site, append(opts, withBundle(bundle))...)
+	e := New(site, opts...).load(shipped)
 	if err := mount(e); err != nil {
 		log.Fatal(err)
 	}

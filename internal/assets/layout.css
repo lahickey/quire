@@ -10,11 +10,11 @@
 }
 
 .page--wide {
-  max-width: var(--qr-measure-wide, var(--qr-measure));
+  max-width: var(--qr-measure-wide);
 }
 
 .page--full {
-  max-width: var(--qr-measure-full, var(--qr-measure));
+  max-width: var(--qr-measure-full);
 }
 
 .home-sections,

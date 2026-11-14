@@ -30,13 +30,13 @@ How the site looks is options, not `Site`.
 An `Option` changes engine behaviour.
 
 - `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none. The default is `ThemeLight`, and the visitor's own choice always wins.
-- `WithPalette`, `WithScale` and `WithWidest` set the colours and the page grid. See [The look](./look.md).
+- `WithPalette` and `WithScale` set the colours and the page grid. See [The look](./look.md).
 - `WithStylesheets` and `WithStylesheetsAt` add the site's CSS.
 - `WithBrand(name)` is the name the header shows as the link home, in place of `Site.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
 - `WithFooter(component)` replaces the footer.
 - `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
 - `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd` and `ui.ThemeToggle`.
-- `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension and, for a PNG, sized from the file. A name starting `apple-touch-icon` is linked as one.
+- `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
 - `WithSiteCard` changes the share card the bake draws.
 - `WithBake` says where the content and the bake's output live. See [Baking](./bake.md).
 - `WithMode` and `WithDrafts` are what `--dev` and `--drafts` set.
@@ -63,7 +63,7 @@ func mount(e *quire.Engine) error {
 What it can add:
 
 - `AddCollection(spec)` loads documents and mounts their index and pages. See [Content](./content.md#collections).
-- `AddPage(path, component)` mounts a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home.
+- `AddPage(path, component)` mounts a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home. A nil component panics.
 - `SetNotFound(component)` replaces the default not-found page. Like any fixed page it is rendered once at boot and never handed the request, so every missing URL gets the same bytes and none of them reaches the page cache.
 - `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
@@ -80,8 +80,9 @@ Three names come up in every template.
 
 ## Reserved paths
 
-A leading `_` segment belongs to the engine or to a plugin; `AddPage` refuses one.
-Everything Quire serves for itself is under `/_quire/`: `health`, `reload`, `style.css`, `quire.js`, `datastar.js`, `fonts/`, `img/`. Each plugin gets `/_<name>/`.
+A leading `_` segment is a namespace with one owner: `/_quire/` is the engine's, `/_<name>/` is a plugin's and `/_site/` is the site's own.
+Every route is checked the same way, whoever adds it. `AddPage`, `AddRoute` and `AddFile` panic on a path in another owner's namespace or on one already mounted, and a plugin's `Use` returns the same as an error.
+Everything Quire serves for itself is under `/_quire/`: `health`, `reload`, `style.css`, `quire.js`, `datastar.js`, `fonts/`, `img/`.
 Datastar signals follow the same split: `$quire` is the engine's, and a plugin's stream patches only `$<name>`.
 Only the files that have to be findable at a known location stay at the root: `robots.txt` and `sitemap.xml`.
 
@@ -89,7 +90,10 @@ Only the files that have to be findable at a known location stay at the root: `r
 
 ### The handler
 
-`Handler()` finalises: mount everything before you take it. It renders every fixed page, so a template error stops the binary at boot, and anything added after it panics.
+`Handler()` finalises. It renders every fixed page, so a template error stops the binary at boot.
+
+> [!IMPORTANT]
+> Mount everything before you take the handler. Anything added after it panics.
 
 An app that needs routes outside Quire entirely can own `main` and mount the engine as a fallback: `mux.Handle("/", e.Handler())`, with its own patterns beside it.
 Prefer a plugin.
@@ -104,6 +108,7 @@ Both are sent with `Cache-Control: no-cache`, so a browser cannot pin one.
 - A fixed page is rendered once, when the handler is taken.
 - A collection's document page is rendered on first request and held in a 4MB page cache, keyed by its path.
 - A raw route goes straight to its handler and is never cached.
+- `robots.txt` and `sitemap.xml` are built once, when the handler is taken.
 - An asset linked with its content hash (`?h=`) is cached by the browser for good. Anything else is revalidated.
 
 A cached body is compressed once, as brotli or gzip, and stored that way. A body under 256 bytes is sent as it is.

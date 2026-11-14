@@ -24,31 +24,30 @@ func pagePattern(path string) string {
 	return strings.TrimSuffix(path, "/")
 }
 
-func reserved(path string) bool {
-	return strings.HasPrefix(path, "/_")
-}
-
 func mustBeOpen(closed bool, what string) {
 	if closed {
 		panic("quire: " + what + " added after the site was built")
 	}
 }
 
-func (e *Engine) route(pattern, owner string, h http.HandlerFunc) {
+func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
 	mustBeOpen(e.mounted, "route "+pattern)
-	e.routes[pattern] = owner
-	e.mux.HandleFunc(pattern, h)
-}
-
-func (e *Engine) claim(pattern, path, owner string, h http.HandlerFunc) error {
-	if reserved(path) && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
+	_, path, _ := strings.Cut(pattern, " ")
+	if strings.HasPrefix(path, "/_") && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
 		return fmt.Errorf("%s belongs to another namespace", path)
 	}
 	if o, taken := e.routes[pattern]; taken {
 		return fmt.Errorf("%s is already mounted by %s", path, o)
 	}
-	e.route(pattern, owner, h)
+	e.routes[pattern] = owner
+	e.mux.HandleFunc(pattern, h)
 	return nil
+}
+
+func (e *Engine) route(pattern, owner string, h http.HandlerFunc) {
+	if err := e.claim(pattern, owner, h); err != nil {
+		panic("quire: " + err.Error())
+	}
 }
 
 func (e *Engine) versioned(url, hash string) string {
@@ -80,22 +79,14 @@ func (e *Engine) addNotFound() {
 	e.route("GET /{path...}", ownerQuire, e.notFound404.ServeHTTP)
 }
 
-func (e *Engine) robotsTxt() string { return serve.Robots(e.chrome.AbsURL("/sitemap.xml")) }
-
-func (e *Engine) sitemapXML() string { return serve.Sitemap(e.chrome.AbsURL, e.sitemap) }
-
 func (e *Engine) addSiteFiles() {
 	if e.chrome.BaseURL == "" {
 		return
 	}
-	e.route("GET /robots.txt", ownerQuire, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte(e.robotsTxt()))
-	})
-	e.route("GET /sitemap.xml", ownerQuire, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-		_, _ = w.Write([]byte(e.sitemapXML()))
-	})
+	robots := serve.Robots(e.chrome.AbsURL("/sitemap.xml"))
+	e.route("GET /robots.txt", ownerQuire, serve.Static("text/plain; charset=utf-8", []byte(robots)).ServeHTTP)
+	sitemap := serve.Sitemap(e.chrome.AbsURL, e.sitemap)
+	e.route("GET /sitemap.xml", ownerQuire, serve.Static("application/xml; charset=utf-8", []byte(sitemap)).ServeHTTP)
 }
 
 func (e *Engine) AddRoute(method, path string, h http.HandlerFunc) {
@@ -104,10 +95,7 @@ func (e *Engine) AddRoute(method, path string, h http.HandlerFunc) {
 
 func (e *Engine) AddPage(path string, c templ.Component) {
 	if c == nil {
-		return
-	}
-	if reserved(path) {
-		panic("quire: " + path + " is reserved for the engine and its plugins")
+		panic("quire: page " + path + ": nil component")
 	}
 	e.preparePage(path, c)
 	e.sitemap = append(e.sitemap, serve.Loc{Path: path})

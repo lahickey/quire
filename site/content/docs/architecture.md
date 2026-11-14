@@ -65,7 +65,7 @@ A plugin sits beside `ui`, and a site opts in with `Use`. A plugin Quire ships i
 
 The column is 336 because that is the widest one that still fits two of them on a 744px tablet, the narrowest worth keeping off the phone layout.
 
-`Widest` gates page tokens only. How wide an image goes is where it is placed, so one wide page does not make every thumbnail pay for that width.
+How wide an image goes is where it is placed, so one wide page does not make every thumbnail pay for that width.
 
 `sizes` sees the viewport, not the container. Between the two-column width and the three-column width a `.page` is already capped and a `.page--wide` is still growing, so the cells differ in that band.
 

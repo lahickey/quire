@@ -111,7 +111,6 @@ func main() {
 		BaseURL:     "https://quire.hiddenbridge.io",
 		Description: "A Go engine that turns a folder of markdown into a finished website, served from a single binary.",
 	}, mount,
-		quire.WithWidest(model.WidthWide),
 		quire.WithNavEnd(repoLink()),
 		quire.WithFooter(footer),
 		quire.WithStylesheets(css, "site.css"),

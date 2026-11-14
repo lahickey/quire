@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"mime"
+	"path"
 	"slices"
 	"strings"
 
@@ -23,7 +25,7 @@ const (
 
 func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
 	for _, n := range names {
-		e.sheets = append(e.sheets, assets.Sheet{FS: fsys, Name: n, Layer: layer, At: at})
+		e.sheets = append(e.sheets, assets.File{FS: fsys, Name: n, Layer: layer, At: at})
 	}
 }
 
@@ -35,6 +37,16 @@ func (e *Engine) addAssets() {
 	e.chrome.StyleURLs = []string{e.addBytes(stylePath, css, assets.Stylesheet(p))}
 	e.chrome.ScriptURL = e.addBytes(scriptPath, javascript, assets.Script(p))
 	e.chrome.ModuleURLs = []string{e.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+}
+
+func (e *Engine) addIcons() {
+	for _, i := range e.icons {
+		rel := "icon"
+		if strings.HasPrefix(path.Base(i.Name), "apple-touch-icon") {
+			rel = "apple-touch-icon"
+		}
+		e.chrome.Icons = append(e.chrome.Icons, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(i.Name)), Href: e.AddFile("/"+i.Name, i.FS, i.Name)})
+	}
 }
 
 func (e *Engine) addNavItem(id string) {

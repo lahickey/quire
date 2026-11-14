@@ -103,14 +103,16 @@ End its handler with `plugin.Done(w, r)`, which answers either kind of caller: `
 
 - `AddStylesheets` / `AddStylesheetsAt` go into the `plugin` cascade layer, so the site can restyle a plugin and never the reverse. `AddStylesheetsAt` is CSS for one step of the scale; Scale writes the query.
 - `AddScripts` adds JavaScript files to `/_quire/quire.js`, each in its own function scope.
-- `AddNavEnd(component)` is a control in the nav.
+- `AddNavEnd(component)` is a control in the nav. A nil component fails `Use`.
 - `UseSessions()` gives one `qsid` for every plugin, minted on navigation only. `plugin.Session(r)` reads it. Two cold tabs can race; last cookie wins. That is inherent to HTTP.
 
 ## CSS
 
 The stylesheet is one sheet in three layers, `@layer quire, plugin, site`, which fixes precedence but not collision: two plugins both styling `.line` still clash.
 So a plugin prefixes every class with its own name (`.basket-line`, not `.line`), and `Use` fails on a stylesheet with a class outside that prefix.
-Layers beat specificity, so a bare `button {}` in a site sheet outranks a plugin's `.basket-qty-btn`. A site that mounts plugins should scope its element selectors.
+
+> [!IMPORTANT]
+> Layers beat specificity, so a bare `button {}` in a site sheet outranks a plugin's `.basket-qty-btn`. A site that mounts plugins should scope its element selectors.
 
 ## Per-visitor content on a cached page
 
@@ -133,7 +135,9 @@ Datastar is the small library Quire ships for live behaviour. A page declares wh
 ### Syntax
 
 Attribute syntax is `data-plugin:key`, colon not hyphen: `data-on:submit`, not `data-on-submit`.
-A hyphen there does nothing at all and reports nothing. Keyless attributes (`data-text`, `data-signals`) work either way, which is what lets the mistake survive a casual test.
+
+> [!WARNING]
+> A hyphen there does nothing at all and reports nothing. Keyless attributes (`data-text`, `data-signals`) work either way, which is what lets the mistake survive a casual test.
 
 ### Signals or elements
 
