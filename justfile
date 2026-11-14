@@ -59,7 +59,7 @@ dev name="1-minimal": generate
     	go tool templ generate -path {{ dir }} \
     	:: go run . --dev --drafts --addr :{{ port }}
 
-# The documentation site: `just site` runs it, `just site dev` adds live reload.
+# The documentation site: `just site` lists its recipes, `just site run` runs it, `just site dev` adds live reload.
 mod site
 
 # List what examples exist.

@@ -13,7 +13,7 @@
 
 `just example [name]` runs an example on :8091, and `just examples` lists them.
 `just dev [name]` adds live reload and drafts; generated `*_templ.go` is not a watch trigger.
-`just site` runs the documentation site, and `just site dev` adds live reload; `PORT` moves either off :8091.
+`just site` lists the documentation site's recipes. `just site run` runs it, and `just site dev` adds live reload; `PORT` moves either off :8091.
 `just site shots` retakes the screenshots the docs show of the examples; it needs chromium.
 `just site deploy` bakes it, builds its image on this machine and deploys it to Fly; `just site build` stops at the image.
 `just free` frees :8091 after a bad exit.

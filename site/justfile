@@ -1,6 +1,9 @@
-# The documentation site. From the repo root these are `just site` and `just site dev`.
+# The documentation site. From the repo root `just site` lists these, and `just site run` is the first.
 root := source_directory() / ".."
 port := env("PORT", "8091")
+
+_default:
+    @just --justfile {{ source_file() }} --list
 
 # Run the site.
 [continue]
@@ -9,8 +12,8 @@ run:
     cd {{ root }} && go tool templ generate -path .
     cd {{ source_directory() }} && go run . --addr :{{ port }}
 
-# Same, with live reload: a change to the engine, the site or its content rebuilds and reloads the page.
 # Needs `wgo` on PATH; see DEVELOPING.md.
+# Run with live reload: a change to the engine, the site or its content rebuilds and reloads the page.
 [continue]
 [no-exit-message]
 dev:
@@ -36,7 +39,8 @@ build: bake
 
 # Long-running CLIs need a pseudo-TTY when invoked via just. There is no
 # `fly launch` recipe: creating the app is a one-off, by hand.
-# --local-only keeps the image build on this machine. This is production.
+# --local-only keeps the image build on this machine.
+# Bake, build the image and deploy it to Fly. This is production.
 [no-quiet]
 deploy: bake
     cd {{ root }} && script -q -c "fly deploy . --config site/fly.toml --dockerfile site/Dockerfile --local-only" /dev/null
