@@ -47,7 +47,7 @@ func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
 	if err := e.reserve(pattern, owner); err != nil {
 		return err
 	}
-	e.mux.HandleFunc(pattern, h)
+	e.handlers = append(e.handlers, route{pattern: pattern, handler: h})
 	return nil
 }
 
@@ -94,10 +94,6 @@ func (e *Engine) addSiteFiles() {
 	e.route("GET /robots.txt", ownerQuire, serve.Static("text/plain; charset=utf-8", []byte(robots)).ServeHTTP)
 	sitemap := serve.Sitemap(e.chrome.AbsURL, e.sitemap)
 	e.route("GET /sitemap.xml", ownerQuire, serve.Static("application/xml; charset=utf-8", []byte(sitemap)).ServeHTTP)
-}
-
-func (e *Engine) AddRoute(method, path string, h http.HandlerFunc) {
-	e.route(method+" "+path, ownerSite, h)
 }
 
 func (e *Engine) AddPage(path string, c templ.Component) {

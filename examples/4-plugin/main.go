@@ -24,30 +24,44 @@ type Piece struct {
 	Medium     string `yaml:"medium"`
 }
 
-func mount(e *quire.Engine) error {
-	// The templates need the basket, which needs the pieces, which need the
-	// templates. Templates only run when a page renders, by which time b is set.
-	var b *basket.Plugin
-	pieces, err := e.AddCollection(model.Spec[Piece]{
+// shop is the site. Its two methods are the two stages Quire runs.
+type shop struct {
+	pieces *model.Collection[Piece]
+	basket *basket.Plugin
+}
+
+// Mount says what the site holds: its content and pages. It runs in a bake
+// and when serving, so it only declares.
+func (s *shop) Mount(e *quire.Engine) error {
+	var err error
+	s.pieces, err = e.AddCollection(model.Spec[Piece]{
 		ID:    "pieces",
 		Title: "Pieces",
 		Index: wall,
+		// The basket is made in Live. A template only runs when a page
+		// renders, by which time it is set.
 		Item: func(shell model.Shell, c *model.Collection[Piece], d model.Document[Piece]) templ.Component {
-			return piecePage(shell, b, c, d)
+			return piecePage(shell, s.basket, c, d)
 		},
 	})
 	if err != nil {
 		return err
 	}
+	e.AddPage("/", home(e.Shell, s.pieces))
+	return nil
+}
+
+// Live adds what only a served site has: plugins and routes. A bake never
+// calls it.
+func (s *shop) Live(l *quire.Live) error {
 	var items []basket.Item
-	for _, d := range pieces.Docs() {
+	for _, d := range s.pieces.Docs() {
 		items = append(items, basket.Item{ID: d.Slug, Title: d.Meta.Title})
 	}
-	b = basket.New(items...)
-	e.AddPage("/", home(e.Shell, pieces))
+	s.basket = basket.New(items...)
 	// Use attaches the plugin: its routes, page, stylesheets and nav link.
 	// A plugin's pages live under /_basket unless the site moves them, as here.
-	return e.Use(plugin.At("/basket", b))
+	return l.Use(plugin.At("/basket", s.basket))
 }
 
 func main() {
@@ -55,7 +69,7 @@ func main() {
 		Name:        "Prints",
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",
-	}, mount,
+	}, &shop{},
 		quire.WithPalette(model.PaletteDusk),
 		quire.WithStylesheets(css, "site.css"),
 	)

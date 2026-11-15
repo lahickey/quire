@@ -11,7 +11,7 @@ quire.Run(site, mount, options...)
 
 - The **site** is data: what the site is.
 - The **options** change how the engine behaves and looks.
-- The **mount** is a function that says what the site holds.
+- The **mount** says what the site holds.
 
 ## Site
 
@@ -48,7 +48,7 @@ Datastar is always linked.
 
 ## The mount
 
-The mount is handed the engine and declares the site on it. It runs at bake and at boot.
+The mount is handed the engine and declares the site on it. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
 
 ```go
 func mount(e *quire.Engine) error {
@@ -67,22 +67,45 @@ What it can add:
 - `AddCollection(spec)` loads documents and mounts their index and pages. See [Content](./content.md#collections).
 - `AddPage(path, component)` mounts a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home. A nil component panics.
 - `SetNotFound(component)` replaces the default not-found page. Like any fixed page it is rendered once at boot and never handed the request, so every missing URL gets the same bytes and none of them reaches the page cache.
-- `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
 - `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
 - `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
 - `SetFooter(component)`, `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` do what the options of those names do.
 - `Site()` is the site the engine was made with.
+`Run` takes a `quire.Part`, which is anything with that `Mount` method. A function becomes one with `quire.MountFunc(mount)`, and a pack is one already.
+
+## Live
+
+A part that also has a `Live` method adds what only a served site has. A bake never calls it, so this is where a plugin is attached and where anything slow or outside the content belongs: an index, a query, a connection.
+
+```go
+type site struct{ notes *model.Collection[model.Meta] }
+
+func (s *site) Mount(e *quire.Engine) error {
+  var err error
+  s.notes, err = e.AddCollection(model.Basic{ID: "writing"})
+  return err
+}
+
+func (s *site) Live(l *quire.Live) error {
+  l.AddRoute("POST", "/subscribe", subscribe)
+  return l.Use(search.New())
+}
+```
+
+`Live` runs after `Mount` on the same value, so what `Mount` loaded is there to use.
+
 - `Use(plugins…)` attaches plugins. See [Plugins](./plugins.md).
+- `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
 
 Nothing can be added once the mount is over: a call after the handler is taken panics.
-A mount is a function, so one can be shipped as a package. That is a [pack](./packs.md).
+A part is a value, so one can be shipped as a package. That is a [pack](./packs.md).
 
 ## Engine, Chrome and Shell
 
 Three names come up in every template.
 
-- The `Engine` is the mount: what the site holds (collections, pages, routes, files, plugins), then the handler that serves it. A page template does not need it.
+- The `Engine` is the mount: what the site holds (collections, pages, files), then the handler that serves it. Routes and plugins are added on `Live`. A page template does not need it.
 - `Chrome` is the frame's data: the site, nav, plugin controls, assets, icons and theme. It is complete only once the mount is done. The frame reads it: the document, a custom header, the default home and not-found pages.
 - `Shell` (`e.Shell`, `model.Shell`) wraps a page body in the document, reading Chrome when the page renders rather than when it is declared. It is all a page template needs of the engine; everything else it shows is handed to it as data.
 
@@ -133,8 +156,9 @@ Only the files that have to be findable at a known location stay at the root: `r
 > [!IMPORTANT]
 > Mount everything before you take the handler. Anything added after it panics.
 
-An app that needs routes outside Quire entirely can own `main` and mount the engine as a fallback: `mux.Handle("/", e.Handler())`, with its own patterns beside it.
-Prefer a plugin.
+A site with routes of its own adds them in [Live](#live) with `AddRoute`, or as a plugin. Both go through the engine's route claims, so a clash is an error at boot.
+
+`quire.New(site, options...)`, `e.Mount(part)` and `e.Handler()` are for a test: they give a handler for a part or a plugin with no bundle behind it. Only `Run` bakes and loads one.
 
 ### Redirects
 

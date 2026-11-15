@@ -287,7 +287,7 @@ func (b *Run) Finish() error {
 	return b.cache.CopyOut(b.spec.Bundle(), slices.Collect(maps.Values(records)))
 }
 
-func (b *Run) Card(name string, c model.ShareCard) error {
+func (b *Run) Card(name string, c model.ShareCard) (journal.Record, error) {
 	text, _ := json.Marshal(c)
 	key := journal.Hash(fmt.Appendf(nil, "%d\x00%s\x00%s", version("card"), b.draw.FontID(), text))
 	f := picture.FormatPNG
@@ -300,5 +300,5 @@ func (b *Run) Card(name string, c model.ShareCard) error {
 		err = png.Encode(&buf, img)
 		return buf.Bytes(), err
 	})
-	return err
+	return b.made[name], err
 }

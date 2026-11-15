@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/lahickey/quire/internal/bake"
-	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/model"
 )
 
@@ -43,24 +42,24 @@ func writeShip(s model.BakeSpec) error {
 	return os.WriteFile(src, fmt.Appendf(nil, shipGo, filepath.ToSlash(s.Bundle())), 0o644)
 }
 
-func (e *Engine) bake(mount func(*Engine) error) error {
-	s := e.bakeSpec.WithDefaults()
-	if fi, err := os.Stat(s.Content); err != nil || !fi.IsDir() {
-		s.Content = ""
+func bakeSite(s *settings, part Part) error {
+	spec := s.bakeSpec.WithDefaults()
+	if fi, err := os.Stat(spec.Content); err != nil || !fi.IsDir() {
+		spec.Content = ""
 	}
-	b, err := bake.Start(s)
+	b, err := bake.Start(spec)
 	if err != nil {
 		return err
 	}
-	e.from = b
-	if err := mount(e); err != nil {
+	e := s.pass(b)
+	if err := e.Mount(part); err != nil {
 		return err
 	}
-	if err := b.Card(journal.SiteCard, e.siteCardText()); err != nil {
+	if err := e.addSiteCard(); err != nil {
 		return err
 	}
 	if err := b.Finish(); err != nil {
 		return err
 	}
-	return writeShip(s)
+	return writeShip(spec)
 }

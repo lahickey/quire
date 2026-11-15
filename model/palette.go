@@ -62,14 +62,18 @@ func (p Palette) Check() {
 	}
 }
 
-func (p Palette) Ink() Ink {
-	n := radix.Scales[p.Neutral].Dark
-	return Ink{
-		Bg:        n[0],
-		Text:      n[11],
-		Secondary: n[10],
-		Muted:     n[9],
-		Accent:    radix.Scales[p.Accent].Dark[10],
-		Spot:      radix.Scales[p.Spot].Dark[10],
+// PickerPalettes is what a picker offers: the palettes asked for, led by the site's own unless it is among them.
+func PickerPalettes(site Palette, asked []Palette) []Palette {
+	if !slices.Contains(asked, site) {
+		asked = slices.Concat([]Palette{site}, asked)
 	}
+	ids := map[string]bool{}
+	for _, p := range asked {
+		p.Check()
+		if p.Name == "" || ids[p.ID()] {
+			panic("quire: every palette in the picker needs a name of its own")
+		}
+		ids[p.ID()] = true
+	}
+	return asked
 }

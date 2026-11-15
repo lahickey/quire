@@ -115,7 +115,7 @@ func New(items ...Item) *Plugin { return &Plugin{items: items, carts: map[string
 // Name is where the plugin is mounted: its routes are under /_basket/.
 func (p *Plugin) Name() string { return "basket" }
 
-// Attach is called by e.Use. UseSessions gives each visitor a session cookie,
+// Attach is called by Use, in the site's Live. UseSessions gives each visitor a session cookie,
 // NewStreams the event streams publish sends to. Routes are endpoints under
 // /_basket/; Page is the basket page visitors see, at /_basket unless the site
 // moves it with plugin.At.

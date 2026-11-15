@@ -9,10 +9,10 @@ A blog is the site Quire makes with nothing added: one collection of dated docum
 ```go
 func main() {
   quire.Run(model.Site{Name: "Pictures", BaseURL: "https://example.com"},
-    func(e *quire.Engine) error {
+    quire.MountFunc(func(e *quire.Engine) error {
       _, err := e.AddCollection(model.Basic{ID: "posts"})
       return err
-    })
+    }))
 }
 ```
 

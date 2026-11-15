@@ -9,17 +9,16 @@ It brings its own routes, pages, styles and state, and a site opts in with one l
 ## Using a plugin
 
 ```go
-func mount(e *quire.Engine) error {
-  // collections and pages first
-  return e.Use(basket.New(items...))
+func (s *shop) Live(l *quire.Live) error {
+  return l.Use(basket.New(items...))
 }
 ```
 
-`Use` attaches the plugin: its routes, its page, its stylesheets and its control in the nav.
+`Use` is on the handle a site's [`Live`](./wiring.md#live) is given, which a bake never calls. It attaches the plugin: its routes, its page, its stylesheets and its control in the nav.
 A plugin's pages live under `/_<name>` unless the site moves them:
 
 ```go
-e.Use(plugin.At("/basket", b))
+l.Use(plugin.At("/basket", b))
 ```
 
 `examples/4-plugin` is a shop built this way.
@@ -31,7 +30,7 @@ Quire ships one plugin, in `plugin/search`: a search box in the nav whose result
 ```go
 s := search.New()
 s.Add(pages)
-return e.Use(plugin.At("/search", s))
+return l.Use(plugin.At("/search", s))
 ```
 
 `Add` indexes a collection, one entry for each document's opening and one for each H2 and H3, held in memory. Call it for every collection the box should find.
@@ -66,7 +65,7 @@ func (p *Plugin) Attach(m *plugin.Mount) error {
 }
 ```
 
-`e.Use(p...)` runs `Attach` during the site's mount: after content loads, so a plugin can read collections, and before the handler is taken, so its assets reach the stylesheet.
+`l.Use(p...)` runs `Attach` in the site's `Live`: after the mount, so a plugin can read collections, and before the handler is taken, so its assets reach the stylesheet. A bake runs the mount and never `Live`, so it attaches nothing.
 The plugin API is package `plugin`, and a plugin imports it, `model` and `ui`, never the engine.
 
 A plugin holds its own state, embeds its own assets, and declares an interface for whatever the host must supply.
@@ -80,7 +79,7 @@ Lifting one into Quire is moving its file; nothing about how it is wired changes
 ### Routes and pages
 
 - `m.Route(method, path, h)` is private, under `/_basket/`. It is named from the plugin, so two plugins cannot pick the same namespace; `quire` and `site` are reserved. `m.URL(path)` is where it ended up.
-- `m.Page(method, path, h)` is a page a visitor sees and may bookmark, never cached. `path` is relative, so a plugin claims nothing of the site's: `""` is `/_basket` and `"checkout"` is `/_basket/checkout`. A site moves them with `e.Use(plugin.At("/basket", b))`, to `/basket` and `/basket/checkout`. A path already claimed by the site or another plugin is a boot error naming the owner.
+- `m.Page(method, path, h)` is a page a visitor sees and may bookmark, never cached. `path` is relative, so a plugin claims nothing of the site's: `""` is `/_basket` and `"checkout"` is `/_basket/checkout`. A site moves them with `l.Use(plugin.At("/basket", b))`, to `/basket` and `/basket/checkout`. A path already claimed by the site or another plugin is a boot error naming the owner.
 - `m.PageURL(path)` is where that page ended up, for links and `PageSpec.Path`.
 - `m.Shell(PageSpec)` is the document chrome, so a plugin page is still a site page.
 

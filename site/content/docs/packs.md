@@ -3,8 +3,8 @@ title: Packs
 summary: A whole kind of site, ready made. The docs pack is this one.
 ---
 
-A pack is a mount somebody else wrote: collections, pages, styles and plugins for one kind of site.
-A site hands it to `Run` and writes content.
+A pack is a site's Go somebody else wrote: collections, pages, styles and plugins for one kind of site.
+It has the same two methods a site of your own can have, `Mount` for content and pages and [`Live`](./wiring.md#live) for plugins, so a site hands it to `Run` and writes content.
 
 ## The docs pack
 
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-  quire.Run(model.Site{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, docs.Pack{}.Mount)
+  quire.Run(model.Site{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, &docs.Pack{})
 }
 ```
 
@@ -80,7 +80,7 @@ A document that no section lists fails the load, and so does a name with no docu
 `Pack` has a field for each page, and nil is the default of the same name:
 
 ```go
-docs.Pack{Item: myItem}.Mount
+&docs.Pack{Item: myItem}
 ```
 
 `Home`, `Index` and `Item` are the pages, and `docs.Sidebar` is there for one that still wants it.
@@ -90,7 +90,7 @@ docs.Pack{Item: myItem}.Mount
 `Pack.Widgets` is the documents' [widgets](./content.md#widgets), as `Spec.Widgets` is for a collection:
 
 ```go
-docs.Pack{Widgets: widgets}.Mount
+&docs.Pack{Widgets: widgets}
 ```
 
 The pack's CSS is in the `pack` layer, so the site's own sheets win over it.

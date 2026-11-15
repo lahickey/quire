@@ -52,7 +52,7 @@ func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) erro
 		t.Fatal(err)
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
-	if err := New(site, append(opts, WithBake(spec))...).bake(mount); err != nil {
+	if err := bakeSite(configure(site, append(opts, WithBake(spec))...), MountFunc(mount)); err != nil {
 		return nil, err
 	}
 	e := New(site, opts...).load(os.DirFS(spec.Bundle()))
@@ -102,7 +102,7 @@ func TestShareImages(t *testing.T) {
 	}
 	site := model.Site{Name: "Example", BaseURL: "https://example.com", Description: "A site."}
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
-	if err := New(site, WithBake(spec)).bake(posts); err != nil {
+	if err := bakeSite(configure(site, WithBake(spec)), MountFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".quire/.gitignore")); err != nil {
@@ -251,7 +251,7 @@ func TestCustomHeaderSeesNavAndControls(t *testing.T) {
 	e := New(model.Site{}, WithHeader(func(c model.Chrome, p model.PageSpec) templ.Component {
 		return body(fmt.Sprintf("<header>%s %d</header>", p.Path, len(c.NavEnd)))
 	}))
-	if err := e.Use(testPlugin{"basket", func(m *plugin.Mount) error {
+	if err := (&Live{e}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
 		m.AddNavEnd(body("basket"))
 		return nil
 	}}); err != nil {
@@ -268,11 +268,11 @@ func TestCustomHeaderSeesNavAndControls(t *testing.T) {
 func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	e := New(model.Site{BaseURL: "https://example.com"})
 	var live, posts atomic.Int32
-	e.AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
+	(&Live{e}).AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = fmt.Fprintf(w, "<html>%d</html>", live.Add(1))
 	})
-	e.AddRoute("POST", "/act", func(w http.ResponseWriter, r *http.Request) {
+	(&Live{e}).AddRoute("POST", "/act", func(w http.ResponseWriter, r *http.Request) {
 		posts.Add(1)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte("<html>posted</html>"))
@@ -336,7 +336,7 @@ func TestPluginScoping(t *testing.T) {
 
 	e := New(model.Site{BaseURL: "https://example.com"})
 	var prefix string
-	err := e.Use(testPlugin{"basket", func(m *plugin.Mount) error {
+	err := (&Live{e}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
 		prefix = m.URL("")
 		m.Route("GET", "events", ok)
 		m.Page("GET", "", ok)
@@ -362,7 +362,7 @@ func TestPluginScoping(t *testing.T) {
 	}
 
 	clash := New(model.Site{})
-	err = clash.Use(
+	err = (&Live{clash}).Use(
 		plugin.At("/checkout", testPlugin{"basket", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
 		plugin.At("/checkout", testPlugin{"tickets", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
 	)
@@ -371,23 +371,23 @@ func TestPluginScoping(t *testing.T) {
 	}
 
 	reserved := New(model.Site{})
-	if err := reserved.Use(plugin.At("/_quire", testPlugin{"basket", func(m *plugin.Mount) error {
+	if err := (&Live{reserved}).Use(plugin.At("/_quire", testPlugin{"basket", func(m *plugin.Mount) error {
 		m.Page("GET", "style.css", ok)
 		return nil
 	}})); err == nil {
 		t.Error("a plugin mounted a public page inside the reserved namespace")
 	}
 
-	if err := New(model.Site{}).Use(testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
+	if err := (&Live{New(model.Site{})}).Use(testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
 		t.Error("a name that would break the prefix was accepted")
 	}
-	if err := New(model.Site{}, WithDev(true)).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
+	if err := (&Live{New(model.Site{}, WithDev(true))}).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
 		t.Error("a site plugin took the name reserved for Quire's own")
 	}
 
 	css := fstest.MapFS{"ok.css": {Data: []byte("/* .line */ .basket-line { background: url(a.svg) } a.basket-x:hover {}")}, "bad.css": {Data: []byte(".basket-line, .line {}")}}
 	for name, want := range map[string]bool{"ok.css": true, "bad.css": false} {
-		err := New(model.Site{}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
+		err := (&Live{New(model.Site{})}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
 			m.AddStylesheets(css, name)
 			return nil
 		}})
@@ -398,7 +398,7 @@ func TestPluginScoping(t *testing.T) {
 
 	taken := New(model.Site{})
 	taken.AddPage("/basket", body("site"))
-	if err := taken.Use(plugin.At("/basket", testPlugin{"basket", func(m *plugin.Mount) error {
+	if err := (&Live{taken}).Use(plugin.At("/basket", testPlugin{"basket", func(m *plugin.Mount) error {
 		m.Page("GET", "", ok)
 		return nil
 	}})); err == nil || !strings.Contains(err.Error(), "site") {
@@ -530,7 +530,7 @@ func TestDiagrams(t *testing.T) {
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
 	out := spec.Bundle()
-	if err := New(model.Site{}, WithBake(spec)).bake(posts); err != nil {
+	if err := bakeSite(configure(model.Site{}, WithBake(spec)), MountFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
 	load := func(bundle fs.FS) (string, error) {
@@ -602,7 +602,7 @@ func TestBakeIsWhatTheMountAsked(t *testing.T) {
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
 	bakeCounting := func() (decodes, encodes, converts int64) {
 		d0, e0, c0 := picture.Decodes(), picture.Encodes(), markdown.Converts()
-		if err := New(model.Site{}, WithBake(spec)).bake(posts); err != nil {
+		if err := bakeSite(configure(model.Site{}, WithBake(spec)), MountFunc(posts)); err != nil {
 			t.Fatal(err)
 		}
 		return picture.Decodes() - d0, picture.Encodes() - e0, markdown.Converts() - c0

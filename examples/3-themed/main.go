@@ -65,7 +65,7 @@ func main() {
 		Author:      "A. Writer",
 		BaseURL:     "https://example.com",
 		Description: "Notes on building things, and the things built.",
-	}, mount,
+	}, quire.MountFunc(mount),
 		// Dark unless the visitor or their system says otherwise.
 		quire.WithTheme(model.ThemeDark),
 		quire.WithFooter(siteFooter),

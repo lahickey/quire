@@ -169,14 +169,15 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	e.preparePage("/"+spec.ID, index(e.Shell, col))
 
 	e.sitemap = append(e.sitemap, serve.Loc{Path: "/" + spec.ID})
-	e.route("GET /"+spec.ID+"/{slug}", ownerSite, e.pages.Cached(func(w http.ResponseWriter, r *http.Request) {
+	e.route("GET /"+spec.ID+"/{slug}", ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
 			e.notFound404.ServeHTTP(w, r)
 			return
 		}
 		ui.Render(item(e.Shell, col, doc))(w, r)
-	}))
+	})
+	e.handlers[len(e.handlers)-1].cached = true
 	for _, d := range docs {
 		href := col.Href(d)
 		if err := e.reserve("GET "+href, ownerSite); err != nil {

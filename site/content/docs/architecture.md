@@ -21,6 +21,8 @@ Dev may run a step lazily. It may not skip one. A variant is in a journal or it 
 
 A bake reads the source tree. What that mount renders is thrown away: source order is the measured bytes, and those exist only after the encode.
 
+A bake has no server. The mount's routes and pages are written down and never served. Plugins and raw routes are not the mount's to add: they are on the handle given to a part's `Live`, which only a serving pass calls, since neither can add to a bundle. So a route two patterns contend for, or a plugin that fails to attach, is found when the site boots, not when it bakes.
+
 The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a hole for each picture, diagram and site widget, and serving fills each hole: a picture from the journal with the markup `ui` makes today, a widget by running it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one embed.
 
 Everything the bake makes is one kind of thing: a journal record, keyed by what it was made from, naming content-addressed files. A record names its kind: picture, document, diagram or data. A document, a diagram and a share card are each one file; a master is its ladder. One check decides what is remade, one copy decides what ships, and one lookup finds it again.
@@ -62,9 +64,9 @@ flowchart TD
 `ui` and `plugin` import `model` and nothing else of Quire's.
 `quire` is what a site calls. A site, a command or a pack is the only importer.
 
-A plugin sits beside `ui`, and a site opts in with `Use`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
+A plugin sits beside `ui`, and a site opts in with `Use`, in its `Live`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
 
-A pack sits above the engine: it is a mount somebody else wrote, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
+A pack sits above the engine: it is a part somebody else wrote, with the same `Mount` and `Live` a site has, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
 
 ## Scale
 

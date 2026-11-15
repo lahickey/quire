@@ -41,9 +41,18 @@ type source interface {
 	Master(name string) (journal.Record, error)
 	Diagram(src string) (string, error)
 	Documents(pattern string, fences []string) ([]journal.Document, error)
+	Card(name string, c model.ShareCard) (journal.Record, error)
 }
 
-type Engine struct {
+// Part is a site or a pack. Mount says what content and pages there are, and runs in a bake as well as when serving.
+// A Part that also has Live(*Live) error adds what only a served site has; a bake never calls it.
+type Part interface {
+	Mount(*Engine) error
+}
+
+type MountFunc func(*Engine) error
+
+type settings struct {
 	chrome   model.Chrome
 	dev      bool
 	drafts   bool
@@ -51,19 +60,26 @@ type Engine struct {
 	scale    model.Scale
 	siteCard *model.ShareCard
 	sheets   []assets.File
-	scripts  []assets.File
 	icons    []assets.File
-
-	images map[string]model.Image
-	fonts  fonts.FontSet
-	bundle *serve.Store
-	pages  *serve.Pages
-
+	fonts    fonts.FontSet
 	bakeSpec model.BakeSpec
-	from     source
+}
 
-	mux         *http.ServeMux
+type route struct {
+	pattern string
+	handler http.HandlerFunc
+	cached  bool
+}
+
+// Engine is one mount of the site over one source. bundle, mux and pages are the server's, and a bake has none of them.
+type Engine struct {
+	settings
+	from    source
+	scripts []assets.File
+	images  map[string]model.Image
+
 	routes      map[string]string
+	handlers    []route
 	versions    map[string]string
 	sessions    bool
 	sitemap     []serve.Loc
@@ -71,6 +87,22 @@ type Engine struct {
 	notFound    templ.Component
 	notFound404 *serve.Prepared
 	mounted     bool
+
+	bundle *serve.Store
+	mux    *http.ServeMux
+	pages  *serve.Pages
+}
+
+func (f MountFunc) Mount(e *Engine) error { return f(e) }
+
+func (e *Engine) Mount(p Part) error {
+	if err := p.Mount(e); err != nil {
+		return err
+	}
+	if l, ok := p.(interface{ Live(*Live) error }); ok && e.bundle != nil {
+		return l.Live(&Live{e})
+	}
+	return nil
 }
 
 func (e *Engine) cacheControl(r *http.Request) string {
@@ -84,6 +116,7 @@ func (e *Engine) mountDefaults() {
 	if e.mounted {
 		return
 	}
+	e.route("GET "+healthPath, ownerQuire, serve.Health)
 	e.addAssets()
 	e.addIcons()
 	e.addSiteFiles()
@@ -96,18 +129,30 @@ func (e *Engine) mountDefaults() {
 	for _, p := range e.fixed {
 		p.Build()
 	}
+	e.mux, e.pages = http.NewServeMux(), serve.NewPages(pageCache, e.dev)
+	for _, r := range e.handlers {
+		if r.cached {
+			r.handler = e.pages.Cached(r.handler)
+		}
+		e.mux.HandleFunc(r.pattern, r.handler)
+	}
 }
 
-func (e *Engine) siteCardText() model.ShareCard {
+func (e *Engine) addSiteCard() error {
 	c := model.ShareCard{Title: e.chrome.Name, Lines: []string{e.chrome.Description}}
 	if e.siteCard != nil {
 		c = *e.siteCard
 	}
 	c.Domain = cmp.Or(c.Domain, e.chrome.Host())
-	if c.Ink == (model.Ink{}) {
-		c.Ink = e.palette.Ink()
+	if c.Palette == (model.Palette{}) {
+		c.Palette = e.palette
 	}
-	return c
+	c.Palette.Check()
+	rec, err := e.from.Card(journal.SiteCard, c)
+	if file, ok := rec.File(); ok {
+		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
+	}
+	return err
 }
 
 func (e *Engine) load(bundle fs.FS) *Engine {
@@ -117,48 +162,44 @@ func (e *Engine) load(bundle fs.FS) *Engine {
 	if err := e.bundle.Load(bundle); err != nil {
 		panic("quire: bundle: " + err.Error() + "; run the site's bake")
 	}
-	rec, _ := e.bundle.Record(journal.SiteCard)
-	if file, ok := rec.File(); ok {
-		e.chrome.OGImageURL = e.chrome.AbsURL(model.ImageURL(file))
+	if err := e.addSiteCard(); err != nil {
+		panic(err.Error())
 	}
 	return e
 }
 
-func New(site model.Site, opts ...Option) *Engine {
-	e := &Engine{
-		mux:      http.NewServeMux(),
-		routes:   map[string]string{},
-		images:   map[string]model.Image{},
-		versions: map[string]string{},
-		chrome:   model.Chrome{Site: site.WithDefaults(), Brand: site.Name, Header: ui.Header, Footer: ui.Footer},
-		palette:  model.PaletteEmber,
-		scale:    model.DefaultScale(),
+func configure(site model.Site, opts ...Option) *settings {
+	s := &settings{
+		chrome:  model.Chrome{Site: site.WithDefaults(), Brand: site.Name, Header: ui.Header, Footer: ui.Footer},
+		palette: model.PaletteEmber,
+		scale:   model.DefaultScale(),
 	}
 	for _, o := range opts {
-		o(e)
+		o(s)
 	}
-
-	e.palette.Check()
-	if e.chrome.Palettes != nil && !slices.Contains(e.chrome.Palettes, e.palette) {
-		e.chrome.Palettes = slices.Insert(slices.Clone(e.chrome.Palettes), 0, e.palette)
-	}
-	ids := map[string]bool{}
-	for _, p := range e.chrome.Palettes {
-		p.Check()
-		if p.Name == "" || ids[p.ID()] {
-			panic("quire: every palette in the picker needs a name of its own")
-		}
-		ids[p.ID()] = true
+	if s.chrome.Palettes == nil {
+		s.palette.Check()
+	} else {
+		s.chrome.Palettes = model.PickerPalettes(s.palette, s.chrome.Palettes)
 	}
 	set, err := fonts.ReadFontSet(fonts.Default())
 	if err != nil {
 		panic("quire: fonts: " + err.Error())
 	}
-	e.fonts = set
-	e.bundle = serve.NewStore(imageMemory, imageMemoryLimit, e.dev, e.fonts.ID)
-	e.from = e.bundle
-	e.pages = serve.NewPages(pageCache, e.dev)
-	e.route("GET "+healthPath, ownerQuire, serve.Health)
+	s.fonts = set
+	return s
+}
+
+func (s *settings) pass(from source) *Engine {
+	e := &Engine{settings: *s, from: from, routes: map[string]string{}, images: map[string]model.Image{}, versions: map[string]string{}}
+	e.chrome.NavEnd, e.chrome.FooterLinks, e.sheets = slices.Clip(e.chrome.NavEnd), slices.Clip(e.chrome.FooterLinks), slices.Clip(e.sheets)
+	return e
+}
+
+func (s *settings) serving() *Engine {
+	store := serve.NewStore(imageMemory, imageMemoryLimit, s.dev, s.fonts.ID)
+	e := s.pass(store)
+	e.bundle = store
 	if e.dev {
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
@@ -170,6 +211,8 @@ func New(site model.Site, opts ...Option) *Engine {
 	}
 	return e
 }
+
+func New(site model.Site, opts ...Option) *Engine { return configure(site, opts...).serving() }
 
 func (e *Engine) Handler() http.Handler {
 	e.mountDefaults()
@@ -200,7 +243,7 @@ func Ship(files fs.FS, dir string) {
 	shipped = b
 }
 
-func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
+func Run(site model.Site, part Part, extra ...Option) {
 	dev := flag.Bool("dev", false, "live reload")
 	drafts := flag.Bool("drafts", false, "include draft documents")
 	addr := flag.String("addr", ":8090", "listen address")
@@ -209,17 +252,17 @@ func Run(site model.Site, mount func(*Engine) error, extra ...Option) {
 	if flag.NArg() > 1 || (flag.NArg() == 1 && !baking) {
 		log.Fatalf("usage: %s [flags] [bake]", os.Args[0])
 	}
-	opts := append([]Option{WithDev(*dev), WithDrafts(*drafts)}, extra...)
+	s := configure(site, append([]Option{WithDev(*dev), WithDrafts(*drafts)}, extra...)...)
 	if baking || (shipped == nil && canBake) {
-		if err := New(site, opts...).bake(mount); err != nil {
+		if err := bakeSite(s, part); err != nil {
 			log.Fatal(err)
 		}
 		if baking {
 			return
 		}
 	}
-	e := New(site, opts...).load(shipped)
-	if err := mount(e); err != nil {
+	e := s.serving().load(shipped)
+	if err := e.Mount(part); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("listening on", *addr)

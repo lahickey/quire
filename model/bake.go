@@ -12,16 +12,12 @@ type BakeSpec struct {
 	Dir     string
 }
 
-type Ink struct {
-	Bg, Text, Secondary, Muted, Accent, Spot string
-}
-
 type ShareCard struct {
-	Kicker string
-	Title  string
-	Lines  []string
-	Domain string
-	Ink    Ink
+	Kicker  string
+	Title   string
+	Lines   []string
+	Domain  string
+	Palette Palette
 }
 
 func (s BakeSpec) WithDefaults() BakeSpec {

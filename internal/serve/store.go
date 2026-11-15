@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/model"
 )
 
 var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z]{3,4}$`)
@@ -113,6 +114,14 @@ func (s *Store) Master(name string) (journal.Record, error) {
 	r, ok := s.Record(name)
 	if !ok {
 		return journal.Record{}, fmt.Errorf("quire: image %s is in no journal: run the site's bake, `go run . bake`", name)
+	}
+	return r, nil
+}
+
+func (s *Store) Card(name string, _ model.ShareCard) (journal.Record, error) {
+	r, ok := s.Record(name)
+	if !ok {
+		return journal.Record{}, fmt.Errorf("quire: card %s is in no journal: run the site's bake, `go run . bake`", name)
 	}
 	return r, nil
 }

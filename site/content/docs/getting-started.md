@@ -32,10 +32,10 @@ import (
 
 func main() {
   quire.Run(model.Site{Name: "Example", BaseURL: "https://example.com"},
-    func(e *quire.Engine) error {
+    quire.MountFunc(func(e *quire.Engine) error {
       _, err := e.AddCollection(model.Basic{ID: "posts"})
       return err
-    })
+    }))
 }
 ```
 
@@ -114,7 +114,7 @@ flowchart LR
 
 Three ideas cover most of Quire.
 
-- **The mount.** The function you hand to `Run` is the mount. It says what the site holds: its collections, pages, routes and plugins. It is the only description of the site.
+- **The mount.** The function you hand to `Run` is the mount. It says what the site holds: its collections and pages. It is the only description of the site. Plugins and routes of your own go in a second step, [Live](./wiring.md#live), which only a served site runs.
 - **The bake.** Before it serves, the binary bakes. It runs the mount, converts the markdown it asked for, encodes the pictures, draws the diagrams, and writes the results into `.quire`. A second run only redoes what changed.
 - **The bundle.** What the bake wrote is the bundle. The site serves from the bundle and never converts anything while serving.
 

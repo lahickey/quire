@@ -12,5 +12,5 @@ func main() {
 		Name:        "Example",
 		BaseURL:     "https://example.com",
 		Description: "What the project is, in a sentence.",
-	}, docs.Pack{}.Mount)
+	}, &docs.Pack{})
 }

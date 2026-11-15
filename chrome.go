@@ -23,9 +23,9 @@ const (
 	css        = "text/css; charset=utf-8"
 )
 
-func (e *Engine) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
+func (s *settings) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
 	for _, n := range names {
-		e.sheets = append(e.sheets, assets.File{FS: fsys, Name: n, Layer: layer, At: at})
+		s.sheets = append(s.sheets, assets.File{FS: fsys, Name: n, Layer: layer, At: at})
 	}
 }
 

@@ -58,9 +58,9 @@ import (
 func main() {
   quire.Run(
     model.Site{Name: "Example", BaseURL: "https://example.com"},
-    func(e *quire.Engine) error {
+    quire.MountFunc(func(e *quire.Engine) error {
       _, err := e.AddCollection(model.Basic{ID: "posts"})
       return err
-    })
+    }))
 }
 ```

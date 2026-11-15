@@ -52,6 +52,8 @@ type Pack struct {
 	Home  func(model.Shell, model.Site, model.Document[Landing], *Collection) templ.Component
 	Index func(model.Shell, *Collection) templ.Component
 	Item  func(model.Shell, *Collection, Document) templ.Component
+
+	docs *Collection
 }
 
 type group struct {
@@ -75,7 +77,7 @@ func groups(c *Collection) []group {
 	return out
 }
 
-func (p Pack) Mount(e *quire.Engine) error {
+func (p *Pack) Mount(e *quire.Engine) error {
 	landing, err := e.Document[Landing]("index.md")
 	if err != nil {
 		return err
@@ -133,7 +135,12 @@ func (p Pack) Mount(e *quire.Engine) error {
 		e.SetFooterText(l.Footer)
 	}
 	e.AddPage("/", home(e.Shell, e.Site(), landing, c))
+	p.docs = c
+	return nil
+}
+
+func (p *Pack) Live(l *quire.Live) error {
 	s := search.New()
-	s.Add(c)
-	return e.Use(plugin.At("/search", s))
+	s.Add(p.docs)
+	return l.Use(plugin.At("/search", s))
 }

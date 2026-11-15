@@ -9,6 +9,9 @@ import (
 	"github.com/lahickey/quire/plugin"
 )
 
+// Live is what only a served site has. It is handed to a Part's Live.
+type Live struct{ e *Engine }
+
 type liveReload struct {
 	e    *Engine
 	boot string
@@ -49,14 +52,18 @@ func (l liveReload) Attach(m *plugin.Mount) error {
 	return nil
 }
 
-func (e *Engine) Use(plugins ...plugin.Plugin) error {
+func (l *Live) Use(plugins ...plugin.Plugin) error {
 	for _, p := range plugins {
 		if p.Name() == ownerQuire || p.Name() == ownerSite {
 			return fmt.Errorf("plugin name %q is reserved", p.Name())
 		}
-		if err := e.attach(p); err != nil {
+		if err := l.e.attach(p); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (l *Live) AddRoute(method, path string, h http.HandlerFunc) {
+	l.e.route(method+" "+path, ownerSite, h)
 }

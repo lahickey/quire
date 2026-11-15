@@ -13,8 +13,8 @@ func main() {
 		Name:        "Pictures",
 		BaseURL:     "https://example.com",
 		Description: "A Quire site with pictures and no CSS of its own.",
-	}, func(e *quire.Engine) error {
+	}, quire.MountFunc(func(e *quire.Engine) error {
 		_, err := e.AddCollection(model.Basic{ID: "posts"})
 		return err
-	})
+	}))
 }

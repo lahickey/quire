@@ -14,8 +14,8 @@ func main() {
 		// The mount declares what the site holds. content/posts/*.md becomes
 		// /posts and /posts/{slug}; the home page, navigation, sitemap and
 		// robots.txt follow from it.
-		func(e *quire.Engine) error {
+		quire.MountFunc(func(e *quire.Engine) error {
 			_, err := e.AddCollection(model.Basic{ID: "posts"})
 			return err
-		})
+		}))
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/lahickey/quire/internal/bake/diagram"
 	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/internal/radix"
 	"github.com/lahickey/quire/model"
 )
 
@@ -86,7 +87,8 @@ func (p pen) text(s string, size float64, c color.Color, x, y int, track float64
 func Draw(c model.ShareCard, r *diagram.Renderer) (image.Image, error) {
 	const margin, width = 96, journal.ShareWidth - 2*96
 	ink := map[string]color.Color{}
-	for name, hex := range map[string]string{"bg": c.Ink.Bg, "text": c.Ink.Text, "secondary": c.Ink.Secondary, "muted": c.Ink.Muted, "accent": c.Ink.Accent} {
+	n := radix.Scales[c.Palette.Neutral].Dark
+	for name, hex := range map[string]string{"bg": n[0], "text": n[11], "secondary": n[10], "muted": n[9], "accent": radix.Scales[c.Palette.Accent].Dark[10]} {
 		col, err := hexColor(hex)
 		if err != nil {
 			return nil, err
