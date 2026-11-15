@@ -64,3 +64,8 @@ func main() {
     }))
 }
 ```
+
+## You are looking at one
+
+This site is built with Quire, from the [docs pack](./docs/packs.md) and a folder of markdown.
+Its [source](https://github.com/lahickey/quire/tree/master/site) is one short Go file, a stylesheet and `content/`.

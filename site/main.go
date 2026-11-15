@@ -27,7 +27,7 @@ func main() {
 	}, &docs.Pack{Widgets: widgets},
 		quire.WithStylesheets(css, "site.css"),
 		quire.WithPalettePicker(),
-		quire.WithFooterLinks(model.Link{Label: "A Hidden Bridge project", URL: "https://hiddenbridge.io"}),
+		quire.WithFooterLinks(model.BuiltWithQuire, model.Link{Label: "A Hidden Bridge project", URL: "https://hiddenbridge.io"}),
 		quire.WithPalette(model.PaletteWine),
 	)
 }

@@ -72,6 +72,7 @@ var checks = map[string][]check{
 		{"GET", "/", 200, "code-copy"},
 		{"GET", "/", 200, "Below the cards"},
 		{"GET", "/", 200, "link-icon"},
+		{"GET", "/", 200, "Built with Quire"},
 		{"GET", "/docs", 200, "docs-label"},
 		{"GET", "/docs/writing", 200, `aria-current="page"`},
 		{"GET", "/docs/writing", 200, "<th>Field</th>"},

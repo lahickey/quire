@@ -1,9 +1,9 @@
 package bake
 
 var converters = []converter{
-	{"markdown", 4, "3e2ee47dc6875896"},
+	{"markdown", 4, "15d2e5f363183222"},
 	{"diagram", 1, "ce269429ee55a051"},
-	{"card", 2, "683f3490b7a48368"},
+	{"card", 2, "2900bff2b503a69b"},
 	{"picture", 1, "dd3fe6e9843d54fb"},
 }
 

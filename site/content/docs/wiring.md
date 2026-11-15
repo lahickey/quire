@@ -6,12 +6,12 @@ summary: How a site is put together in Go - the site, its options, the mount and
 A Quire site is one call:
 
 ```go
-quire.Run(site, mount, options...)
+quire.Run(site, part, options...)
 ```
 
 - The **site** is data: what the site is.
+- The **part** says what the site holds. It is your own Go or a [pack](./packs.md), and has up to two steps: [the mount](#the-mount) and [Live](#live).
 - The **options** change how the engine behaves and looks.
-- The **mount** says what the site holds.
 
 ## Site
 
@@ -34,7 +34,7 @@ An `Option` changes engine behaviour.
 - `WithStylesheets` and `WithStylesheetsAt` add the site's CSS.
 - `WithBrand(name)` is the name the header shows as the link home, in place of `Site.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
 - `WithFooterText(text)` replaces the footer's line, which is otherwise the year and `Site.Author`, or `Site.Name` when there is no author.
-- `WithFooterLinks(links…)` adds links to the footer, each drawn as its mark alone when it has one. See [Links](./look.md#links).
+- `WithFooterLinks(links…)` adds links to the footer, each drawn as its mark alone when it has one. See [Links](./look.md#links). `model.BuiltWithQuire` is one ready made.
 - `WithFooter(component)` replaces the whole footer.
 - `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
 - `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd`, `ui.PalettePicker` and `ui.ThemeToggle`.
@@ -48,7 +48,9 @@ Datastar is always linked.
 
 ## The mount
 
-The mount is handed the engine and declares the site on it. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
+A part's `Mount` is handed the engine and declares the site on it. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
+
+A site with nothing but a mount writes it as a function, and `quire.MountFunc` makes that a part:
 
 ```go
 func mount(e *quire.Engine) error {
@@ -59,6 +61,10 @@ func mount(e *quire.Engine) error {
   e.AddPage("/", homePage(e.Shell, notes))
   e.SetNotFound(notFoundPage(e.Shell))
   return nil
+}
+
+func main() {
+  quire.Run(site, quire.MountFunc(mount))
 }
 ```
 
@@ -72,24 +78,31 @@ What it can add:
 - `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
 - `SetFooter(component)`, `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` do what the options of those names do.
 - `Site()` is the site the engine was made with.
-`Run` takes a `quire.Part`, which is anything with that `Mount` method. A function becomes one with `quire.MountFunc(mount)`, and a pack is one already.
+A `quire.Part` is anything with a `Mount` method of that signature, so a type of your own is one too, and so is a pack: `quire.Run(site, &docs.Pack{})`.
 
 ## Live
 
 A part that also has a `Live` method adds what only a served site has. A bake never calls it, so this is where a plugin is attached and where anything slow or outside the content belongs: an index, a query, a connection.
+A function cannot have a second method, so a site with a live step is a type:
 
 ```go
-type site struct{ notes *model.Collection[model.Meta] }
+type blog struct{ notes *model.Collection[model.Meta] }
 
-func (s *site) Mount(e *quire.Engine) error {
+func (b *blog) Mount(e *quire.Engine) error {
   var err error
-  s.notes, err = e.AddCollection(model.Basic{ID: "writing"})
+  b.notes, err = e.AddCollection(model.Basic{ID: "writing"})
   return err
 }
 
-func (s *site) Live(l *quire.Live) error {
+func (b *blog) Live(l *quire.Live) error {
   l.AddRoute("POST", "/subscribe", subscribe)
-  return l.Use(search.New())
+  s := search.New()
+  s.Add(b.notes)
+  return l.Use(s)
+}
+
+func main() {
+  quire.Run(site, &blog{})
 }
 ```
 

@@ -15,6 +15,8 @@ const (
 	ThemeDark
 )
 
+var BuiltWithQuire = Link{Label: "Built with Quire", URL: "https://quire.hiddenbridge.io"}
+
 type Icon struct{ Rel, Type, Href string }
 
 type Site struct {

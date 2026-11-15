@@ -19,7 +19,7 @@ neutral accent spot
 Pick another palette with an option:
 
 ```go
-quire.Run(site, mount, quire.WithPalette(model.PaletteMoss))
+quire.Run(site, part, quire.WithPalette(model.PaletteMoss))
 ```
 
 The built-in palettes are Ember (the default), Brass, Moss, Tide, Ink, Dusk, Bloom, Wine and Ash; `model.Palettes` is all of them.
@@ -90,7 +90,7 @@ A step's number is its job: 1–2 backgrounds, 3–5 component backgrounds, 6–
 This site has one: the drop beside the theme toggle.
 
 ```go
-quire.Run(site, mount, quire.WithPalettePicker())
+quire.Run(site, part, quire.WithPalettePicker())
 ```
 
 With no arguments it offers every built-in palette. Name the ones to offer, your own among them, to offer fewer:
@@ -115,7 +115,7 @@ Embed a stylesheet and hand it to the site:
 //go:embed *.css
 var static embed.FS
 
-quire.Run(site, mount,
+quire.Run(site, part,
   quire.WithStylesheets(static, "site.css"),
   quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),
 )
@@ -172,6 +172,13 @@ With the class `link-mark` a link that has a mark shows the mark alone, as the f
 A link that leaves the site opens in a new tab.
 A store that requires its own badge is the one case a label and a mark do not cover: set `Badge` to the URL of the badge's image and the link is drawn as that image alone, with the label as its alt text.
 `model.Link` has `label` and `url` yaml keys, so a site's own frontmatter can carry a list of them.
+
+`model.BuiltWithQuire` is a link to Quire's site, for a footer that says what the site is made with.
+The "Built with Quire" at the foot of this page is it:
+
+```go
+quire.WithFooterLinks(model.BuiltWithQuire)
+```
 
 ## Reference
 

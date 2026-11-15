@@ -12,5 +12,7 @@ func main() {
 		Name:        "Example",
 		BaseURL:     "https://example.com",
 		Description: "What the project is, in a sentence.",
-	}, &docs.Pack{})
+	}, &docs.Pack{},
+		// Optional: a footer link back to Quire.
+		quire.WithFooterLinks(model.BuiltWithQuire))
 }

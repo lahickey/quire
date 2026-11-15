@@ -48,7 +48,7 @@ Some words.
 
 `go run .` serves it on http://localhost:8090: home page, post index, post pages, navigation, a light and dark toggle, sitemap and robots.txt, with no templates or CSS of your own.
 
-To ship, `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json` ([how](./site/content/docs/getting-started.md#ship-it)).
+To ship, `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json` ([how](https://quire.hiddenbridge.io/docs/getting-started#ship-it)).
 The result is one binary that carries the whole site and none of the image or diagram tooling.
 
 ## Examples
@@ -71,14 +71,20 @@ The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves t
 
 ## Documentation
 
-- [Getting started](./site/content/docs/getting-started.md)
-- [Content](./site/content/docs/content.md)
-- [Images](./site/content/docs/images.md)
-- [Baking](./site/content/docs/bake.md)
-- [The look](./site/content/docs/look.md)
-- [Wiring](./site/content/docs/wiring.md)
-- [Plugins](./site/content/docs/plugins.md)
-- [Design](./site/content/docs/architecture.md)
+The documentation is at [quire.hiddenbridge.io](https://quire.hiddenbridge.io).
+That site is itself built with Quire; its source is in [`site/`](./site).
+
+- [Getting started](https://quire.hiddenbridge.io/docs/getting-started)
+- [A blog](https://quire.hiddenbridge.io/docs/blog)
+- [Content](https://quire.hiddenbridge.io/docs/content)
+- [Images](https://quire.hiddenbridge.io/docs/images)
+- [The look](https://quire.hiddenbridge.io/docs/look)
+- [Wiring](https://quire.hiddenbridge.io/docs/wiring)
+- [Plugins](https://quire.hiddenbridge.io/docs/plugins)
+- [Packs](https://quire.hiddenbridge.io/docs/packs)
+- [Baking](https://quire.hiddenbridge.io/docs/bake)
+- [Deploying](https://quire.hiddenbridge.io/docs/deploy)
+- [Design](https://quire.hiddenbridge.io/docs/architecture)
 
 Working on Quire itself is in [DEVELOPING.md](./DEVELOPING.md).
 
