@@ -135,3 +135,13 @@ func TestEmbedsAreHoles(t *testing.T) {
 		t.Fatalf("an embed was rendered rather than left for serving: %s", d.HTML)
 	}
 }
+
+func TestPaletteDrawsRangesAndTheRest(t *testing.T) {
+	html, _, _, err := Render("```palette moss\nall\n```\n", "", nil)
+	if err != nil || strings.Count(html, `data-palette="moss"`) != 2 || !strings.Contains(html, "var(--qr-accent-12)") || !strings.Contains(html, "var(--qr-error-text)") || strings.Contains(html, "--qr-error-1") {
+		t.Errorf("a named palette, whole: %v\n%s", err, html)
+	}
+	if _, _, _, err := Render("```palette\neverything\n```\n", "", nil); err == nil {
+		t.Error("an unknown role drew")
+	}
+}

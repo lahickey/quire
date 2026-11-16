@@ -150,7 +150,7 @@
 }
 
 .entry-kicker--draft {
-  color: var(--qr-spot-11);
+  color: var(--qr-spot-text);
   opacity: 1;
 }
 
@@ -264,7 +264,7 @@
 }
 
 .status-badge--draft {
-  background: var(--qr-spot-9);
+  background: var(--qr-spot-solid);
   color: var(--qr-spot-contrast);
   font-weight: var(--qr-weight-bold);
   padding: var(--qr-space-1) var(--qr-space-3);

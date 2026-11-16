@@ -1,0 +1,106 @@
+# justfile for ledgerd. `just` lists the recipes.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+set dotenv-load := true
+set positional-arguments := true
+set export := true
+
+dir := source_directory()
+binary := "ledgerd"
+version := `git describe --tags --always --dirty 2>/dev/null || echo dev`
+commit := `git rev-parse --short HEAD`
+port := env("PORT", "8080")
+dist := dir / "dist"
+ldflags := "-s -w -X main.version=" + version + " -X main.commit=" + commit
+platform := if os() == "macos" { "darwin" } else { os() }
+
+alias b := build
+alias t := test
+
+mod web
+import? 'local.just'
+
+_default:
+    @just --list --unsorted
+
+# Format the source, and turn tabs in Markdown into spaces.
+fmt:
+    gofmt -w -s .
+    @sed -i 's/\t/  /g' $(git ls-files '*.md')
+
+# Vet and lint.
+check:
+    go vet ./...
+    golangci-lint run --timeout 3m
+    @! git grep -nP '\t' -- '*.md'
+
+# Run the tests: `just test` for all, `just test ./ledger -run Overdraw` for some.
+test *args="./...": check
+    go test -count=1 {{ args }}
+
+# Build the binary into dist/.
+build: _dist
+    go build -trimpath -ldflags '{{ ldflags }}' -o {{ dist }}/{{ binary }} ./cmd/{{ binary }}
+    @echo "built {{ binary }} {{ version }} for {{ platform }}/{{ arch() }}"
+
+# Cross-compile for one platform: `just cross linux arm64`.
+cross goos goarch: _dist
+    GOOS={{ goos }} GOARCH={{ goarch }} CGO_ENABLED=0 \
+        go build -trimpath -ldflags '{{ ldflags }}' \
+        -o {{ dist }}/{{ binary }}-{{ goos }}-{{ goarch }} ./cmd/{{ binary }}
+
+# Run the service, with live reload when `watch` is given.
+[no-exit-message]
+run watch="": build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -n "{{ watch }}" ]]; then
+        exec wgo -file '\.go$' go run ./cmd/{{ binary }} serve --addr ":{{ port }}"
+    fi
+    exec {{ dist }}/{{ binary }} serve --addr ":{{ port }}"
+
+# Start a throwaway database for development.
+[group('db')]
+db-up name="ledger-dev":
+    docker run --rm -d --name {{ name }} \
+        -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:17
+    @until docker exec {{ name }} pg_isready -q; do sleep 0.5; done
+    @echo "postgres is up on :5432"
+
+[group('db')]
+db-down name="ledger-dev":
+    -docker stop {{ name }}
+
+# Apply the migrations.
+[group('db')]
+migrate: build
+    {{ dist }}/{{ binary }} migrate --config {{ dir }}/config/dev.toml
+
+# Build the image and tag it with the version.
+[confirm("Build and tag the image?")]
+image tag=version:
+    docker build \
+        --build-arg VERSION={{ version }} \
+        --build-arg COMMIT={{ commit }} \
+        -t {{ binary }}:{{ tag }} .
+
+# Tag a release. Never pushes.
+[private]
+release new_version: test
+    @if [ -n "$(git status --porcelain)" ]; then echo "the tree is dirty" >&2; exit 1; fi
+    git tag -a 'v{{ new_version }}' -m 'v{{ new_version }}'
+    @echo "now: git push origin v{{ new_version }}"
+
+# Remove what was built.
+clean:
+    rm -rf {{ dist }} cover.out
+
+_dist:
+    @mkdir -p {{ dist }}
+
+export GOFLAGS := "-mod=readonly"
+home_bin := env_var_or_default("GOBIN", home_directory() / "go" / "bin")
+
+# Install into GOBIN.
+install: build
+    install -m 0755 {{ dist }}/{{ binary }} {{ quote(home_bin) }}/

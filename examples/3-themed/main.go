@@ -32,8 +32,8 @@ var widgets = map[string]model.Widget{
 // A palette of the site's own: a name, and the Radix hue behind each role.
 var harbour = model.Palette{
 	Name: "Harbour", Neutral: "olive", Accent: "teal", Spot: "tomato",
-	Swatch: [4]string{"sky", "violet", "brown", "pink"},
-	Red:    "red", Green: "grass", Amber: "amber",
+	Tone: [6]string{"sky", "pink", "indigo", "orange", "violet", "brown"},
+	OK:   "grass", Warn: "amber", Error: "red",
 }
 
 // mount declares the site's content and pages. It runs at bake and at boot.

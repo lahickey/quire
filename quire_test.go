@@ -511,7 +511,7 @@ func TestMarkdownOutsideACollection(t *testing.T) {
 		_, missing = e.Markdown("home/absent.md")
 		return nil
 	})
-	if err != nil || got != nil || !strings.Contains(html.String(), `<pre class="chroma">`) {
+	if err != nil || got != nil || !strings.Contains(html.String(), `<span class="lx-number">1</span>`) {
 		t.Fatalf("markdown was not baked and served: %v %v %s", err, got, html.String())
 	}
 	if missing == nil {
@@ -650,7 +650,7 @@ func TestServingBinaryLinksNoBake(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, dep := range strings.Fields(string(out)) {
-		for _, pkg := range []string{"github.com/lahickey/quire/internal/bake/", "github.com/yuin/goldmark", "github.com/alecthomas/chroma"} {
+		for _, pkg := range []string{"github.com/lahickey/quire/internal/bake/", "github.com/yuin/goldmark", "github.com/lahickey/quire/libs/lexis"} {
 			if strings.HasPrefix(dep, pkg) {
 				t.Errorf("a quire_nobake build links %s", dep)
 			}
@@ -678,6 +678,9 @@ func TestLayers(t *testing.T) {
 			}
 			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && !strings.HasPrefix(pkg, q+"/pack/") && pkg != q+"/site" {
 				t.Errorf("%s imports the engine", pkg)
+			}
+			if strings.HasPrefix(pkg, q+"/libs/") && !strings.HasPrefix(imp, q+"/libs/") {
+				t.Errorf("%s imports %s", pkg, imp)
 			}
 			if rule, ok := may[pkg]; ok && !rule(imp) {
 				t.Errorf("%s imports %s", pkg, imp)

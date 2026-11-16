@@ -1,0 +1,115 @@
+# The manifest of a small workspace member, with a few extras to show the format.
+
+[package]
+name = "inventory"
+version = "0.4.2"
+edition = "2024"
+rust-version = "1.85"
+description = "Stock levels and reorder rules"
+license = "MIT OR Apache-2.0"
+repository = "https://example.com/acme/inventory"
+readme = "README.md"
+keywords = ["stock", "warehouse", "cli"]
+categories = ["command-line-utilities"]
+include = ["src/**/*", "Cargo.toml", "LICENSE-*"]
+publish = false
+
+[lib]
+name = "inventory"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "inv"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "inv-export"
+path = "src/bin/export.rs"
+
+[features]
+default = ["cli", "sqlite"]
+cli = ["dep:clap", "dep:anyhow"]
+sqlite = ["rusqlite/bundled"]
+postgres = ["dep:tokio-postgres", "tokio/rt-multi-thread"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+thiserror = "2.0"
+time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
+clap = { version = "4.5", features = ["derive", "env"], optional = true }
+anyhow = { version = "1", optional = true }
+rusqlite = { version = "0.32", optional = true }
+tokio = { version = "1.40", features = ["macros"] }
+tokio-postgres = { version = "0.7", optional = true }
+shared = { path = "../shared", version = "0.4" }
+
+[dependencies.tracing]
+version = "0.1"
+default-features = false
+features = [
+    "std",
+    "attributes",  # for #[instrument]
+]
+
+[dev-dependencies]
+insta = "1.40"
+tempfile = "3"
+proptest = { git = "https://example.com/proptest.git", rev = "9f8a1c2" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = false
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = { level = "warn", priority = -1 }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Values of every kind, for whoever reads this as an example.
+[package.metadata.example]
+integer = 1_000_000
+hex = 0xDEAD_BEEF
+octal = 0o755
+binary = 0b1101_0110
+float = 6.022e23
+negative = -0.01
+infinity = inf
+not_a_number = nan
+flag = true
+other_flag = false
+date = 2026-02-14
+time = 09:30:00
+datetime = 2026-02-14T09:30:00Z
+local = 2026-02-14T09:30:00.250
+basic = "tab\there, quote \" and unicode \u00E9"
+literal = 'C:\Users\nobody\no \escapes'
+multiline = """
+The first newline is trimmed, \
+and a backslash joins lines.
+"""
+raw_multiline = '''
+Nothing 'here' is "escaped".
+'''
+nested = [[1, 2], ["a", "b"], [{ x = 1 }, { x = 2, y = [3.5] }]]
+"quoted key" = "allowed"
+dotted.key.path = "also allowed"
+empty = []

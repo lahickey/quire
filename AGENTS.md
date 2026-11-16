@@ -14,9 +14,12 @@ Rules for coding agents working on Quire.
 | `*.go` at the root | The engine a site calls |
 | `model/`, `ui/`, `plugin/` | Data, components, the plugin API |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
+| `libs/` | Packages for use outside Quire, such as `libs/lexis` |
 | `internal/bake/` | The converters: markdown, picture, diagram, card |
 | `examples/` | Complete sites, and what `quire new` copies |
 | `site/` | The documentation site, built with `pack/docs` |
+
+A package under `libs/` imports nothing else of Quire's.
 
 ## A change is not done until
 

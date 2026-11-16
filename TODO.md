@@ -157,7 +157,18 @@ These depend on none of the steps.
 
 - **Feeds** — RSS/Atom. `Collection` already holds everything required.
   It would live in base once step 4 lands.
-- **lexis in place of chroma.** archr's highlighter: faster, fixes edge cases chroma has, and reads templ properly.
+- **archr on Quire's Lexis.** archr still carries a copy of the highlighter.
+  1. **Tag a release** with Lexis in it, so archr can require it.
+  2. **Repoint archr** and delete its copy.
+     One `go.work` at archr's root covers it, its site and a local Quire.
+     Its notices keep Chroma and Pygments, whose rules are in its binary, as coming by way of Quire.
+     Its table of styles in `highlight.go` needs entries for `lexis.Operator` and `lexis.Punct`, or it indexes past the end.
+- **Hand-written lexers for more of Lexis's languages.** [The benchmarks](./site/content/docs/benchmarks.md) list those run from rules slowest first; JavaScript, TypeScript, Python and Java lead, and Rust and Lua are wanted.
+- **Folders in the docs sidebar.** The docs pack's sidebar is one flat list, set in `docs.sections`, and its documents sit in one folder.
+  A document in a folder, `docs/lexis/languages.md`, would be served at `/docs/lexis/languages` and listed under the folder's own page, closed unless the visitor is in it.
+  The order stays the one `docs.sections` gives, as order on disk is alphabetical.
+  Whether a collection takes a slug with a folder in it is the first thing to find out.
+  With it, each of Lexis's languages gets a page of its whole file, under the page of excerpts.
 - **Full-bleed and the scrollbar.** `.figure--bleed` measures in `cqw` against `main`, because `100vw` counts the scrollbar and would put a horizontal scrollbar on every desktop. The price is `container-type: inline-size` on `main`, whose layout containment makes it the containing block for any `position: fixed` descendant. Revisit against the two alternatives: hiding the document scrollbar in CSS (`scrollbar-width: none`, which costs every visitor their scroll position indicator), or setting the gutter width once from the classic script. Measured and written up in this session; no decision taken.
 - **A bleed hero on a short screen.** Full width, a hero can fill a laptop screen with no text in sight. The usual answers: cap its height (50–60% of the screen, cropped with `object-fit: cover`) so text always shows below; a focal point per image so the crop keeps what matters; different crops per screen size through `<picture>`. Height cap and focal point are engine options on the bleed figure; laying title and buttons over the picture is a site's layout choice. Tried with 884px art, which also showed the page padding left between nav and a bleed hero.
 
@@ -169,6 +180,9 @@ Each of these is easier, or only possible, once the step it names is done.
 
   - **Settings at the call site.** A picture's conversion is chosen where it is placed, in the markdown or the template: lossless, a quality, a second format such as AVIF, a shorter ladder. Variant names already cover every setting and a record already lists formats, so the bake's `Master` takes the options and nothing else moves. Every variant is lossy WebP until then.
     A second format is then a codec a pack can bring.
+  - **A file of source as a code block.** A document names a file and the bake puts its text on the page, highlighted, whole or a range of its lines.
+    The file may be outside the content folder, as Lexis's corpus is, so the bake has to read it and count it as an input, to bake the page again when it changes.
+    Lexis's languages page is then a document written by hand, and `just lexis languages` goes.
   - **A ladder from use.** The bake renders its mount too, records which rungs each placement can pick, and encodes only those rather than the whole ladder for every master. It is the same record as the call-site settings.
 
 - **After step 5: there is a log.**

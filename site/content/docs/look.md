@@ -10,11 +10,14 @@ This page goes from the smallest change to the largest.
 
 ## Change the colours
 
-The palette is roles, each a scale of twelve steps. These are this site's, drawn by the `palette` fence:
+The palette is roles, each a hue. These are this site's, drawn by the `palette` fence around the word `all`:
 
 ```palette
-neutral accent spot
+all
 ```
+
+`neutral` and `accent` are ranges, with all twelve steps of their hue.
+Every other role has four steps, named for what each is for.
 
 Pick another palette with an option:
 
@@ -23,66 +26,80 @@ quire.Run(site, part, quire.WithPalette(model.PaletteMoss))
 ```
 
 The built-in palettes are Ember (the default), Brass, Moss, Tide, Ink, Dusk, Bloom, Wine and Ash; `model.Palettes` is all of them.
-Each is drawn here with a fence such as `palette moss`:
+Each is drawn here whole, by a fence such as `palette moss`.
 
 ```palette ember
-neutral accent spot
+all
 ```
 
 ```palette brass
-neutral accent spot
+all
 ```
 
 ```palette moss
-neutral accent spot
+all
 ```
 
 ```palette tide
-neutral accent spot
+all
 ```
 
 ```palette ink
-neutral accent spot
+all
 ```
 
 ```palette dusk
-neutral accent spot
+all
 ```
 
 ```palette bloom
-neutral accent spot
+all
 ```
 
 ```palette wine
-neutral accent spot
+all
 ```
 
 ```palette ash
-neutral accent spot
+all
 ```
 
 `WithTheme(model.ThemeDark)` makes dark the scheme a visitor sees when neither they nor their system has chosen one.
 
 A `Palette` names the Radix hue behind each role, so a palette of your own is a struct of hue names.
 Each role needs a hue of its own, or two callouts or two chart series would come out the same colour; a palette that repeats one fails at startup.
+The tones are in an order: round the colour wheel from the accent, then taken alternately from each half, so each is far from the one before it.
+Chart series and the parts of code take them in that order, so neighbours stay easy to tell apart.
 
 ```go
 var harbour = model.Palette{
   Name: "Harbour", Neutral: "olive", Accent: "teal", Spot: "tomato",
-  Swatch: [4]string{"sky", "violet", "brown", "pink"},
-  Red:    "red", Green: "grass", Amber: "amber",
+  Tone: [6]string{"sky", "pink", "indigo", "orange", "violet", "brown"},
+  OK:     "grass", Warn: "amber", Error: "red",
 }
 ```
 
-Each role is a twelve-step scale:
+The two ranges are twelve steps each, `--qr-neutral-1` to `--qr-neutral-12`:
 
 - `--qr-neutral-*` for surfaces, borders and text;
-- `--qr-accent-*` for the brand and everything interactive;
-- `--qr-spot-*` for the one thing that must stand out, such as a draft badge or an important callout;
-- `--qr-swatch1-*`…`4` for telling things apart;
-- `--qr-red-*`, `--qr-green-*` and `--qr-amber-*` for meaning.
+- `--qr-accent-*` for the brand and everything interactive.
 
-A step's number is its job: 1–2 backgrounds, 3–5 component backgrounds, 6–8 borders, 9–10 solid fills, 11–12 text. `--qr-<role>-contrast` is the text on a step-9 fill.
+A step's number is its job: 1–2 backgrounds, 3–5 component backgrounds, 6–8 borders, 9–10 solid fills, 11–12 text.
+
+The other roles are four steps each, named for the job:
+
+- `--qr-spot-*` for the one thing that must stand out, such as a draft badge or an important callout;
+- `--qr-tone1-*`…`6` for telling things apart: chart series, diagram nodes, the parts of highlighted code;
+- `--qr-ok-*`, `--qr-warn-*` and `--qr-error-*` for meaning, whatever hue a palette gives them.
+
+| Step | Is for | Of twelve |
+|-|-|-|
+| `--qr-warn-tint` | A background | 3 |
+| `--qr-warn-line` | A border | 7 |
+| `--qr-warn-solid` | A solid fill | 9 |
+| `--qr-warn-text` | Text | 11 |
+
+`--qr-<role>-contrast` is the text on a role's solid fill.
 
 ## Let the visitor choose
 
@@ -208,6 +225,58 @@ These sit on `:root` in `base.css`. Override the custom properties.
 - `--qr-bg` is the colour behind whatever is drawn there. A surface that paints its own background sets it (as `.callout` does), and diagrams read it to mask lines behind their labels.
 
 `.prose` is a breakout grid: body text holds `--qr-measure-text` on any page, and a `.figure` or `.diagram` in it spans the page inner.
+
+### Code
+
+Highlighted code takes its colours from the palette, so it changes with it.
+Each kind of thing in the code has a variable, and the `highlight` sheet sets each to a role.
+A site's own sheet sets any of them again.
+
+```css
+:root, [data-palette] {
+  --qr-code-keyword: var(--qr-spot-text);
+  --qr-code-string: var(--qr-ok-text);
+}
+```
+
+| Variable | Is by default |
+|-|-|
+| `--qr-code-keyword` | `accent` |
+| `--qr-code-builtin` | `tone1` |
+| `--qr-code-function` | `tone2` |
+| `--qr-code-type` | `tone3` |
+| `--qr-code-tag` | `tone4` |
+| `--qr-code-string` | `tone5` |
+| `--qr-code-number` | `tone6` |
+| `--qr-code-preproc` | `spot` |
+| `--qr-code-comment`, `--qr-code-symbol` | `neutral` |
+| `--qr-code-heading` | `accent` |
+| `--qr-code-inserted`, `--qr-code-deleted` | `ok`, `error` |
+
+The roles code draws on, in this site's palette; it uses the `text` step of each:
+
+```palette
+spot tone1 tone2 tone3 tone4 tone5 tone6
+```
+
+A variable is set on `[data-palette]` as well as `:root` so that it follows a palette set on part of a page, as on this code, which is under Moss whatever the page is under:
+
+<div data-palette="moss">
+
+```go
+// Greet says hello, n times.
+func Greet(name string, n int) []string {
+  out := make([]string, 0, n)
+  for range n {
+    out = append(out, "Hello, "+name)
+  }
+  return out
+}
+```
+
+</div>
+
+For anything a variable cannot do, such as a weight, each piece of code is a `span` with a class for its kind: `lx-keyword`, `lx-string` and so on, one for each of [Lexis's kinds](./lexis.md#kinds).
 
 ### Primitives
 

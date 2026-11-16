@@ -34,6 +34,19 @@ return l.Use(plugin.At("/search", s))
 ```
 
 `Add` indexes a collection, one entry for each document's opening and one for each H2 and H3, held in memory. Call it for every collection the box should find.
+
+An element marked `data-nosearch` is left out of the index, with everything inside it.
+It is for a part of a page that is there to be looked at and would only crowd the results: a long listing, a generated table, a sample file.
+The headings around it are still found, so the page is too.
+
+```html
+<details data-nosearch>
+<summary>The whole file</summary>
+...
+</details>
+```
+
+[Lexis's languages](./languages.md) page marks each of its listings this way: search for a word that is only in one of them and it is not found, though the language's heading is.
 In the box, `/` focuses it, up and down move through the results, and enter opens one.
 Without JavaScript the form loads a results page instead, at `/_search` unless the site moves it.
 

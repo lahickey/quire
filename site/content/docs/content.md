@@ -104,6 +104,26 @@ The frontmatter `image` resolves the same way. The default look renders it as a 
 
 A fenced code block is highlighted, and gets a copy button that shows on hover.
 
+~~~markdown
+```go
+// Greet says hello.
+func Greet(name string) string {
+  return "Hello, " + name
+}
+```
+~~~
+
+```go
+// Greet says hello.
+func Greet(name string) string {
+  return "Hello, " + name
+}
+```
+
+The word after the fence names the language, and [Lexis](./lexis.md#languages) lists those Quire has.
+A fence with no language, or one Quire does not have, is shown plain.
+[The look](./look.md#code) has the classes that colour it.
+
 ### Tables
 
 A pipe table is a table. A wide one scrolls sideways rather than widening the page.
@@ -140,7 +160,7 @@ flowchart LR
 ```
 
 It is drawn by the bake and inlined as SVG, so the palette and the fonts reach it.
-Nodes take a light tint of the accent. `class n swatch2` or `n:::swatch2` tints one with any role (`accent` `spot` `swatch1`…`4` `red` `green` `amber`), and a forge's preview just ignores the class.
+Nodes take a light tint of the accent. `class n tone2` or `n:::tone2` tints one with any role (`accent` `spot` `tone1`…`6` `ok` `warn` `error`), and a forge's preview just ignores the class.
 
 ````markdown
 ```mermaid
@@ -233,15 +253,15 @@ ember
 
 ````markdown
 ```palette
-neutral accent spot
+accent spot tone1 tone2 ok warn error
 ```
 ````
 
 ```palette
-neutral accent spot
+accent spot tone1 tone2 ok warn error
 ```
 
-- `mermaid` and `palette` are Quire's own widgets, and a site's widget of either name replaces it. `palette` draws each role it names (`neutral accent spot`, …) as its twelve steps, from the page's own custom properties.
+- `mermaid` and `palette` are Quire's own widgets, and a site's widget of either name replaces it. `palette` draws each role it names from the page's own custom properties: a range (`neutral`, `accent`) as a row of its twelve steps, and the rest side by side with a row for each of their four. The word `all` is every role.
 - A name after `palette` draws that palette whatever the visitor has picked, if it is one the site's [picker](./look.md#let-the-visitor-choose) offers: `palette moss`.
 - A fence shown inside a longer fence stays code, so a page can show a widget's syntax without running it.
 - A widget runs when the page is composed, not in the bake, so changing one needs no rebake. The bake records only where each fence sits.

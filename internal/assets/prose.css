@@ -134,10 +134,10 @@
   background: var(--qr-bg);
 }
 
-.callout--tip { --callout-solid: var(--qr-green-9); --qr-bg: var(--qr-green-2); --callout-text: var(--qr-green-11); }
-.callout--important { --callout-solid: var(--qr-spot-9); --qr-bg: var(--qr-spot-2); --callout-text: var(--qr-spot-11); }
-.callout--warning { --callout-solid: var(--qr-amber-9); --qr-bg: var(--qr-amber-2); --callout-text: var(--qr-amber-11); }
-.callout--caution { --callout-solid: var(--qr-red-9); --qr-bg: var(--qr-red-2); --callout-text: var(--qr-red-11); }
+.callout--tip { --callout-solid: var(--qr-ok-solid); --qr-bg: var(--qr-ok-tint); --callout-text: var(--qr-ok-text); }
+.callout--important { --callout-solid: var(--qr-spot-solid); --qr-bg: var(--qr-spot-tint); --callout-text: var(--qr-spot-text); }
+.callout--warning { --callout-solid: var(--qr-warn-solid); --qr-bg: var(--qr-warn-tint); --callout-text: var(--qr-warn-text); }
+.callout--caution { --callout-solid: var(--qr-error-solid); --qr-bg: var(--qr-error-tint); --callout-text: var(--qr-error-text); }
 
 .prose .callout-title {
   font-size: var(--qr-text-xs);
@@ -160,16 +160,16 @@
   --pele-surface-alt: var(--qr-neutral-2);
   --pele-border: var(--qr-accent-7);
   --pele-accent: var(--qr-accent-9);
-  --pele-critical: var(--qr-red-9);
+  --pele-critical: var(--qr-error-solid);
   
   --pele-series-1: var(--qr-accent-9);
-  --pele-series-2: var(--qr-spot-9);
-  --pele-series-3: var(--qr-swatch2-9);
-  --pele-series-4: var(--qr-swatch3-9);
-  --pele-series-5: var(--qr-swatch4-9);
-  --pele-series-6: var(--qr-green-9);
-  --pele-series-7: var(--qr-red-9);
-  --pele-series-8: var(--qr-swatch1-9);
+  --pele-series-2: var(--qr-spot-solid);
+  --pele-series-3: var(--qr-tone2-solid);
+  --pele-series-4: var(--qr-tone3-solid);
+  --pele-series-5: var(--qr-tone4-solid);
+  --pele-series-6: var(--qr-tone5-solid);
+  --pele-series-7: var(--qr-tone6-solid);
+  --pele-series-8: var(--qr-tone1-solid);
   --pele-font: var(--qr-font);
   --pele-font-mono: var(--qr-font-mono);
   --pele-radius: var(--qr-radius-s);
@@ -178,21 +178,19 @@
 .pele-cluster > rect { stroke: var(--qr-neutral-6); }
 
 .pele-node.accent { --qr-node-fill: var(--qr-accent-3); --qr-node-line: var(--qr-accent-7); }
-.pele-node.spot { --qr-node-fill: var(--qr-spot-3); --qr-node-line: var(--qr-spot-7); }
-.pele-node.swatch1 { --qr-node-fill: var(--qr-swatch1-3); --qr-node-line: var(--qr-swatch1-7); }
-.pele-node.swatch2 { --qr-node-fill: var(--qr-swatch2-3); --qr-node-line: var(--qr-swatch2-7); }
-.pele-node.swatch3 { --qr-node-fill: var(--qr-swatch3-3); --qr-node-line: var(--qr-swatch3-7); }
-.pele-node.swatch4 { --qr-node-fill: var(--qr-swatch4-3); --qr-node-line: var(--qr-swatch4-7); }
-.pele-node.red { --qr-node-fill: var(--qr-red-3); --qr-node-line: var(--qr-red-7); }
-.pele-node.green { --qr-node-fill: var(--qr-green-3); --qr-node-line: var(--qr-green-7); }
-.pele-node.amber { --qr-node-fill: var(--qr-amber-3); --qr-node-line: var(--qr-amber-7); }
+.pele-node.spot { --qr-node-fill: var(--qr-spot-tint); --qr-node-line: var(--qr-spot-line); }
+.pele-node.tone1 { --qr-node-fill: var(--qr-tone1-tint); --qr-node-line: var(--qr-tone1-line); }
+.pele-node.tone2 { --qr-node-fill: var(--qr-tone2-tint); --qr-node-line: var(--qr-tone2-line); }
+.pele-node.tone3 { --qr-node-fill: var(--qr-tone3-tint); --qr-node-line: var(--qr-tone3-line); }
+.pele-node.tone4 { --qr-node-fill: var(--qr-tone4-tint); --qr-node-line: var(--qr-tone4-line); }
+.pele-node.tone5 { --qr-node-fill: var(--qr-tone5-tint); --qr-node-line: var(--qr-tone5-line); }
+.pele-node.tone6 { --qr-node-fill: var(--qr-tone6-tint); --qr-node-line: var(--qr-tone6-line); }
+.pele-node.ok { --qr-node-fill: var(--qr-ok-tint); --qr-node-line: var(--qr-ok-line); }
+.pele-node.warn { --qr-node-fill: var(--qr-warn-tint); --qr-node-line: var(--qr-warn-line); }
+.pele-node.error { --qr-node-fill: var(--qr-error-tint); --qr-node-line: var(--qr-error-line); }
 
-:is(.pele-node.accent, .pele-node.spot, .pele-node.swatch1, .pele-node.swatch2, .pele-node.swatch3, .pele-node.swatch4, .pele-node.red, .pele-node.green, .pele-node.amber) > :not(text) { stroke: var(--qr-node-line); }
-:is(.pele-node.accent, .pele-node.spot, .pele-node.swatch1, .pele-node.swatch2, .pele-node.swatch3, .pele-node.swatch4, .pele-node.red, .pele-node.green, .pele-node.amber) > :not(text, [fill="none"]) { fill: var(--qr-node-fill); }
-
-.prose pre.chroma {
-  background: var(--qr-surface);
-}
+:is(.pele-node.accent, .pele-node.spot, .pele-node.tone1, .pele-node.tone2, .pele-node.tone3, .pele-node.tone4, .pele-node.tone5, .pele-node.tone6, .pele-node.ok, .pele-node.warn, .pele-node.error) > :not(text) { stroke: var(--qr-node-line); }
+:is(.pele-node.accent, .pele-node.spot, .pele-node.tone1, .pele-node.tone2, .pele-node.tone3, .pele-node.tone4, .pele-node.tone5, .pele-node.tone6, .pele-node.ok, .pele-node.warn, .pele-node.error) > :not(text, [fill="none"]) { fill: var(--qr-node-fill); }
 
 .prose img,
 .prose svg {
@@ -203,7 +201,6 @@
 
 .palette {
   display: grid;
-  grid-template-columns: max-content repeat(12, 1fr);
   gap: 3px;
   margin-block: var(--qr-space-5);
   font-family: var(--qr-font-mono);
@@ -212,7 +209,7 @@
   text-align: center;
 }
 
-.palette > span:nth-child(13n + 1) {
+.palette-label {
   padding-right: var(--qr-space-3);
   text-align: left;
 }

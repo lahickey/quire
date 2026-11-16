@@ -1,0 +1,100 @@
+{
+  "name": "@acme/storefront",
+  "version": "3.12.0",
+  "private": true,
+  "description": "The shop's front end: catalogue, cart and checkout.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://example.com/storefront#readme",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": "^9"
+  },
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --coverage",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings 0",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.0",
+    "clsx": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "~3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^9.14.0",
+    "husky": "^9.1.6",
+    "prettier": "3.3.3",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  },
+  "browserslist": ["defaults", "not dead", "maintained node versions"],
+  "prettier": {
+    "printWidth": 100,
+    "semi": true,
+    "singleQuote": false,
+    "trailingComma": "all",
+    "tabWidth": 2,
+    "useTabs": false
+  },
+  "catalogue": {
+    "currency": "GBP",
+    "taxRate": 0.2,
+    "freeShippingOver": 5000,
+    "maxQuantity": 99,
+    "featured": ["SD-001", "RY-014", "CR-007"],
+    "discounts": [
+      { "code": "SPRING", "percent": 12.5, "expires": "2026-04-30T23:59:59Z", "stackable": false },
+      { "code": "LOYAL", "percent": 5, "expires": null, "stackable": true }
+    ],
+    "items": [
+      {
+        "sku": "SD-001",
+        "title": "Sourdough",
+        "pence": 480,
+        "weight": { "value": 800, "unit": "g" },
+        "tags": ["bread", "vegan"],
+        "available": true,
+        "stock": { "north": 24, "south": 0 },
+        "notes": "Three-day ferment.\nBaked from 4 a.m."
+      },
+      {
+        "sku": "RY-014",
+        "title": "Dark rye",
+        "pence": 520,
+        "weight": { "value": 1.0e3, "unit": "g" },
+        "tags": ["bread"],
+        "available": false,
+        "stock": { "north": 0, "south": 0 },
+        "notes": "Caraway & molasses \u2014 \"the heavy one\"."
+      },
+      {
+        "sku": "CR-007",
+        "title": "Croissant",
+        "pence": 210,
+        "weight": { "value": 65, "unit": "g" },
+        "tags": [],
+        "available": true,
+        "stock": { "north": 60, "south": 48 },
+        "notes": "",
+        "path": "C:\\bakery\\items\\cr-007.json",
+        "ratio": -0.5,
+        "tiny": 1.5E-7
+      }
+    ]
+  },
+  "featureFlags": {
+    "newCheckout": true,
+    "giftWrap": false,
+    "recommendations": { "enabled": true, "model": "nearest-v2", "limit": 4 }
+  },
+  "volta": { "node": "22.11.0" }
+}

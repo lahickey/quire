@@ -3,14 +3,20 @@ dir := source_directory()
 
 port := "8091"
 
+# The corpus is other people's kinds of file, for Lexis to read: no formatter or check of ours touches it.
+corpus := "libs/lexis/_corpus"
+# The languages page shows the corpus's files as they are, tabs and all.
+shown := "site/content/docs/languages.md"
+gofiles := 'find . -name "*.go" ! -path "./vendor/*" ! -path "./' + corpus + '/*"'
+
 _default:
     @just --list
 
 # Format Go and templ, and turn each tab in Markdown into two spaces.
 fmt:
-    @cd {{ dir }} && gofmt -w .
+    @cd {{ dir }} && gofmt -w $({{ gofiles }})
     @cd {{ dir }} && go tool templ fmt .
-    @cd {{ dir }} && sed -i --follow-symlinks 's/\t/  /g' $(git ls-files '*.md')
+    @cd {{ dir }} && sed -i --follow-symlinks 's/\t/  /g' $(git ls-files '*.md' ':!{{ corpus }}' ':!{{ shown }}')
 
 # Use the committed hooks in .githooks. Run once per clone.
 hooks:
@@ -22,12 +28,12 @@ generate:
 
 # gopls check prints diagnostics and exits 0; treat any output as failure, hints included, as an editor shows them. A tab in Markdown fails too; `just fmt` expands it.
 check:
-    @cd {{ dir }} && ! git grep -nP '\t' -- '*.md'
+    @cd {{ dir }} && ! git grep -nP '\t' -- '*.md' ':!{{ corpus }}' ':!{{ shown }}'
     @cd {{ dir }} && go vet ./...
     @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /site)
     @cd {{ dir }} && go vet -tags release ./internal/bake
     @cd {{ dir }} && golangci-lint run --show-stats=false ./...
-    @cd {{ dir }} && sh -c 'out=$(gopls check -severity=hint $(find . -name "*.go" ! -path "./vendor/*")); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'
+    @cd {{ dir }} && sh -c 'out=$(gopls check -severity=hint $({{ gofiles }})); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'
 
 test: generate check release-check
     @cd {{ dir }} && go test ./...
@@ -61,6 +67,9 @@ dev name="1-minimal": generate
 
 # The documentation site: `just site` lists its recipes, `just site run` runs it, `just site dev` adds live reload.
 mod site
+
+# Lexis, the highlighter: `just lexis` lists its recipes.
+mod lexis 'libs/lexis'
 
 # List what examples exist.
 examples:

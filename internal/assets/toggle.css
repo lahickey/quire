@@ -80,5 +80,5 @@
   width: var(--qr-space-4);
   height: var(--qr-space-4);
   border-radius: 30%;
-  background: linear-gradient(135deg, var(--qr-accent-9) 62%, var(--qr-spot-9) 62%);
+  background: linear-gradient(135deg, var(--qr-accent-9) 62%, var(--qr-spot-solid) 62%);
 }

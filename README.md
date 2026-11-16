@@ -84,6 +84,7 @@ That site is itself built with Quire; its source is in [`site/`](./site).
 - [Packs](https://quire.hiddenbridge.io/docs/packs)
 - [Baking](https://quire.hiddenbridge.io/docs/bake)
 - [Deploying](https://quire.hiddenbridge.io/docs/deploy)
+- [Lexis](https://quire.hiddenbridge.io/docs/lexis), the syntax highlighter, and [its benchmarks](./site/content/docs/benchmarks.md)
 - [Design](https://quire.hiddenbridge.io/docs/architecture)
 
 Working on Quire itself is in [DEVELOPING.md](./DEVELOPING.md).

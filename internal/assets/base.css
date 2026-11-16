@@ -111,3 +111,7 @@ a:hover {
   outline-offset: 2px;
 }
 
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+

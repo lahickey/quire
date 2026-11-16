@@ -80,7 +80,14 @@ func paletteBlock(b *strings.Builder, sel string, p model.Palette, light bool) {
 			steps = radix.Scales[r.Hue].Light
 		}
 		for i, v := range steps {
-			fmt.Fprintf(b, "  --qr-%s-%d: %s;\n", r.Name, i+1, v)
+			if r.Range {
+				fmt.Fprintf(b, "  --qr-%s-%d: %s;\n", r.Name, i+1, v)
+			}
+		}
+		for _, s := range model.Steps {
+			if !r.Range {
+				fmt.Fprintf(b, "  --qr-%s-%s: %s;\n", r.Name, s.Name, steps[s.N-1])
+			}
 		}
 		if !light {
 			fmt.Fprintf(b, "  --qr-%s-contrast: %s;\n", r.Name, contrast(r.Hue))

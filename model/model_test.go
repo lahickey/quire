@@ -62,7 +62,7 @@ func TestPalettes(t *testing.T) {
 		accents[p.Accent] = name
 	}
 	twice := PaletteEmber
-	twice.Spot = twice.Amber
+	twice.Spot = twice.Warn
 	for name, p := range map[string]Palette{"a misspelt hue": {Neutral: "slte"}, "a hue in two roles": twice} {
 		func() {
 			defer func() {

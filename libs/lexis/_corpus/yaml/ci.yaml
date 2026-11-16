@@ -1,0 +1,127 @@
+%YAML 1.2
+---
+# CI for the ledger service: test on every push, release on a tag.
+name: ci
+
+on:
+  push:
+    branches: [main, "release/**"]
+    tags: ["v*.*.*"]
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+  schedule:
+    - cron: "17 3 * * 1"   # Mondays, early
+
+env:
+  GO_VERSION: "1.27"
+  CGO_ENABLED: 0
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}
+
+defaults: &defaults
+  runs-on: ubuntu-latest
+  timeout-minutes: 15
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    <<: *defaults
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go: ["1.26", "1.27"]
+        include:
+          - os: ubuntu-latest
+            go: "1.27"
+            coverage: true
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test -race -count=1 \
+            -coverprofile=cover.out ./...
+          echo "total: $(go tool cover -func=cover.out | tail -1)"
+        env:
+          DATABASE_URL: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
+      - name: Upload coverage
+        if: matrix.coverage == true && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: cover.out
+          retention-days: 7
+
+  release:
+    <<: *defaults
+    needs: [test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: >
+          go build -trimpath
+          -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }}"
+          -o dist/ledgerd ./cmd/ledgerd
+      - name: Publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+
+settings:
+  retries: 3
+  ratio: 0.75
+  threshold: 1.5e3
+  hex: 0x1F
+  enabled: yes
+  disabled: false
+  nothing: null
+  tilde: ~
+  when: 2026-02-14T09:30:00Z
+  quoted: 'it''s "fine"'
+  escaped: "tab\there, newline\n"
+  folded: >
+    one long line
+    folded into a paragraph
+  empty: {}
+  inline: {a: 1, b: [2, 3], c: {d: e}}
+  ? complex key
+  : complex value
+...

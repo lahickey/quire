@@ -39,6 +39,8 @@ docs:
       pages: [content, images, look]
     - title: Building
       pages: [wiring, plugins, packs, bake, deploy]
+    - title: Libraries
+      pages: [lexis, languages, benchmarks]
     - title: Background
       pages: [architecture]
 ---

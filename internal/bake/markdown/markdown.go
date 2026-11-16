@@ -7,12 +7,12 @@ import (
 	"html"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
-	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/yuin/goldmark"
-	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
@@ -22,6 +22,8 @@ import (
 	"github.com/yuin/goldmark/util"
 
 	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/libs/lexis"
+	"github.com/lahickey/quire/libs/lexis/langs"
 	"github.com/lahickey/quire/model"
 )
 
@@ -36,6 +38,12 @@ var spanSyntax = regexp.MustCompile(`^\[([^\]\n]+)\]\{((?:\s*\.[A-Za-z_][\w-]*)+
 var calloutKinds = []string{"note", "tip", "important", "warning", "caution"}
 
 var converts atomic.Int64
+
+var languages = sync.OnceValue(func() *lexis.Languages {
+	var set lexis.Languages
+	langs.Add(&set)
+	return &set
+})
 
 type embeds struct {
 	list []journal.Embed
@@ -230,30 +238,66 @@ func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
 	return kind, marker
 }
 
-func palette(name, body string) (string, error) {
-	var roles []string
-	for _, r := range (model.Palette{}).Roles() {
-		roles = append(roles, r.Name)
+// paletteGrid draws a grid of colours: down the side and across the top are
+// what it is labelled with, and each cell is the custom property named.
+func paletteGrid(b *strings.Builder, name string, down, across []string, property func(down, across string) string) {
+	if len(down) == 0 || len(across) == 0 {
+		return
 	}
-	var b strings.Builder
-	if name == "" {
-		b.WriteString(`<div class="palette"><span></span>`)
-	} else {
-		fmt.Fprintf(&b, `<div class="palette" data-palette="%s"><span>%[1]s</span>`, html.EscapeString(name))
+	attr := ""
+	if name != "" {
+		attr = ` data-palette="` + name + `"`
 	}
-	for i := range 12 {
-		fmt.Fprintf(&b, `<span>%d</span>`, i+1)
+	fmt.Fprintf(b, `<div class="palette" style="grid-template-columns:max-content repeat(%d,1fr)"%s><span class="palette-label">%s</span>`, len(across), attr, name)
+	for _, a := range across {
+		fmt.Fprintf(b, `<span>%s</span>`, a)
 	}
-	for role := range strings.FieldsSeq(body) {
-		if !slices.Contains(roles, role) {
-			return "", fmt.Errorf("palette: unknown role %q, want one of %s", role, strings.Join(roles, " "))
-		}
-		fmt.Fprintf(&b, `<span>%s</span>`, role)
-		for i := range 12 {
-			fmt.Fprintf(&b, `<span style="background:var(--qr-%s-%d)"></span>`, role, i+1)
+	for _, d := range down {
+		fmt.Fprintf(b, `<span class="palette-label">%s</span>`, d)
+		for _, a := range across {
+			fmt.Fprintf(b, `<span style="background:var(--qr-%s)"></span>`, property(d, a))
 		}
 	}
 	b.WriteString(`</div>`)
+}
+
+// palette draws the roles its body names: each range as a row of its twelve
+// steps, and the rest side by side with a row for each of their steps.
+func palette(name, body string) (string, error) {
+	roles := (model.Palette{}).Roles()
+	var names, ranges, others, twelve, steps []string
+	for _, r := range roles {
+		names = append(names, r.Name)
+	}
+	for word := range strings.FieldsSeq(body) {
+		i := slices.Index(names, word)
+		switch {
+		case word == "all":
+			for _, r := range roles {
+				if r.Range {
+					ranges = append(ranges, r.Name)
+				} else {
+					others = append(others, r.Name)
+				}
+			}
+		case i < 0:
+			return "", fmt.Errorf("palette: unknown role %q, want all or one of %s", word, strings.Join(names, " "))
+		case roles[i].Range:
+			ranges = append(ranges, word)
+		default:
+			others = append(others, word)
+		}
+	}
+	for i := range 12 {
+		twelve = append(twelve, strconv.Itoa(i+1))
+	}
+	for _, s := range model.Steps {
+		steps = append(steps, s.Name)
+	}
+	var b strings.Builder
+	name = html.EscapeString(name)
+	paletteGrid(&b, name, ranges, twelve, func(role, step string) string { return role + "-" + step })
+	paletteGrid(&b, name, steps, others, func(step, role string) string { return role + "-" + step })
 	return b.String(), nil
 }
 
@@ -411,12 +455,16 @@ func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Co
 	for _, b := range found {
 		name, info := fenceInfo(b, t.src)
 		p := b.Parent()
+		body := fenceText(b, t.src)
 		if t.widgets[name] == nil {
-			p.InsertBefore(p, b, &rawBlock{html: model.CodeOpen})
-			p.InsertAfter(p, b, &rawBlock{html: model.CodeClose})
+			code := html.EscapeString(body)
+			if next := languages().Named(name, body); next != nil {
+				code = string(lexis.AppendHTML(nil, next))
+			}
+			p.ReplaceChild(p, b, &rawBlock{html: model.CodeOpen + "<pre><code>" + code + "</code></pre>" + model.CodeClose})
 			continue
 		}
-		html, err := t.widgets[name](info, fenceText(b, t.src))
+		html, err := t.widgets[name](info, body)
 		if err != nil {
 			t.err = fmt.Errorf("%s: %w", name, err)
 			return
@@ -434,13 +482,7 @@ func Render(src, doc string, fenceNames []string) (string, []journal.Heading, []
 	tf := &imgTransform{src: srcb, doc: doc, embeds: em}
 	ft := &fenceTransform{src: srcb, widgets: fences(fenceNames, em)}
 	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.Table,
-			highlighting.NewHighlighting(
-				highlighting.WithStyle("github-dark"),
-				highlighting.WithFormatOptions(chromahtml.WithClasses(true)),
-			),
-		),
+		goldmark.WithExtensions(extension.Table),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 			parser.WithInlineParsers(util.Prioritized(spanParser{}, 150)),

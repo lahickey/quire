@@ -29,6 +29,8 @@ var files embed.FS
 var (
 	heading = regexp.MustCompile(`(?s)<h[23] id="([^"]*)"[^>]*>(.*?)</h[23]>`)
 	tags    = regexp.MustCompile(`(?s)<svg.*?</svg>|<[^>]*>`)
+	// unlisted is the opening tag of an element that is kept out of the index.
+	unlisted = regexp.MustCompile(`<(\w+)[^>]*\sdata-nosearch[^>]*>`)
 )
 
 type section struct{ page, heading, url, text string }
@@ -129,13 +131,29 @@ func (p *Plugin) show(w http.ResponseWriter, r *http.Request) {
 	ui.Render(p.page(q, p.find(q)))(w, r)
 }
 
+// listed is s without its elements marked data-nosearch, and all in them.
+func listed(s string) string {
+	for {
+		m := unlisted.FindStringSubmatchIndex(s)
+		if m == nil {
+			return s
+		}
+		end, closing := len(s), "</"+s[m[2]:m[3]]+">"
+		if i := strings.Index(s[m[1]:], closing); i >= 0 {
+			end = m[1] + i + len(closing)
+		}
+		s = s[:m[0]] + s[end:]
+	}
+}
+
 func New() *Plugin { return &Plugin{} }
 
 // Add indexes a collection: one section for each document's opening, and one for each H2 and H3.
+// An element marked data-nosearch is left out.
 func (p *Plugin) Add[T model.Metadata](c *model.Collection[T]) {
 	for _, d := range c.Docs() {
 		m := d.Meta.Base()
-		body, at := m.Summary+"\n"+d.HTML, 0
+		body, at := m.Summary+"\n"+listed(d.HTML), 0
 		sec := section{page: m.Title, url: c.Href(d)}
 		for _, h := range heading.FindAllStringSubmatchIndex(body, -1) {
 			sec.text = plain(body[at:h[0]])

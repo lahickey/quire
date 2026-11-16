@@ -1,0 +1,122 @@
+From 4c1e9b7a2d0f5e8c3b6a9d1f0e2c4b6a8d0f1e3c Mon Sep 17 00:00:00 2001
+From: A. Contributor <contributor@example.com>
+Date: Sat, 14 Feb 2026 09:30:00 +0000
+Subject: [PATCH 2/3] ledger: refuse a debit that would overdraw
+
+A debit larger than the balance used to go through and leave the
+account negative. Refuse it, and say so.
+---
+ ledger/ledger.go      | 14 ++++++++++++--
+ ledger/ledger_test.go | 21 +++++++++++++++++++++
+ README.md             |  3 ++-
+ 3 files changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/ledger/ledger.go b/ledger/ledger.go
+index 3f2a1bc..9d4e7f0 100644
+--- a/ledger/ledger.go
++++ b/ledger/ledger.go
+@@ -3,6 +3,7 @@ package ledger
+
+ import (
+ 	"context"
++	"errors"
+ 	"fmt"
+ 	"sync"
+ 	"time"
+@@ -10,6 +11,9 @@ import (
+
+ const maxEntries = 1 << 12
+
++// ErrOverdrawn is returned when a debit would take a balance below zero.
++var ErrOverdrawn = errors.New("ledger: account overdrawn")
++
+ type Kind uint8
+
+ const (
+@@ -42,11 +46,17 @@ func (l *Ledger) Post(ctx context.Context, e Entry) error {
+ 	l.mu.Lock()
+ 	defer l.mu.Unlock()
+-	if e.Kind == Debit {
+-		l.balances[e.Account] -= e.Pence
+-	} else {
+-		l.balances[e.Account] += e.Pence
++	if len(l.entries) >= maxEntries {
++		return fmt.Errorf("ledger is full at %d entries", maxEntries)
++	}
++	delta := e.Pence
++	if e.Kind == Debit {
++		delta = -delta
++	}
++	if l.balances[e.Account]+delta < 0 {
++		return ErrOverdrawn
+ 	}
++	l.balances[e.Account] += delta
+ 	l.entries = append(l.entries, e)
+ 	return nil
+ }
+diff --git a/ledger/ledger_test.go b/ledger/ledger_test.go
+index 77c0d12..b81f3aa 100644
+--- a/ledger/ledger_test.go
++++ b/ledger/ledger_test.go
+@@ -1,6 +1,7 @@
+ package ledger
+
+ import (
++	"errors"
+ 	"testing"
+ )
+
+@@ -18,3 +19,23 @@ func TestPostMovesTheBalance(t *testing.T) {
+ 		t.Errorf("balance is %d, want 150", got)
+ 	}
+ }
++
++func TestADebitCannotOverdraw(t *testing.T) {
++	l := New()
++	ctx := t.Context()
++	if err := l.Post(ctx, Entry{Account: "a", Kind: Credit, Pence: 100}); err != nil {
++		t.Fatal(err)
++	}
++	err := l.Post(ctx, Entry{Account: "a", Kind: Debit, Pence: 101})
++	if !errors.Is(err, ErrOverdrawn) {
++		t.Fatalf("a debit past the balance gave %v", err)
++	}
++	if got, _ := l.Balance("a"); got != 100 {
++		t.Errorf("the refused debit moved the balance to %d", got)
++	}
++	// The whole balance may go.
++	if err := l.Post(ctx, Entry{Account: "a", Kind: Debit, Pence: 100}); err != nil {
++		t.Errorf("a debit of the whole balance: %v", err)
++	}
++}
+diff --git a/README.md b/README.md
+index 1a2b3c4..5d6e7f8 100644
+--- a/README.md
++++ b/README.md
+@@ -12,7 +12,8 @@ go get example.com/acme/ledger
+ ## Posting
+
+ `Post` records an entry and moves the balance of its account.
+-A debit takes the balance down, with no floor.
++A debit takes the balance down, and one that would take it below zero is
++refused with `ErrOverdrawn`.
+
+ ## Statements
+
+diff --git a/docs/old-notes.txt b/docs/old-notes.txt
+deleted file mode 100644
+index e69de29..0000000
+--- a/docs/old-notes.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-Balances may go negative; see ticket 41.
+-
+-TODO: decide whether that is a bug.
+\ No newline at end of file
+diff --git a/ledger/doc.go b/ledger/errors.go
+similarity index 88%
+rename from ledger/doc.go
+rename to ledger/errors.go
+Binary files a/docs/logo.png and b/docs/logo.png differ
+--
+2.47.1

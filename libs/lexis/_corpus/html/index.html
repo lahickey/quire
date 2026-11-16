@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harbour Bakery &mdash; Order ahead</title>
+  <link rel="stylesheet" href="/static/site.css?v=14">
+  <link rel="icon" type="image/svg+xml" href="/static/loaf.svg">
+  <style>
+    :root { --accent: #b5532a; --gap: 1.25rem; }
+    body { margin: 0; font: 1rem/1.5 system-ui, sans-serif; }
+    .menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--gap); }
+    .menu li:hover > .price { color: var(--accent); }
+    @media (max-width: 40em) { nav ul { flex-direction: column; } }
+  </style>
+  <script type="application/ld+json">
+    { "@context": "https://schema.org", "@type": "Bakery", "name": "Harbour Bakery", "priceRange": "£" }
+  </script>
+</head>
+<body class="home no-js">
+  <!-- The header is repeated on every page; keep it in step with partials/header.html -->
+  <header role="banner">
+    <a class="logo" href="/"><img src="/static/loaf.svg" alt="" width="32" height="32"> Harbour Bakery</a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="/menu" aria-current="page">Menu</a></li>
+        <li><a href="/order">Order</a></li>
+        <li><a href="/find-us#map">Find us</a></li>
+      </ul>
+    </nav>
+    <button type="button" id="theme" aria-pressed="false" hidden>Dark</button>
+  </header>
+
+  <main id="content">
+    <h1>Fresh from six, gone by noon</h1>
+    <p class="lede">Order before <time datetime="20:00">8&nbsp;pm</time> and it is on the shelf with your name on it.</p>
+
+    <section aria-labelledby="menu-heading">
+      <h2 id="menu-heading">Today&rsquo;s bake</h2>
+      <ul class="menu">
+        <li data-sku="SD-001">
+          <h3>Sourdough</h3>
+          <p>Three-day ferment, 800&thinsp;g.</p>
+          <span class="price">&pound;4.80</span>
+        </li>
+        <li data-sku="RY-014" class="low-stock">
+          <h3>Dark rye <small>(4 left)</small></h3>
+          <p>Caraway &amp; molasses.</p>
+          <span class="price">&pound;5.20</span>
+        </li>
+        <li data-sku="CR-007">
+          <h3>Croissant</h3>
+          <p>Butter, and then more butter.</p>
+          <span class="price">&pound;2.10</span>
+        </li>
+      </ul>
+    </section>
+
+    <form action="/order" method="post" novalidate>
+      <fieldset>
+        <legend>Your order</legend>
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" autocomplete="name" required minlength="2">
+
+        <label for="loaf">Loaf</label>
+        <select id="loaf" name="sku">
+          <option value="">Choose&hellip;</option>
+          <option value="SD-001" selected>Sourdough</option>
+          <option value="RY-014">Dark rye</option>
+        </select>
+
+        <label for="qty">How many</label>
+        <input id="qty" name="qty" type="number" min="1" max="12" value="1" inputmode="numeric">
+
+        <label><input type="checkbox" name="sliced" value="yes" checked> Sliced</label>
+        <textarea name="note" rows="3" placeholder="Anything we should know?"></textarea>
+      </fieldset>
+      <button type="submit" class="primary">Place order</button>
+      <output name="total" for="loaf qty">&pound;4.80</output>
+    </form>
+
+    <table>
+      <caption>Opening hours</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col">Open</th></tr></thead>
+      <tbody>
+        <tr><td>Tue&ndash;Sat</td><td>06:00&ndash;12:00</td></tr>
+        <tr><td>Sun</td><td>07:00&ndash;11:00</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Harbour Bakery. <a href="mailto:hello@example.com?subject=Order">Email us</a>.</p>
+  </footer>
+
+  <script>
+    document.body.classList.remove("no-js");
+    const prices = { "SD-001": 480, "RY-014": 520 };
+    const form = document.querySelector("form");
+    form.addEventListener("input", () => {
+      const pence = (prices[form.sku.value] || 0) * Number(form.qty.value);
+      form.total.value = `£${(pence / 100).toFixed(2)}`;
+    });
+    // The theme button only works with scripts, so it starts hidden.
+    const theme = document.getElementById("theme");
+    theme.hidden = false;
+    theme.onclick = () => {
+      const dark = document.documentElement.dataset.theme !== "dark";
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      theme.setAttribute("aria-pressed", String(dark));
+    };
+  </script>
+  <script src="/static/order.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+// Package views is the shop's pages.
+package views
+
+import (
+	"fmt"
+	"strings"
+
+	"example.com/acme/shop/model"
+)
+
+const maxShown = 12
+
+var currency = map[string]string{"GBP": "£", "EUR": "€"}
+
+type CartProps struct {
+	Lines    []model.Line
+	Currency string
+	SignedIn bool
+}
+
+func money(pence int, code string) string {
+	return fmt.Sprintf("%s%d.%02d", currency[code], pence/100, pence%100)
+}
+
+func (p CartProps) total() (sum int) {
+	for _, l := range p.Lines {
+		sum += l.Pence * l.Quantity
+	}
+	return sum
+}
+
+css highlight(colour string) {
+	background-color: { colour };
+	padding: 0.25rem 0.5rem;
+}
+
+script confirmRemove(sku string) {
+	if (confirm("Remove " + sku + " from your cart?")) {
+		fetch("/cart/" + encodeURIComponent(sku), { method: "DELETE" })
+			.then(() => window.location.reload());
+	}
+}
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<title>{ title } · Harbour Bakery</title>
+			<link rel="stylesheet" href="/static/site.css"/>
+			<style>
+				.cart li { display: flex; gap: 1rem; }
+				.cart .empty { color: gray; }
+			</style>
+		</head>
+		<body>
+			@Header(title)
+			<main id="content">
+				{ children... }
+			</main>
+			<script>
+				document.body.classList.add("js");
+				const year = new Date().getFullYear();
+			</script>
+		</body>
+	</html>
+}
+
+templ Header(current string) {
+	<header>
+		<a class="logo" href="/">Harbour Bakery</a>
+		<nav aria-label="Main">
+			for _, item := range []string{"Menu", "Order", "Find us"} {
+				<a
+					href={ templ.URL("/" + strings.ToLower(strings.ReplaceAll(item, " ", "-"))) }
+					if item == current {
+						aria-current="page"
+					}
+				>{ item }</a>
+			}
+		</nav>
+	</header>
+}
+
+templ Line(l model.Line, code string) {
+	<li data-sku={ l.SKU } class={ "line", templ.KV("low", l.Quantity > 10) }>
+		<span class="qty">{ fmt.Sprint(l.Quantity) } ×</span>
+		<span class="title">{ l.Title }</span>
+		<!-- the price of the whole line, not of one -->
+		<b>{ money(l.Pence*l.Quantity, code) }</b>
+		<button type="button" onclick={ confirmRemove(l.SKU) } disabled?={ l.Locked }>Remove</button>
+	</li>
+}
+
+templ Cart(p CartProps) {
+	@Layout("Your cart") {
+		<h1>Your cart</h1>
+		if len(p.Lines) == 0 {
+			<p class="empty">Nothing here yet. <a href="/menu">See the menu</a>.</p>
+		} else {
+			<ul class="cart">
+				for i, l := range p.Lines {
+					if i < maxShown {
+						@Line(l, p.Currency)
+					}
+				}
+			</ul>
+			if len(p.Lines) > maxShown {
+				<p>and { fmt.Sprint(len(p.Lines) - maxShown) } more</p>
+			}
+			<p class={ highlight("#fdf3d0") }>
+				Total <strong>{ money(p.total(), p.Currency) }</strong>
+			</p>
+			switch {
+				case !p.SignedIn:
+					<a href="/login?next=/checkout">Sign in to check out</a>
+				case p.total() > 100_00:
+					<form action="/checkout" method="post">
+						<input type="hidden" name="express" value="1"/>
+						<button type="submit" class="primary">Express checkout</button>
+					</form>
+				default:
+					<a class="button" href="/checkout">Check out</a>
+			}
+		}
+	}
+}
+
+func Titles(lines []model.Line) []string {
+	out := make([]string, 0, len(lines))
+	for _, l := range lines {
+		out = append(out, l.Title)
+	}
+	return out
+}
