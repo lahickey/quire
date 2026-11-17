@@ -112,5 +112,15 @@ async def main(argv: list[str] | None = None) -> int:
     return 0 if tally.by_level["error"] == 0 else 1
 
 
+def describe(result: object) -> str:
+    match result:
+        case int(count) if count > 0:
+            return f"{count} matches"
+        case None | 0:
+            return "nothing"
+        case _:
+            return repr(result)
+
+
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main()))

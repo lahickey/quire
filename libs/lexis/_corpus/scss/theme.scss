@@ -1,0 +1,88 @@
+// theme.scss - the shop's theme: tokens, a card and its states.
+@use "sass:math";
+@import "reset", "fonts";
+
+$ink: #1b1d22;
+$paper: hsl(40, 30%, 97%);
+$gap: 1.25rem !default;
+$breakpoints: (small: 30em, medium: 48em, wide: 72em);
+$font-stack: "Literata", Georgia, serif;
+
+/* Mixins take the breakpoint by name. */
+@mixin above($name) {
+  @media (min-width: map-get($breakpoints, $name)) {
+    @content;
+  }
+}
+
+@function rem($px, $base: 16px) {
+  @return math.div($px, $base) * 1rem;
+}
+
+%lifted {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 8px 24px -8px rgba($ink, .2);
+  transition: transform 120ms ease-out;
+}
+
+.card {
+  @extend %lifted;
+  display: grid;
+  gap: $gap;
+  padding: rem(24px) $gap * 1.5;
+  color: $ink;
+  background: $paper url("/static/grain.png") repeat;
+  font: 1rem/1.5 $font-stack;
+
+  &:hover,
+  &:focus-within {
+    transform: translateY(-2px);
+  }
+
+  &--sold-out {
+    opacity: .6;
+    pointer-events: none;
+  }
+
+  > h2 {
+    margin: 0 0 math.div($gap, 2);
+    font-size: clamp(1.1rem, 1rem + 1vw, 1.5rem);
+  }
+
+  .price::before {
+    content: "\00a3";
+  }
+
+  a[href^="https://"]:not(.plain) {
+    text-decoration: underline dotted;
+  }
+
+  @include above(medium) {
+    grid-template-columns: 8rem 1fr;
+  }
+}
+
+@each $name, $width in $breakpoints {
+  .hide-above-#{$name} {
+    @include above($name) {
+      display: none !important;
+    }
+  }
+}
+
+@for $i from 1 through 4 {
+  .stack-#{$i} > * + * {
+    margin-top: $gap * $i;
+  }
+}
+
+@if $gap > 1rem {
+  body { line-height: 1.6; }
+} @else {
+  body { line-height: 1.5; }
+}
+
+@keyframes rise {
+  from { transform: translateY(4px); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: none; }
+}

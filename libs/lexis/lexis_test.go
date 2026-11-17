@@ -50,7 +50,7 @@ func drain(next lexis.Lexer) []lexis.Token {
 // file's name and by the language's. Whatever the language, and wherever
 // the text is cut off, the tokens are the text.
 func TestTokensAreTheText(t *testing.T) {
-	if len(corpus) != 29 {
+	if len(corpus) != 34 {
 		t.Errorf("the corpus has %d languages", len(corpus))
 	}
 	for name, f := range corpus {
@@ -87,22 +87,33 @@ func TestKinds(t *testing.T) {
 		{"c", "#include", lexis.Preproc}, {"c", "<stdio.h>", lexis.String}, {"c", "/* always a power of two */", lexis.Comment}, {"c", "fprintf", lexis.Function},
 		{"c", "0x7F", lexis.Number}, {"c", "0.75e0", lexis.Number}, {"c", `'\\'`, lexis.String}, {"c", "const", lexis.Keyword}, {"c", "char", lexis.Type},
 		{"cpp", "template", lexis.Keyword}, {"cpp", `R"(hand "left")"`, lexis.String}, {"cpp", "1'000'000ULL", lexis.Number}, {"cpp", "// namespace scene", lexis.Comment},
+		{"objc", "@interface", lexis.Keyword}, {"objc", "#import", lexis.Preproc}, {"objc", "instancetype", lexis.Type}, {"objc", "nil", lexis.Keyword}, {"objc", `@"InventoryDidChange"`, lexis.String}, {"objc", "@0.75", lexis.Number}, {"objc", "@selector", lexis.Keyword}, {"objc", "didChangeItem", lexis.Function}, {"objc", "level", lexis.Function}, {"objc", "copy", lexis.Keyword}, {"objc", "weak", lexis.Keyword},
+		{"objcpp", "@implementation", lexis.Keyword}, {"objcpp", "template", lexis.Keyword}, {"objcpp", "BOOL", lexis.Type},
 		{"markdown", "# Running the ledger service", lexis.Heading}, {"markdown", "## Install", lexis.Subheading}, {"markdown", "`amd64`", lexis.String},
 		{"markdown", "**what to type**", lexis.Strong}, {"markdown", "*why*", lexis.Emph}, {"markdown", "_Backups._", lexis.Emph}, {"markdown", "[design notes]", lexis.Tag}, {"markdown", "if", lexis.Keyword},
 		{"markdown", "title", lexis.Tag},
 		{"yaml", "name", lexis.Tag}, {"yaml", "# CI for the ledger service: test on every push, release on a tag.", lexis.Comment},
+		{"yaml", "b", lexis.Tag}, {"yaml", "3", lexis.Number}, {"yaml", "e", lexis.Text},
 		{"yaml", "\n    one long line\n    folded into a paragraph", lexis.String},
 		{"toml", `"inventory"`, lexis.String}, {"toml", "3", lexis.Number},
-		{"json", "0.2", lexis.Number}, {"json", `"name"`, lexis.Tag},
+		{"json", "0.2", lexis.Number}, {"json", `"name"`, lexis.Tag}, {"json", `"MIT"`, lexis.String}, {"json", "true", lexis.Keyword}, {"json", ":", lexis.Punct},
 		{"templ", "templ", lexis.Keyword}, {"templ", "Layout", lexis.Function}, {"templ", "header", lexis.Tag}, {"templ", "class", lexis.Type},
 		{"templ", `"logo"`, lexis.String}, {"templ", "<!-- the price of the whole line, not of one -->", lexis.Comment}, {"templ", "if", lexis.Keyword},
 		{"templ", "@Header", lexis.Function}, {"templ", "meta", lexis.Tag}, {"templ", "const", lexis.Keyword}, {"templ", "var", lexis.Keyword},
 		{"templ", "func", lexis.Keyword}, {"templ", "string", lexis.Type}, {"templ", "money", lexis.Function}, {"templ", "}", lexis.Punct},
-		{"css", "/* Tokens */", lexis.Comment}, {"css", "color", lexis.Keyword},
-		{"xml", " One book per title; prices are in pence. ", lexis.Comment}, {"xml", "<catalogue", lexis.Tag}, {"xml", "season=", lexis.Type}, {"xml", `"spring"`, lexis.String},
+		{"css", "/* Tokens */", lexis.Comment}, {"css", "color", lexis.Keyword}, {"css", "--ink", lexis.Builtin}, {"css", "#1b1d22", lexis.Number}, {"css", "html", lexis.Tag},
+		{"css", "0.5rem", lexis.Number}, {"css", "@media", lexis.Keyword}, {"css", "clamp", lexis.Function}, {"css", "::before", lexis.Keyword},
+		{"scss", "// theme.scss - the shop's theme: tokens, a card and its states.", lexis.Comment}, {"scss", "$gap", lexis.Builtin}, {"scss", "#{$name}", lexis.Builtin},
+		{"scss", ".card", lexis.Type}, {"scss", "h2", lexis.Tag}, {"scss", "transform", lexis.Keyword}, {"scss", "!default", lexis.Preproc}, {"scss", ":hover", lexis.Keyword},
+		{"html", "<!DOCTYPE html>", lexis.Preproc}, {"html", "&mdash;", lexis.Builtin}, {"html", `"@context"`, lexis.Tag}, {"html", "hidden", lexis.Type},
+		{"html", "<!-- The header is repeated on every page; keep it in step with partials/header.html -->", lexis.Comment},
+		{"xml", "<!-- One book per title; prices are in pence. -->", lexis.Comment}, {"xml", "catalogue", lexis.Tag}, {"xml", "season", lexis.Type},
+		{"xml", `<?xml version="1.0" encoding="UTF-8" standalone="no"?>`, lexis.Preproc}, {"xml", "&publisher;", lexis.Builtin}, {"xml", `"spring"`, lexis.String},
 		{"html", "body", lexis.Tag}, {"html", "class", lexis.Type}, {"html", `"logo"`, lexis.String}, {"html", "const", lexis.Keyword}, {"html", "margin", lexis.Keyword},
 		{"python", "# One record for each line that is a log line.", lexis.Comment}, {"python", "def", lexis.Keyword}, {"python", "parse", lexis.Function},
-		{"python", "0x4000", lexis.Number}, {"python", "debug", lexis.String},
+		{"python", "0x4000", lexis.Number}, {"python", `"debug"`, lexis.String}, {"python", "Record", lexis.Type}, {"python", "@dataclass", lexis.Keyword}, {"python", "match", lexis.Keyword},
+		{"python", "case", lexis.Keyword}, {"python", ":<7", lexis.String}, {"python", "upper", lexis.Function}, {"python", "__name__", lexis.Builtin}, {"python", `f"`, lexis.String},
+		{"python", "self", lexis.Builtin}, {"python", "#!/usr/bin/env python3", lexis.Preproc},
 		{"rust", "fn", lexis.Keyword}, {"rust", "main", lexis.Function}, {"rust", "\"bolt-m4: 40\nhinge: 12\nwasher\"#", lexis.String}, {"rust", "1.0e2", lexis.Number},
 		{"rust", "u32", lexis.Type},
 		{"typescript", "interface", lexis.Keyword}, {"typescript", `/:([A-Za-z_]\w*)(\?)?/g`, lexis.String}, {"java", "class", lexis.Keyword}, {"sql", "SELECT", lexis.Keyword},
@@ -112,8 +123,12 @@ func TestKinds(t *testing.T) {
 		{"lua", "[==[\n  plugins [[ready]]\n]==]", lexis.String}, {"lua", "1e3", lexis.Number}, {"lua", "function", lexis.Keyword},
 		{"nix", "# A development shell and a package for a small Go service.", lexis.Comment}, {"nix", "let", lexis.Keyword}, {"nix", "in", lexis.Keyword}, {"nix", "8080", lexis.Number},
 		{"nix", "inherit", lexis.Keyword},
+		{"javascript", "formatMoney", lexis.Function}, {"javascript", "from", lexis.Keyword}, {"javascript", " × ${", lexis.String},
+		{"jsx", "aside", lexis.Tag}, {"jsx", "className", lexis.Type}, {"jsx", `/^\s*$/`, lexis.String}, {"jsx", "/", lexis.Operator}, {"jsx", "Nothing here yet.", lexis.Text},
+		{"jsx", "Remove ${", lexis.String}, {"jsx", "Cart.Footer", lexis.Tag},
+		{"tsx", "thead", lexis.Tag}, {"tsx", "<", lexis.Operator}, {"tsx", "ReactNode", lexis.Type}, {"tsx", "keyof", lexis.Keyword}, {"tsx", "undefined", lexis.Keyword}, {"tsx", "object", lexis.Type}, {"typescript", "Guard", lexis.Type},
 		{"javascript", "const", lexis.Keyword}, {"javascript", "=>", lexis.Punct}, {"javascript", "===", lexis.Operator}, {"javascript", `/^[A-Z]{2,4}-\d{3,}$/i`, lexis.String},
-		{"javascript", "// cart.js - a shopping cart kept in localStorage, with a small event bus.\n", lexis.Comment},
+		{"javascript", "// cart.js - a shopping cart kept in localStorage, with a small event bus.", lexis.Comment},
 	} {
 		var kinds []lexis.Kind
 		for _, tok := range drain(languages.Named(c.name, corpus[c.name][1])) {

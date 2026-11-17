@@ -581,6 +581,47 @@ class EventBus {
 
 </div>
 
+## jsx
+
+[`CartPanel.jsx`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/jsx/CartPanel.jsx), from the top.
+
+<div data-nosearch>
+
+`````jsx
+// CartPanel.jsx - the cart as a side panel, with a line for each item.
+import { useEffect, useMemo, useState } from "react";
+import { formatMoney } from "./money";
+
+const EMPTY = /^\s*$/;
+
+function Line({ item, onRemove }) {
+  const total = item.pence * item.quantity;
+  return (
+    <li className="line" data-sku={item.sku}>
+      <span className="name">{item.name}</span>
+      <input
+        type="number"
+        min={1}
+        value={item.quantity}
+        onChange={(e) => item.setQuantity(Number(e.target.value))}
+        disabled
+      />
+      <b>{formatMoney(total)}</b>
+      <button onClick={() => onRemove(item.sku)} aria-label={`Remove ${item.name}`}>
+        &times;
+      </button>
+    </li>
+  );
+}
+
+export default function CartPanel({ cart, open = false }) {
+  const [note, setNote] = useState("");
+  const lines = useMemo(() => [...cart.lines.values()], [cart.version]);
+  const count = lines.reduce((n, l) => n + l.quantity, 0);
+`````
+
+</div>
+
 ## just
 
 [`justfile`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/just/justfile), from the top.
@@ -827,6 +868,88 @@ ledgerd migrate --config /etc/ledgerd/config.toml  # creates the tables
 
 </div>
 
+## objc
+
+[`Inventory.m`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/objc/Inventory.m), from the top.
+
+<div data-nosearch>
+
+`````objc
+// Inventory.m - a small stock list, kept in memory and saved as a property list.
+#import <Foundation/Foundation.h>
+#import "Inventory.h"
+
+#define INVENTORY_VERSION 2
+
+static NSString *const InventoryDidChange = @"InventoryDidChange";
+static const NSUInteger kMaxItems = 0x400;
+
+typedef NS_ENUM(NSInteger, StockLevel) {
+    StockLevelEmpty = 0,
+    StockLevelLow,
+    StockLevelFine,
+};
+
+@protocol InventoryObserver <NSObject>
+- (void)inventory:(Inventory *)inventory didChangeItem:(NSString *)name;
+@optional
+- (void)inventoryDidEmpty:(Inventory *)inventory;
+@end
+
+@interface Item : NSObject <NSCopying>
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, assign) NSInteger count;
+@property (nonatomic, readonly) StockLevel level;
++ (instancetype)itemWithName:(NSString *)name count:(NSInteger)count;
+@end
+
+@implementation Item
+
+`````
+
+</div>
+
+## objcpp
+
+[`Mixer.mm`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/objcpp/Mixer.mm), from the top.
+
+<div data-nosearch>
+
+`````objcpp
+// Mixer.mm - an audio mixer in C++, behind an Objective-C class for the app to hold.
+#import <AVFoundation/AVFoundation.h>
+#import "Mixer.h"
+
+#include <algorithm>
+#include <atomic>
+#include <memory>
+#include <string>
+#include <vector>
+
+#define MIXER_MAX_VOICES 32
+
+namespace mixer {
+
+constexpr float kSilence = 1e-4f;
+
+struct Voice {
+    std::string name;
+    float gain{1.0f};
+    std::atomic<bool> playing{false};
+
+    explicit Voice(std::string n) : name(std::move(n)) {}
+};
+
+template <typename T>
+T clamp01(T v) noexcept {
+    return std::min<T>(std::max<T>(v, 0), 1);
+}
+
+class Engine final {
+`````
+
+</div>
+
 ## python
 
 [`logwatch.py`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/python/logwatch.py), from the top.
@@ -905,6 +1028,47 @@ impl Display for StockError {
 }
 
 impl std::error::Error for StockError {}
+`````
+
+</div>
+
+## scss
+
+[`theme.scss`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/scss/theme.scss), from the top.
+
+<div data-nosearch>
+
+`````scss
+// theme.scss - the shop's theme: tokens, a card and its states.
+@use "sass:math";
+@import "reset", "fonts";
+
+$ink: #1b1d22;
+$paper: hsl(40, 30%, 97%);
+$gap: 1.25rem !default;
+$breakpoints: (small: 30em, medium: 48em, wide: 72em);
+$font-stack: "Literata", Georgia, serif;
+
+/* Mixins take the breakpoint by name. */
+@mixin above($name) {
+  @media (min-width: map-get($breakpoints, $name)) {
+    @content;
+  }
+}
+
+@function rem($px, $base: 16px) {
+  @return math.div($px, $base) * 1rem;
+}
+
+%lifted {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 8px 24px -8px rgba($ink, .2);
+  transition: transform 120ms ease-out;
+}
+
+.card {
+  @extend %lifted;
+  display: grid;
+  gap: $gap;
 `````
 
 </div>
@@ -1028,6 +1192,47 @@ required-features = ["cli"]
 name = "inv-export"
 path = "src/bin/export.rs"
 
+`````
+
+</div>
+
+## tsx
+
+[`Table.tsx`](https://github.com/lahickey/quire/blob/master/libs/lexis/_corpus/tsx/Table.tsx), from the top.
+
+<div data-nosearch>
+
+`````tsx
+// Table.tsx - a typed table with sortable columns.
+import { useState, type ReactNode } from "react";
+
+export interface Column<Row> {
+  key: keyof Row & string;
+  title: string;
+  width?: number;
+  render?: (row: Row) => ReactNode;
+}
+
+type Order = "asc" | "desc";
+
+interface Props<Row extends { id: string }> {
+  rows: readonly Row[];
+  columns: Column<Row>[];
+  caption?: string;
+  onOpen?(row: Row): void;
+}
+
+const ARROW: Record<Order, string> = { asc: "▲", desc: "▼" };
+
+function compare<Row>(a: Row, b: Row, key: keyof Row): number {
+  return a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0;
+}
+
+const first = <T,>(items: readonly T[]): T | undefined => items[0];
+const pick = <Row extends object>(row: Row, key: keyof Row) => row[key];
+
+export function Table<Row extends { id: string }>({ rows, columns, caption, onOpen }: Props<Row>) {
+  const [sort, setSort] = useState<{ key: keyof Row; order: Order } | null>(null);
 `````
 
 </div>

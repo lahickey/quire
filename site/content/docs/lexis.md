@@ -78,14 +78,19 @@ The caller wraps it in `pre` and `code`, and brings the styles; Quire's are in [
 | Language | How |
 |-|-|
 | Go | Go's own scanner |
-| C, C++ | One lexer, a word table each |
+| C, C++, Objective-C, Objective-C++ | One lexer, a word table each |
 | fish | Its own lexer |
 | justfile | Its own lexer, a recipe's body going to bash's |
 | templ | Its own lexer, handing Go, scripts and styles to theirs |
 | Markdown | Its own lexer, a line at a time |
+| JSON | Its own lexer, JSON5 and JSONC with it |
+| JavaScript, TypeScript | One lexer, a word table each, with JSX in `.js`, `.jsx` and `.tsx` |
+| CSS, SCSS, Less | One lexer |
+| HTML, XML | One lexer, HTML handing scripts and styles to theirs |
+| Python | Its own lexer, with the code inside f-strings |
 | sh, bash, zsh, ksh | Bash's rules |
-| Python, Rust, TypeScript, JavaScript, Java, C#, Kotlin, Zig, Lua, Nix | Rules |
-| HTML, CSS, XML, YAML, TOML, JSON, INI, SQL | Rules |
+| Rust, Java, C#, Kotlin, Zig, Lua, Nix | Rules |
+| YAML, TOML, INI, SQL | Rules |
 | Dockerfile, Makefile, diff | Rules |
 
 [The languages page](./languages.md) shows the start of a file in each, coloured.

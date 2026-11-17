@@ -163,7 +163,11 @@ These depend on none of the steps.
      One `go.work` at archr's root covers it, its site and a local Quire.
      Its notices keep Chroma and Pygments, whose rules are in its binary, as coming by way of Quire.
      Its table of styles in `highlight.go` needs entries for `lexis.Operator` and `lexis.Punct`, or it indexes past the end.
-- **Hand-written lexers for more of Lexis's languages.** [The benchmarks](./site/content/docs/benchmarks.md) list those run from rules slowest first; JavaScript, TypeScript, Python and Java lead, and Rust and Lua are wanted.
+- **Hand-written lexers for more of Lexis's languages.** [The benchmarks](./site/content/docs/benchmarks.md) list those run from rules slowest first; Java, Makefile and bash lead, and Rust and Lua are wanted.
+- **More languages in Lexis**, as they are wanted. Swift, Ruby and PHP have rules in Chroma to import, each needing more rewriting than those done.
+- **A language from a file's first line.** A script with no extension, or XML under an extension Lexis does not list, is shown plain; when no filename matches, Lexis could look at the first line for `#!` or `<?xml`.
+- **zsh of its own.** It is lexed as bash, so what only zsh has is coloured roughly.
+- **Structure from Lexis**, for archr's anchoring and its `gd` and `gr`: Go's parser for Go, and a scan for the enclosing function in C and C++.
 - **Folders in the docs sidebar.** The docs pack's sidebar is one flat list, set in `docs.sections`, and its documents sit in one folder.
   A document in a folder, `docs/lexis/languages.md`, would be served at `/docs/lexis/languages` and listed under the folder's own page, closed unless the visitor is in it.
   The order stays the one `docs.sections` gives, as order on disk is alphabetical.

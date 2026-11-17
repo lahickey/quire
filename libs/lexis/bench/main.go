@@ -38,7 +38,7 @@ func lexisEngine(set *lexis.Languages, name, text string) func() []lexis.Kind {
 		kinds, at := make([]lexis.Kind, len(text)), 0
 		next := set.Named(name, text)
 		for t, ok := next(); ok; t, ok = next() {
-			for i := range t.Text {
+			for i := range len(t.Text) {
 				kinds[at+i] = t.Kind
 			}
 			at += len(t.Text)
@@ -155,7 +155,6 @@ func diff(text string, ours, theirs []lexis.Kind) {
 }
 
 func table(b *strings.Builder, rows []row) {
-	slices.SortFunc(rows, func(x, y row) int { return cmp.Compare(x.lexis, y.lexis) })
 	cell := func(v float64, format string) string {
 		if v <= 0 {
 			return "–"
@@ -213,19 +212,31 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var byHand, byRules []row
-	fmt.Fprintf(os.Stderr, "%-12s %8s %8s %6s\n%-12s %8s %8s\n", "", "lexis", "Chroma", "agree", "", "MB/s", "MB/s")
+	var names [2][]string
 	for _, f := range files {
-		r := measure(&set, f.Name(), read(f.Name()))
-		if r.chroma == 0 {
-			fmt.Fprintf(os.Stderr, "%-12s %8.3g %8s %6s\n", r.name, r.lexis, "–", "–")
-		} else {
-			fmt.Fprintf(os.Stderr, "%-12s %8.3g %8.3g %5.0f%%\n", r.name, r.lexis, r.chroma, r.agreement)
-		}
+		i := 0
 		if _, err := os.Stat(filepath.Join(rules, f.Name()+".xml")); err == nil {
-			byRules = append(byRules, r)
-		} else {
-			byHand = append(byHand, r)
+			i = 1
+		}
+		names[i] = append(names[i], f.Name())
+	}
+	var rows [2][]row
+	for i := range names {
+		for _, name := range names[i] {
+			fmt.Fprintf(os.Stderr, "%s ", name)
+			rows[i] = append(rows[i], measure(&set, name, read(name)))
+		}
+		slices.SortFunc(rows[i], func(x, y row) int { return cmp.Compare(x.lexis, y.lexis) })
+	}
+	fmt.Fprintf(os.Stderr, "\n\n%-12s %8s %8s %6s\n%-12s %8s %8s\n", "", "lexis", "Chroma", "agree", "", "MB/s", "MB/s")
+	for i, title := range []string{"written by hand", "run from rules"} {
+		fmt.Fprintf(os.Stderr, "\n%s\n", title)
+		for _, r := range rows[i] {
+			if r.chroma == 0 {
+				fmt.Fprintf(os.Stderr, "%-12s %8.3g %8s %6s\n", r.name, r.lexis, "–", "–")
+			} else {
+				fmt.Fprintf(os.Stderr, "%-12s %8.3g %8.3g %5.0f%%\n", r.name, r.lexis, r.chroma, r.agreement)
+			}
 		}
 	}
 	var b strings.Builder
@@ -245,9 +256,9 @@ summary: Lexis against Chroma, a language at a time.
 `)
 	fmt.Fprintf(&b, "Measured with %s on %s, one core.\n", runtime.Version(), cpu())
 	b.WriteString("\n## Written by hand\n\nThese have a lexer of their own in Go.\nOne differs from Chroma wherever it was meant to, and wherever it is wrong.\n\n")
-	table(&b, byHand)
+	table(&b, rows[0])
 	b.WriteString("\n## From Chroma's rules\n\nThese run Chroma's rules on Lexis's engine, slowest first: the order to write them by hand in.\nOne should agree with Chroma, and where it does not, a rule Lexis rewrote is the first place to look.\n\n")
-	table(&b, byRules)
+	table(&b, rows[1])
 	b.WriteString("\n`just lexis diff go` lists the text the two disagree on in a language, the commonest first.\n")
 	if err := os.WriteFile(os.Args[1], []byte(b.String()), 0o644); err != nil {
 		log.Fatal(err)

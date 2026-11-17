@@ -152,7 +152,7 @@ func Add(set *lexis.Languages) {
 		set.Add(rules.Lazy(set, b, matchers))
 	}
 	for _, language := range []func(*lexis.Languages) lexis.Language{
-		golangLanguage, cLanguage, cppLanguage, templLanguage, markdownLanguage, fishLanguage, justLanguage,
+		golangLanguage, cLanguage, cppLanguage, objcLanguage, objcppLanguage, templLanguage, markdownLanguage, fishLanguage, justLanguage, jsonLanguage, javascriptLanguage, typescriptLanguage, tsxLanguage, cssLanguage, scssLanguage, htmlLanguage, xmlLanguage, pythonLanguage,
 	} {
 		set.Add(language(set))
 	}
