@@ -173,6 +173,10 @@ These depend on none of the steps.
   The order stays the one `docs.sections` gives, as order on disk is alphabetical.
   Whether a collection takes a slug with a folder in it is the first thing to find out.
   With it, each of Lexis's languages gets a page of its whole file, under the page of excerpts.
+- **A page that is not in the navigation.** `AddPage` always adds its page to the nav and the sitemap, so a site has no way to serve a page that should only be reached by its address: a privacy policy, a terms page, a landing page for a campaign.
+  The portfolio serves Storm the Train's privacy policy as a static HTML file through `AddFile` for that reason, outside the site's shell and stylesheet.
+  With it, such a page is a markdown file mounted with `Markdown` in the shell like any other.
+  Whether it stays out of the sitemap as well is a second choice, and may not be the same answer for every page.
 - **Full-bleed and the scrollbar.** `.figure--bleed` measures in `cqw` against `main`, because `100vw` counts the scrollbar and would put a horizontal scrollbar on every desktop. The price is `container-type: inline-size` on `main`, whose layout containment makes it the containing block for any `position: fixed` descendant. Revisit against the two alternatives: hiding the document scrollbar in CSS (`scrollbar-width: none`, which costs every visitor their scroll position indicator), or setting the gutter width once from the classic script. Measured and written up in this session; no decision taken.
 - **A bleed hero on a short screen.** Full width, a hero can fill a laptop screen with no text in sight. The usual answers: cap its height (50–60% of the screen, cropped with `object-fit: cover`) so text always shows below; a focal point per image so the crop keeps what matters; different crops per screen size through `<picture>`. Height cap and focal point are engine options on the bleed figure; laying title and buttons over the picture is a site's layout choice. Tried with 884px art, which also showed the page padding left between nav and a bleed hero.
 

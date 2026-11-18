@@ -29,16 +29,15 @@ type Section struct {
 	Pages []string `yaml:"pages"`
 }
 
-// Landing is the frontmatter of content/index.md. Its body is drawn below the features.
+// Landing is the frontmatter of content/index.md. Its body is drawn below the hero.
 type Landing struct {
-	Kicker   string        `yaml:"kicker"`
-	Title    string        `yaml:"title"`
-	Lede     string        `yaml:"lede"`
-	Install  string        `yaml:"install"`
-	Features []ui.CardData `yaml:"features"`
-	Repo     string        `yaml:"repo"`
-	Footer   string        `yaml:"footer"`
-	Docs     struct {
+	Kicker  string `yaml:"kicker"`
+	Title   string `yaml:"title"`
+	Lede    string `yaml:"lede"`
+	Install string `yaml:"install"`
+	Repo    string `yaml:"repo"`
+	Footer  string `yaml:"footer"`
+	Docs    struct {
 		Title    string    `yaml:"title"`
 		Summary  string    `yaml:"summary"`
 		Sections []Section `yaml:"sections"`

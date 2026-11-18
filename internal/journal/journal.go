@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
 	"slices"
 	"strings"
 )
@@ -28,6 +29,7 @@ const (
 	KindPicture  Kind = "picture"
 	KindDocument Kind = "document"
 	KindDiagram  Kind = "diagram"
+	KindVideo    Kind = "video"
 )
 
 type Format struct {
@@ -101,6 +103,16 @@ func readJournal(src io.Reader) (map[string]Record, error) {
 func Hash(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:16])
+}
+
+func VideoType(name string) string {
+	switch path.Ext(name) {
+	case ".webm":
+		return "video/webm"
+	case ".mp4":
+		return "video/mp4"
+	}
+	return ""
 }
 
 func DiagramName(src, fontID string) string {

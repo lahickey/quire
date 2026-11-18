@@ -5,31 +5,6 @@ lede: Quire bakes your words, pictures and diagrams into one binary and serves t
 install: go get github.com/lahickey/quire
 repo: https://github.com/lahickey/quire
 footer: Quire is open source, under the MIT licence.
-features:
-  - href: /docs/bake
-    kicker: Shipping
-    title: One binary
-    description: Words, pictures and diagrams are baked into the site's own binary. It serves from any directory and carries none of the tooling that made it.
-  - href: /docs/images
-    kicker: Pictures
-    title: Images, end to end
-    description: Refer to a picture beside a document and get a responsive ladder in WebP, sized for where it is placed.
-  - href: /docs/content#diagrams
-    kicker: Diagrams
-    title: Mermaid, drawn once
-    description: A mermaid fence is drawn by the bake and inlined as SVG, so it takes the site's palette and fonts.
-  - href: /docs/look
-    kicker: The look
-    title: Good by default
-    description: Palette, fonts, a light and dark toggle, navigation and a sitemap, with no templates or CSS of your own.
-  - href: /docs/packs
-    kicker: Packs
-    title: A docs site, ready made
-    description: A landing page, a sidebar and search from a folder of markdown. This site is one, and its Go is one short file.
-  - href: /docs/plugins
-    kicker: Plugins
-    title: Live when it needs to be
-    description: Pages are server-rendered HTML from templ. Live features are plugins that stream through Datastar.
 docs:
   summary: How to build a site with Quire, and why it is shaped the way it is.
   sections:
@@ -44,6 +19,33 @@ docs:
     - title: Background
       pages: [architecture]
 ---
+
+```cards
+- href: /docs/bake
+  kicker: Shipping
+  title: One binary
+  description: Words, pictures and diagrams are baked into the site's own binary. It serves from any directory and carries none of the tooling that made it.
+- href: /docs/images
+  kicker: Pictures
+  title: Images, end to end
+  description: Refer to a picture beside a document and get a responsive ladder in WebP, sized for where it is placed.
+- href: /docs/content#diagrams
+  kicker: Diagrams
+  title: Mermaid, drawn once
+  description: A mermaid fence is drawn by the bake and inlined as SVG, so it takes the site's palette and fonts.
+- href: /docs/look
+  kicker: The look
+  title: Good by default
+  description: Palette, fonts, a light and dark toggle, navigation and a sitemap, with no templates or CSS of your own.
+- href: /docs/packs
+  kicker: Packs
+  title: A docs site, ready made
+  description: A landing page, a sidebar and search from a folder of markdown. This site is one, and its Go is one short file.
+- href: /docs/plugins
+  kicker: Plugins
+  title: Live when it needs to be
+  description: Pages are server-rendered HTML from templ. Live features are plugins that stream through Datastar.
+```
 
 ## This is a whole site
 

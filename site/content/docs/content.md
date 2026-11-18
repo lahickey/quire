@@ -177,6 +177,37 @@ flowchart LR
 ```
 A diagram the bundle does not hold fails the load, as does one measured in other fonts than the site serves.
 
+### Cards
+
+A `cards` fence is a grid of cards, each a link. Its body is a YAML list.
+
+````markdown
+```cards
+- href: /docs/images
+  kicker: Pictures
+  title: Images, end to end
+  description: From a picture beside a document to a responsive ladder.
+- href: /docs/look
+  kicker: The look
+  title: Good by default
+  description: Palette, fonts and a light and dark toggle.
+```
+````
+
+```cards
+- href: /docs/images
+  kicker: Pictures
+  title: Images, end to end
+  description: From a picture beside a document to a responsive ladder.
+- href: /docs/look
+  kicker: The look
+  title: Good by default
+  description: Palette, fonts and a light and dark toggle.
+```
+
+`kicker`, `description` and `cta` are optional, and a field of any other name fails the load.
+The grid is as wide as the page, not the text.
+
 ### Callouts
 
 A blockquote that opens with one of GitHub's markers renders as a `.callout`:

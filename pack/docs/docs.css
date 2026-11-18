@@ -56,11 +56,6 @@
   color: var(--qr-neutral-9);
 }
 
-.home-body {
-  padding-top: var(--qr-section-gap);
-  border-top: 1px solid var(--qr-neutral-6);
-}
-
 .docs {
   gap: var(--qr-space-6);
 }

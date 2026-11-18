@@ -9,7 +9,9 @@ Every field of `content/index.md` is optional.
 - `install` is a command with a copy button.
 - `repo` adds a Source link to the nav, beside the two buttons and in the footer.
 - `footer` is the footer's text.
-- `features` are the cards.
 - `docs.sections` is the sidebar: each section's `title` and its `pages`, in order.
+
+The body of the file is drawn under the hero.
+Its cards are a `cards` fence, so they sit wherever the body puts them.
 
 The two buttons go to the first page and to the list of them all.

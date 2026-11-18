@@ -39,6 +39,7 @@ var shipped fs.FS
 
 type source interface {
 	Master(name string) (journal.Record, error)
+	Video(name string) (journal.Record, error)
 	Diagram(src string) (string, error)
 	Documents(pattern string, fences []string) ([]journal.Document, error)
 	Card(name string, c model.ShareCard) (journal.Record, error)

@@ -14,3 +14,8 @@ A body image is the same pipeline — the master's name, ladder, figure:
 Quire encodes the ladder, writes `width` and `height` so nothing shifts while it
 loads, picks the format from what the picture actually is, and styles the figure
 and the listing thumbnail from the default look.
+
+A recording is placed the same way, with a still of the same name beside it as
+its poster: `bake.png` for `bake.webm`.
+
+![This site baking](bake.webm "The bake of this site")

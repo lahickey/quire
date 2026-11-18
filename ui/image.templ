@@ -13,6 +13,26 @@ templ figure(im model.Image, slot model.Slot, alt, caption string, priority bool
 	}
 }
 
+templ VideoFigure(src string, poster model.Image, alt, caption string) {
+	<figure class="figure">
+		<video
+			src={ src }
+			poster={ poster.URL(model.SlotPage) }
+			width={ poster.Width }
+			height={ poster.Height }
+			aria-label={ alt }
+			preload="none"
+			controls
+			loop
+			muted
+			playsinline
+		></video>
+		if caption != "" {
+			<figcaption>{ caption }</figcaption>
+		}
+	</figure>
+}
+
 templ Img(im model.Image, slot model.Slot, alt string) {
 	if im.Hash != "" {
 		<img { im.Attrs(slot, false)... } alt={ alt }/>

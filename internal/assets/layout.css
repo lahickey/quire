@@ -375,6 +375,7 @@ li.tag {
 }
 
 .figure img,
+.figure video,
 .card-image img,
 .entry-thumb img {
   display: block;

@@ -16,8 +16,13 @@
 }
 
 .prose > .figure,
-.prose > .diagram {
+.prose > .diagram,
+.prose > .card-grid {
   grid-column: full;
+}
+
+.prose > .card-grid {
+  font-size: var(--qr-text-sm);
 }
 
 .prose h2,

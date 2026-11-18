@@ -78,6 +78,37 @@ func (e *Engine) picture(name, alt, caption string, figure bool) (string, error)
 	return b.String(), err
 }
 
+func (e *Engine) video(name, alt, caption string) (string, error) {
+	rec, err := e.from.Video(name)
+	if err != nil {
+		return "", err
+	}
+	poster, err := e.addImage(strings.TrimSuffix(name, path.Ext(name)) + ".png")
+	if err != nil {
+		return "", fmt.Errorf("%s needs a still of the same name as its poster: %w", name, err)
+	}
+	file, _ := rec.File()
+	var b strings.Builder
+	err = ui.VideoFigure(model.ImageURL(file), poster, alt, caption).Render(context.Background(), &b)
+	return b.String(), err
+}
+
+func cards(body string) (string, error) {
+	var written []struct{ Href, Kicker, Title, Description, CTA string }
+	dec := yaml.NewDecoder(strings.NewReader(body))
+	dec.KnownFields(true)
+	if err := dec.Decode(&written); err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	list := make([]ui.CardData, len(written))
+	for i, c := range written {
+		list[i] = ui.CardData{Href: c.Href, Kicker: c.Kicker, Title: c.Title, Description: c.Description, CTA: c.CTA}
+	}
+	var b strings.Builder
+	err := ui.CardGrid(list).Render(context.Background(), &b)
+	return b.String(), err
+}
+
 func (e *Engine) embed(widgets map[string]model.Widget) func(journal.Embed) (string, error) {
 	return func(em journal.Embed) (string, error) {
 		if w, ok := widgets[em.Fence]; ok {
@@ -89,7 +120,19 @@ func (e *Engine) embed(widgets map[string]model.Widget) func(journal.Embed) (str
 		}
 		switch em.Fence {
 		case "":
-			return e.picture(em.Picture, em.Alt, em.Caption, em.Figure)
+			if journal.VideoType(em.Picture) == "" {
+				return e.picture(em.Picture, em.Alt, em.Caption, em.Figure)
+			}
+			if !em.Figure {
+				return "", fmt.Errorf("%s: a video goes in a paragraph of its own", em.Picture)
+			}
+			return e.video(em.Picture, em.Alt, em.Caption)
+		case "cards":
+			html, err := cards(em.Body)
+			if err != nil {
+				return "", fmt.Errorf("cards: %w", err)
+			}
+			return html, nil
 		case "mermaid":
 			svg, err := e.from.Diagram(em.Body)
 			return `<figure class="diagram">` + svg + "</figure>", err

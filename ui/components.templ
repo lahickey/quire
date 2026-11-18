@@ -138,6 +138,14 @@ templ Tags(ts []model.Marker) {
 	}
 }
 
+templ CardGrid(cards []CardData) {
+	<div class="card-grid">
+		for _, c := range cards {
+			@Card(c)
+		}
+	</div>
+}
+
 templ Card(c CardData) {
 	<a href={ c.Href } class="card">
 		if c.Image.Hash != "" {

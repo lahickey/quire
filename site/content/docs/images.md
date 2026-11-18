@@ -38,6 +38,25 @@ In a template of your own, place a document's picture with a component:
 - `ui.LazyFigure(image, alt, caption)` is a figure at page width that loads when it nears the screen. A picture in a document's body is one of these.
 - `ui.HeroFigure(image, slot, alt, caption)` is a figure fetched at high priority, for the picture at the top of a page. It draws nothing when the document has no image.
 
+## Recordings
+
+A video is placed with the same line as a picture, and is a figure with the same caption.
+
+```markdown
+![The bake of an example site](bake.webm "An example baking")
+```
+
+![The bake of an example site](bake.webm "An example baking")
+
+- The file is WebM or MP4, and the bake copies it into the bundle as it is. Nothing is decoded or encoded.
+- A still of the same name is its poster: `bake.png` beside `bake.webm`. The poster goes through the picture pipeline, and the video takes its `width` and `height` from it. A video with no poster fails the bake.
+- A video goes in a paragraph of its own. One inside a sentence fails the bake.
+
+It plays muted, in a loop, while it is on screen, and stops when it is scrolled away.
+A reader who has asked their system for reduced motion sees the poster with the browser's controls, and so does one without scripts.
+
+In a template of your own, `ui.VideoFigure(src, poster, alt, caption)` is the same figure.
+
 ## Masters
 
 A picture content refers to is a **master**, and it lives beside the documents that use it.
@@ -92,6 +111,7 @@ Mounting an image looks its master up in the bundle's journal and mints a URL pe
 A binary with no journal entry for a master cannot mount it, and says so at boot rather than 404ing a request later.
 
 Bytes come from the bundle's files, streamed.
+A video is served from the same address, and a request for a range of it gets that range.
 Files up to 64KB are held in a 12MB memory store.
 An unknown name 404s, and so does a known one the bundle does not hold. A name is checked against the shape of a variant's name first, so a probe never reaches a directory.
 

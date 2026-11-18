@@ -38,13 +38,6 @@ templ Home(shell model.Shell, site model.Site, landing model.Document[Landing], 
 					</div>
 				}
 			</header>
-			if len(l.Features) > 0 {
-				<section class="card-grid">
-					for _, f := range l.Features {
-						@ui.Card(f)
-					}
-				</section>
-			}
 			if landing.HTML != "" {
 				<section class="home-body prose">
 					@templ.Raw(landing.HTML)

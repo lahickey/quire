@@ -41,11 +41,6 @@ lede: One or two sentences under the title.
 install: go get github.com/lahickey/quire
 repo: https://github.com/lahickey/quire
 footer: Quire is MIT licensed.
-features:
-  - href: /docs/bake
-    kicker: Shipping
-    title: One binary
-    description: What the card says.
 docs:
   title: Documentation
   summary: The line under the heading of /docs.
@@ -61,10 +56,12 @@ docs:
 - `install` is drawn as a shell command.
 - `repo` puts a Source link in the nav, beside the two buttons and in the footer. Each is a [`ui.Link`](./look.md#links), so a repository on GitHub gets its mark.
 - `footer` replaces the footer's text. Without it the footer is the engine's.
-- `features` are cards under the hero.
 - `docs.sections` is the sidebar. See below.
 
-The body of the file is drawn below the features, as any document is.
+The body of the file is drawn below the hero, as any document is.
+The cards on a landing page are a [`cards` fence](./content.md#cards) in that body, so a picture or a recording goes above them by being written first.
+[This site's home page](/) is one.
+
 The two buttons go to the first document and to `/docs`.
 
 ### The sidebar

@@ -305,7 +305,7 @@ A class Quire ships works in a template of your own and in raw HTML in a documen
   <a class="btn-secondary" href="/">Home</a>
 </div>
 
-`.card-grid` lays out `ui.Card`s in columns of `Col`. The [documentation index](/docs) is one, and so are the features on the home page.
+`.card-grid` lays out `ui.Card`s in columns of `Col`. The [documentation index](/docs) is one, and so are the cards on the home page, from a [`cards` fence](./content.md#cards).
 
 `.page` is the page's width, with `.page--wide` and `.page--full` for three and four columns. This page is a `.page--wide` with a sidebar in it.
 

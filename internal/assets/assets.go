@@ -110,6 +110,7 @@ func Script(p Parts) []byte {
 	var b strings.Builder
 	appendJS(&b, "theme.js", own("theme.js"))
 	appendJS(&b, "nav.js", own("nav.js"))
+	appendJS(&b, "video.js", own("video.js"))
 	for _, f := range p.Scripts {
 		appendJS(&b, f.Name, read(f))
 	}

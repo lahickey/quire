@@ -20,7 +20,7 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z]{3,4}$`)
+var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z0-9]{3,4}$`)
 
 var copyBufs = sync.Pool{New: func() any { b := make([]byte, 256<<10); return &b }}
 
@@ -82,11 +82,13 @@ func (s *Store) Load(fsys fs.FS) error {
 	}
 	s.records, s.fsys = recs, fsys
 	for _, rec := range recs {
-		if rec.Kind != journal.KindPicture {
-			continue
-		}
 		for _, v := range rec.Files {
-			s.byKey[v.Name] = variant{format: rec.Picture.Format, size: v.Size}
+			switch rec.Kind {
+			case journal.KindPicture:
+				s.byKey[v.Name] = variant{format: rec.Picture.Format, size: v.Size}
+			case journal.KindVideo:
+				s.byKey[v.Name] = variant{format: journal.Format{Type: journal.VideoType(v.Name)}, size: v.Size}
+			}
 		}
 	}
 	return nil
@@ -110,20 +112,20 @@ func (s *Store) File(name string) ([]byte, bool, error) {
 	return b, true, err
 }
 
-func (s *Store) Master(name string) (journal.Record, error) {
+func (s *Store) baked(what, name string) (journal.Record, error) {
 	r, ok := s.Record(name)
 	if !ok {
-		return journal.Record{}, fmt.Errorf("quire: image %s is in no journal: run the site's bake, `go run . bake`", name)
+		return journal.Record{}, fmt.Errorf("quire: %s %s is in no journal: run the site's bake, `go run . bake`", what, name)
 	}
 	return r, nil
 }
 
+func (s *Store) Master(name string) (journal.Record, error) { return s.baked("image", name) }
+
+func (s *Store) Video(name string) (journal.Record, error) { return s.baked("video", name) }
+
 func (s *Store) Card(name string, _ model.ShareCard) (journal.Record, error) {
-	r, ok := s.Record(name)
-	if !ok {
-		return journal.Record{}, fmt.Errorf("quire: card %s is in no journal: run the site's bake, `go run . bake`", name)
-	}
-	return r, nil
+	return s.baked("card", name)
 }
 
 func (s *Store) Diagram(src string) (string, error) {

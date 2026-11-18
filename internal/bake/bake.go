@@ -238,6 +238,19 @@ func (b *Run) Master(name string) (journal.Record, error) {
 	return journal.Record{Name: name}, nil
 }
 
+func (b *Run) Video(name string) (journal.Record, error) {
+	if b.source == nil {
+		return journal.Record{}, fmt.Errorf("quire: %s: no content to read videos from", name)
+	}
+	src, err := fs.ReadFile(b.source, name)
+	if err != nil {
+		return journal.Record{}, err
+	}
+	rec := journal.Record{Name: name, Kind: journal.KindVideo, Key: journal.Hash(src)}
+	_, err = b.single(rec, strings.TrimPrefix(filepath.Ext(name), "."), func() ([]byte, error) { return src, nil })
+	return b.made[name], err
+}
+
 func (b *Run) Diagram(src string) (string, error) {
 	name := journal.DiagramName(src, b.draw.FontID())
 	key := journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, version("diagram")))

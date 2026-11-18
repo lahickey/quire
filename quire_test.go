@@ -472,6 +472,45 @@ func TestBodyMarkdownImages(t *testing.T) {
 	}
 }
 
+func TestBodyVideo(t *testing.T) {
+	clip := []byte("not decoded")
+	page := func(body string) fstest.MapFS {
+		return fstest.MapFS{
+			"posts/hello.md":  {Data: []byte("---\ntitle: Hello\ndate: 2026-02-01\n---\n\n" + body + "\n")},
+			"posts/clip.webm": {Data: clip},
+			"posts/clip.png":  {Data: testkit.Photo(t, 600, 400, false)},
+		}
+	}
+	var col *model.Collection[model.Meta]
+	e, err := served(t, page(`![a clip](clip.webm "Caption")`), model.Site{}, func(e *Engine) (err error) {
+		col, err = e.AddCollection(model.Basic{ID: "posts"})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := col.Get("hello")
+	file, _ := e.bundle.Record("posts/clip.webm")
+	name, _ := file.File()
+	for _, want := range []string{`src="` + model.ImageURL(name) + `"`, `poster="` + e.images["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
+		if !strings.Contains(d.HTML, want) {
+			t.Errorf("no %s in %s", want, d.HTML)
+		}
+	}
+	if got, _, err := e.bundle.File("posts/clip.webm"); err != nil || string(got) != string(clip) {
+		t.Errorf("the bundle holds %q, %v", got, err)
+	}
+
+	if _, err := served(t, page("See ![a clip](clip.webm) here."), model.Site{}, posts); err == nil {
+		t.Error("a video inside a sentence baked")
+	}
+	noPoster := page("![a clip](clip.webm)")
+	delete(noPoster, "posts/clip.png")
+	if _, err := served(t, noPoster, model.Site{}, posts); err == nil {
+		t.Error("a video with no poster baked")
+	}
+}
+
 func TestMissingBodyImageFailsLoad(t *testing.T) {
 	fsys := fstest.MapFS{
 		"posts/hello.md": {Data: []byte("---\ntitle: Hello\ndate: 2026-02-01\n---\n\n![](nope.png)\n")},

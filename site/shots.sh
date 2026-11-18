@@ -1,5 +1,5 @@
 #!/bin/sh
-# Retakes the screenshots in content/docs/shots from the examples. Needs chromium.
+# Retakes the screenshots in content/docs/shots and the recording in content/docs from the examples. Needs chromium and vhs.
 set -eu
 site=$(cd "$(dirname "$0")" && pwd)
 root=$site/..
@@ -25,3 +25,10 @@ shot article 8111/posts/ridge 1000
 shot tagged 8112/writing/one-binary 1000
 shot badges 8112/ 900
 shot draft 8112/writing/unfinished 620
+
+mkdir "$tmp/rec"
+cp -r "$root/examples/2-pictures/content" "$tmp/rec"
+cp "$tmp/2-pictures" "$tmp/rec/pictures"
+(cd "$tmp/rec" && vhs "$site/bake.tape" >/dev/null)
+cp "$tmp/rec/bake.webm" "$tmp/rec/bake.png" "$site/content/docs"
+cp "$tmp/rec/bake.webm" "$tmp/rec/bake.png" "$root/examples/2-pictures/content/posts"

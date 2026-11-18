@@ -303,7 +303,7 @@ func palette(name, body string) (string, error) {
 
 func fences(names []string, em *embeds) map[string]model.Widget {
 	out := map[string]model.Widget{"palette": palette}
-	for _, name := range append([]string{"mermaid"}, names...) {
+	for _, name := range append([]string{"mermaid", "cards"}, names...) {
 		out[name] = func(info, body string) (string, error) {
 			return em.hole(journal.Embed{Fence: name, Info: info, Body: body}), nil
 		}

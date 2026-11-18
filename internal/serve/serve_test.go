@@ -114,19 +114,25 @@ func TestEvictsByBytes(t *testing.T) {
 
 func TestStore(t *testing.T) {
 	const name = "0123456789abcdef0123456789abcdef.webp"
+	const clip = "0123456789abcdef0123456789abcdee.mp4"
 	s := NewStore(0, 0, false, "")
 	if err := s.Load(fstest.MapFS{
 		name: {Data: []byte("webp")},
+		clip: {Data: []byte("mp4")},
 		journal.JournalName: {Data: journal.WriteJournal([]journal.Record{{
 			Name: "a.jpg", Kind: journal.KindPicture,
 			Files:   []journal.File{{Name: name, W: 64, Size: 4}},
 			Picture: journal.Picture{Format: journal.Format{Ext: "webp", Type: "image/webp"}},
+		}, {
+			Name: "a.mp4", Kind: journal.KindVideo,
+			Files: []journal.File{{Name: clip, Size: 3}},
 		}})},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	for file, want := range map[string]int{
 		name:                                    http.StatusOK,
+		clip:                                    http.StatusOK,
 		"fedcba9876543210fedcba9876543210.webp": http.StatusNotFound,
 		"../../etc/passwd":                      http.StatusNotFound,
 	} {

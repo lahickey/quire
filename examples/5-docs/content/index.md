@@ -5,19 +5,6 @@ lede: Two sentences on what the project does and who it is for. This file is con
 install: go install example.com/project@latest
 repo: https://github.com/example/project
 footer: Example is MIT licensed.
-features:
-  - href: /docs/getting-started
-    kicker: Start
-    title: Up in a minute
-    description: Each card links to the page that backs up its claim.
-  - href: /docs/writing
-    kicker: Writing
-    title: A page is a file
-    description: Add markdown to content/docs and name it in the sidebar.
-  - href: /docs/landing
-    kicker: This page
-    title: Copy in content
-    description: The hero, these cards, the footer and the sidebar's sections are frontmatter.
 docs:
   summary: How to use Example.
   sections:
@@ -27,6 +14,24 @@ docs:
       pages: [writing, landing]
 ---
 
+The body of `index.md` starts here, under the hero.
+The cards below are a `cards` fence in it, so what is written before them is drawn above them.
+
+```cards
+- href: /docs/getting-started
+  kicker: Start
+  title: Up in a minute
+  description: Each card links to the page that backs up its claim.
+- href: /docs/writing
+  kicker: Writing
+  title: A page is a file
+  description: Add markdown to content/docs and name it in the sidebar.
+- href: /docs/landing
+  kicker: This page
+  title: Copy in content
+  description: The hero, the footer and the sidebar's sections are frontmatter. The rest is the body.
+```
+
 ## Below the cards
 
-The body of `index.md` is drawn here, as any document is.
+The body carries on, as any document does.
