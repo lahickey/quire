@@ -11,7 +11,7 @@ func source(repo string) model.Link {
 	return model.Link{Label: "Source", URL: repo}
 }
 
-templ Home(shell model.Shell, site model.Site, landing model.Document[Landing], c *Collection) {
+templ Home(shell model.Shell, site model.Identity, landing model.Document[Landing], c *Collection) {
 	{{ l := landing.Meta }}
 	@shell(model.PageSpec{Title: site.Name, Path: "/"}) {
 		<div class="page page--wide">

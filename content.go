@@ -45,12 +45,12 @@ func load[T any](baked []journal.Document) ([]model.Document[T], error) {
 	return out, nil
 }
 
-func (e *Engine) addImage(name string) (model.Image, error) {
+func (s *Site) addImage(name string) (model.Image, error) {
 	name = path.Clean(filepath.ToSlash(name))
-	if im, ok := e.images[name]; ok {
+	if im, ok := s.images[name]; ok {
 		return im, nil
 	}
-	r, err := e.from.Master(name)
+	r, err := s.from.Master(name)
 	if err != nil {
 		return model.Image{}, err
 	}
@@ -59,13 +59,13 @@ func (e *Engine) addImage(name string) (model.Image, error) {
 		files[v.W] = v.Name
 	}
 	m, base := r.Picture.Master, path.Base(name)
-	im := model.Image{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: e.scale}
-	e.images[name] = im
+	im := model.Image{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: s.scale}
+	s.images[name] = im
 	return im, nil
 }
 
-func (e *Engine) picture(name, alt, caption string, figure bool) (string, error) {
-	im, err := e.addImage(name)
+func (s *Site) picture(name, alt, caption string, figure bool) (string, error) {
+	im, err := s.addImage(name)
 	if err != nil {
 		return "", err
 	}
@@ -78,12 +78,12 @@ func (e *Engine) picture(name, alt, caption string, figure bool) (string, error)
 	return b.String(), err
 }
 
-func (e *Engine) video(name, alt, caption string) (string, error) {
-	rec, err := e.from.Video(name)
+func (s *Site) video(name, alt, caption string) (string, error) {
+	rec, err := s.from.Video(name)
 	if err != nil {
 		return "", err
 	}
-	poster, err := e.addImage(strings.TrimSuffix(name, path.Ext(name)) + ".png")
+	poster, err := s.addImage(strings.TrimSuffix(name, path.Ext(name)) + ".png")
 	if err != nil {
 		return "", fmt.Errorf("%s needs a still of the same name as its poster: %w", name, err)
 	}
@@ -109,7 +109,7 @@ func cards(body string) (string, error) {
 	return b.String(), err
 }
 
-func (e *Engine) embed(widgets map[string]model.Widget) func(journal.Embed) (string, error) {
+func (s *Site) embed(widgets map[string]model.Widget) func(journal.Embed) (string, error) {
 	return func(em journal.Embed) (string, error) {
 		if w, ok := widgets[em.Fence]; ok {
 			html, err := w(em.Info, em.Body)
@@ -121,12 +121,12 @@ func (e *Engine) embed(widgets map[string]model.Widget) func(journal.Embed) (str
 		switch em.Fence {
 		case "":
 			if journal.VideoType(em.Picture) == "" {
-				return e.picture(em.Picture, em.Alt, em.Caption, em.Figure)
+				return s.picture(em.Picture, em.Alt, em.Caption, em.Figure)
 			}
 			if !em.Figure {
 				return "", fmt.Errorf("%s: a video goes in a paragraph of its own", em.Picture)
 			}
-			return e.video(em.Picture, em.Alt, em.Caption)
+			return s.video(em.Picture, em.Alt, em.Caption)
 		case "cards":
 			html, err := cards(em.Body)
 			if err != nil {
@@ -134,28 +134,28 @@ func (e *Engine) embed(widgets map[string]model.Widget) func(journal.Embed) (str
 			}
 			return html, nil
 		case "mermaid":
-			svg, err := e.from.Diagram(em.Body)
+			svg, err := s.from.Diagram(em.Body)
 			return `<figure class="diagram">` + svg + "</figure>", err
 		}
 		return "", fmt.Errorf("no widget %q; rebake", em.Fence)
 	}
 }
 
-func (e *Engine) documents(pattern string, widgets map[string]model.Widget) ([]journal.Document, error) {
-	docs, err := e.from.Documents(pattern, slices.Sorted(maps.Keys(widgets)))
+func (s *Site) documents(pattern string, widgets map[string]model.Widget) ([]journal.Document, error) {
+	docs, err := s.from.Documents(pattern, slices.Sorted(maps.Keys(widgets)))
 	if err != nil {
 		return nil, err
 	}
 	for i := range docs {
-		if docs[i].HTML, err = docs[i].Fill(e.embed(widgets)); err != nil {
+		if docs[i].HTML, err = docs[i].Fill(s.embed(widgets)); err != nil {
 			return nil, err
 		}
 	}
 	return docs, nil
 }
 
-func (e *Engine) Document[T any](name string) (model.Document[T], error) {
-	baked, err := e.documents(name, nil)
+func (s *Site) Document[T any](name string) (model.Document[T], error) {
+	baked, err := s.documents(name, nil)
 	if err == nil && len(baked) != 1 {
 		err = fmt.Errorf("quire: markdown %s: no such file under the content root", name)
 	}
@@ -169,13 +169,13 @@ func (e *Engine) Document[T any](name string) (model.Document[T], error) {
 	return docs[0], nil
 }
 
-func (e *Engine) Markdown(name string) (templ.Component, error) {
-	d, err := e.Document[map[string]any](name)
+func (s *Site) Markdown(name string) (templ.Component, error) {
+	d, err := s.Document[map[string]any](name)
 	return templ.Raw(d.HTML), err
 }
 
-func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
-	baked, err := e.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"), spec.Widgets)
+func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
+	baked, err := s.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"), spec.Widgets)
 	if err != nil {
 		return nil, err
 	}
@@ -188,11 +188,11 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 		if name == "" {
 			continue
 		}
-		if docs[i].Image, err = e.addImage(journal.Resolve(d.Path, name)); err != nil {
+		if docs[i].Image, err = s.addImage(journal.Resolve(d.Path, name)); err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
 		}
 	}
-	col, err := model.Collect(spec, docs, e.chrome.Site, e.drafts)
+	col, err := model.Collect(spec, docs, s.chrome.Identity, s.drafts)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	if len(docs) == 0 {
 		return col, nil
 	}
-	e.addNavItem(spec.ID)
+	s.addNavItem(spec.ID)
 
 	index, item := spec.Index, spec.Item
 	if index == nil {
@@ -209,33 +209,33 @@ func (e *Engine) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Col
 	if item == nil {
 		item = ui.Article[T]
 	}
-	e.preparePage("/"+spec.ID, index(e.Shell, col))
+	s.preparePage("/"+spec.ID, index(s.Shell, col))
 
-	e.sitemap = append(e.sitemap, serve.Loc{Path: "/" + spec.ID})
-	e.route("GET /"+spec.ID+"/{slug}", ownerSite, func(w http.ResponseWriter, r *http.Request) {
+	s.sitemap = append(s.sitemap, serve.Loc{Path: "/" + spec.ID})
+	s.route("GET /"+spec.ID+"/{slug}", ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
-			e.notFound404.ServeHTTP(w, r)
+			s.notFound404.ServeHTTP(w, r)
 			return
 		}
-		ui.Render(item(e.Shell, col, doc))(w, r)
+		ui.Render(item(s.Shell, col, doc))(w, r)
 	})
-	e.handlers[len(e.handlers)-1].cached = true
+	s.handlers[len(s.handlers)-1].cached = true
 	for _, d := range docs {
 		href := col.Href(d)
-		if err := e.reserve("GET "+href, ownerSite); err != nil {
+		if err := s.reserve("GET "+href, ownerSite); err != nil {
 			return nil, err
 		}
 		for _, alias := range d.Meta.Base().Aliases {
 			if !strings.HasPrefix(alias, "/") {
 				return nil, fmt.Errorf("%s/%s: alias %q must start with /", spec.ID, d.Slug, alias)
 			}
-			if err := e.claim("GET "+alias, ownerSite, http.RedirectHandler(href, http.StatusMovedPermanently).ServeHTTP); err != nil {
+			if err := s.claim("GET "+alias, ownerSite, http.RedirectHandler(href, http.StatusMovedPermanently).ServeHTTP); err != nil {
 				return nil, fmt.Errorf("%s/%s: alias %w", spec.ID, d.Slug, err)
 			}
 		}
 		if !d.Meta.Base().Draft {
-			e.sitemap = append(e.sitemap, serve.Loc{Path: col.Href(d), LastMod: d.Meta.Base().LastMod().ISO()})
+			s.sitemap = append(s.sitemap, serve.Loc{Path: col.Href(d), LastMod: d.Meta.Base().LastMod().ISO()})
 		}
 	}
 	return col, nil

@@ -1,6 +1,6 @@
 # Quire
 
-A Go engine that turns a folder of markdown into a finished website, served from a single binary.
+Composable parts for static and live sites in Go.
 Content in, complete site out — looks good by default yet every layer of it can be replaced.
 
 - **One binary.** Words, pictures and diagrams are baked into the site's own binary.
@@ -27,9 +27,9 @@ import (
 )
 
 func main() {
-  quire.Run(model.Site{Name: "Example", BaseURL: "https://example.com"},
-    quire.MountFunc(func(e *quire.Engine) error {
-      _, err := e.AddCollection(model.Basic{ID: "posts"})
+  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
+    quire.BlueprintFunc(func(site *quire.Site) error {
+      _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
     }))
 }

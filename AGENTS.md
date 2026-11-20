@@ -11,7 +11,7 @@ Rules for coding agents working on Quire.
 
 | Path | Holds |
 |-|-|
-| `*.go` at the root | The engine a site calls |
+| `*.go` at the root | The site, the server and `Run` |
 | `model/`, `ui/`, `plugin/` | Data, components, the plugin API |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
 | `libs/` | Packages for use outside Quire, such as `libs/lexis` |

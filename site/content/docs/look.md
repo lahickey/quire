@@ -22,7 +22,7 @@ Every other role has four steps, named for what each is for.
 Pick another palette with an option:
 
 ```go
-quire.Run(site, part, quire.WithPalette(model.PaletteMoss))
+quire.Run(identity, blueprint, quire.WithPalette(model.PaletteMoss))
 ```
 
 The built-in palettes are Ember (the default), Brass, Moss, Tide, Ink, Dusk, Bloom, Wine and Ash; `model.Palettes` is all of them.
@@ -107,7 +107,7 @@ The other roles are four steps each, named for the job:
 This site has one: the drop beside the theme toggle.
 
 ```go
-quire.Run(site, part, quire.WithPalettePicker())
+quire.Run(identity, blueprint, quire.WithPalettePicker())
 ```
 
 With no arguments it offers every built-in palette. Name the ones to offer, your own among them, to offer fewer:
@@ -132,7 +132,7 @@ Embed a stylesheet and hand it to the site:
 //go:embed *.css
 var static embed.FS
 
-quire.Run(site, part,
+quire.Run(identity, blueprint,
   quire.WithStylesheets(static, "site.css"),
   quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),
 )
@@ -311,7 +311,7 @@ A class Quire ships works in a template of your own and in raw HTML in a documen
 
 ### The document
 
-`e.Shell(PageSpec)` is the document: head, navigation, the page body, footer.
+`site.Shell(PageSpec)` is the document: head, navigation, the page body, footer.
 An active nav link matches `/` only as itself, and any other path as its subtree on a boundary, so `/project` does not light `/projects`.
 The table of contents lists H2 and H3 only.
 

@@ -19,7 +19,7 @@ var BuiltWithQuire = Link{Label: "Built with Quire", URL: "https://quire.hiddenb
 
 type Icon struct{ Rel, Type, Href string }
 
-type Site struct {
+type Identity struct {
 	Name        string
 	Author      string
 	Description string
@@ -51,7 +51,7 @@ type LiveReload struct {
 }
 
 type Chrome struct {
-	Site
+	Identity
 
 	Brand       string
 	Theme       Theme
@@ -125,7 +125,7 @@ func (c Chrome) Sections() []NavItem {
 	return slices.DeleteFunc(slices.Clone(c.Nav), func(n NavItem) bool { return n.Href == "/" })
 }
 
-func (s Site) AbsURL(path string) string { return absURL(s.BaseURL, path) }
+func (s Identity) AbsURL(path string) string { return absURL(s.BaseURL, path) }
 
 func (p PageSpec) Canonical(c Chrome) string {
 	if p.Path == "" || p.NoIndex || (p.Article != nil && p.Article.Draft) {
@@ -148,9 +148,9 @@ func (p PageSpec) OGImage(c Chrome) string {
 	return c.OGImageURL
 }
 
-func (s Site) Host() string { return hostOf(s.BaseURL) }
+func (s Identity) Host() string { return hostOf(s.BaseURL) }
 
-func (s Site) WithDefaults() Site {
+func (s Identity) WithDefaults() Identity {
 	s.Dates = s.Dates.orDefault()
 	s.BaseURL = strings.TrimRight(s.BaseURL, "/")
 	return s

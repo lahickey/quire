@@ -1,6 +1,7 @@
 package quire
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
-	"github.com/lahickey/quire/ui"
 )
 
 const (
@@ -30,93 +30,74 @@ func mustBeOpen(closed bool, what string) {
 	}
 }
 
-func (e *Engine) reserve(pattern, owner string) error {
-	mustBeOpen(e.mounted, "route "+pattern)
+func (s *Site) reserve(pattern, owner string) error {
+	mustBeOpen(s.built, "route "+pattern)
 	_, path, _ := strings.Cut(pattern, " ")
 	if strings.HasPrefix(path, "/_") && !strings.HasPrefix(path+"/", "/_"+owner+"/") {
 		return fmt.Errorf("%s belongs to another namespace", path)
 	}
-	if o, taken := e.routes[pattern]; taken {
-		return fmt.Errorf("%s is already mounted by %s", path, o)
+	if o, taken := s.routes[pattern]; taken {
+		return fmt.Errorf("%s is already taken by %s", path, o)
 	}
-	e.routes[pattern] = owner
+	s.routes[pattern] = owner
 	return nil
 }
 
-func (e *Engine) claim(pattern, owner string, h http.HandlerFunc) error {
-	if err := e.reserve(pattern, owner); err != nil {
+func (s *Site) claim(pattern, owner string, h http.HandlerFunc) error {
+	if err := s.reserve(pattern, owner); err != nil {
 		return err
 	}
-	e.handlers = append(e.handlers, route{pattern: pattern, handler: h})
+	s.handlers = append(s.handlers, route{pattern: pattern, handler: h})
 	return nil
 }
 
-func (e *Engine) route(pattern, owner string, h http.HandlerFunc) {
-	if err := e.claim(pattern, owner, h); err != nil {
-		panic("quire: " + err.Error())
-	}
+func (s *Site) route(pattern, owner string, h http.HandlerFunc) {
+	s.err = cmp.Or(s.err, s.claim(pattern, owner, h))
 }
 
-func (e *Engine) versioned(url, hash string) string {
-	e.versions[url] = hash
+func (s *Site) versioned(url, hash string) string {
+	s.versions[url] = hash
 	return url + "?h=" + hash
 }
 
-func (e *Engine) addBytes(url, contentType string, body []byte) string {
-	e.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
-	return e.versioned(url, journal.Hash(body))
+func (s *Site) addBytes(url, contentType string, body []byte) string {
+	s.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
+	return s.versioned(url, journal.Hash(body))
 }
 
-func (e *Engine) prepare(path string, c templ.Component, code int) *serve.Prepared {
+func (s *Site) prepare(path string, c templ.Component, code int) *serve.Prepared {
 	p := serve.Prepare(path, c, code)
-	e.fixed = append(e.fixed, p)
+	s.fixed = append(s.fixed, p)
 	return p
 }
 
-func (e *Engine) preparePage(path string, c templ.Component) {
-	e.route("GET "+pagePattern(path), ownerSite, e.prepare(path, c, http.StatusOK).ServeHTTP)
+func (s *Site) preparePage(path string, c templ.Component) {
+	s.route("GET "+pagePattern(path), ownerSite, s.prepare(path, c, http.StatusOK).ServeHTTP)
 }
 
-func (e *Engine) addNotFound() {
-	page := e.notFound
-	if page == nil {
-		page = e.late(ui.NotFound)
-	}
-	e.notFound404 = e.prepare("404", page, http.StatusNotFound)
-	e.route("GET /{path...}", ownerQuire, e.notFound404.ServeHTTP)
-}
-
-func (e *Engine) addSiteFiles() {
-	if e.chrome.BaseURL == "" {
+func (s *Site) AddPage(path string, c templ.Component) {
+	if c == nil {
+		s.err = cmp.Or(s.err, fmt.Errorf("page %s: nil component", path))
 		return
 	}
-	robots := serve.Robots(e.chrome.AbsURL("/sitemap.xml"))
-	e.route("GET /robots.txt", ownerQuire, serve.Static("text/plain; charset=utf-8", []byte(robots)).ServeHTTP)
-	sitemap := serve.Sitemap(e.chrome.AbsURL, e.sitemap)
-	e.route("GET /sitemap.xml", ownerQuire, serve.Static("application/xml; charset=utf-8", []byte(sitemap)).ServeHTTP)
+	s.preparePage(path, c)
+	s.sitemap = append(s.sitemap, serve.Loc{Path: path})
+	s.addNavItem(path)
 }
 
-func (e *Engine) AddPage(path string, c templ.Component) {
-	if c == nil {
-		panic("quire: page " + path + ": nil component")
-	}
-	e.preparePage(path, c)
-	e.sitemap = append(e.sitemap, serve.Loc{Path: path})
-	e.addNavItem(path)
-}
-
-func (e *Engine) AddFile(urlPath string, fsys fs.FS, name string) string {
+func (s *Site) AddFile(urlPath string, fsys fs.FS, name string) string {
 	body, err := fs.ReadFile(fsys, name)
 	if err != nil {
-		panic("quire: file " + urlPath + ": " + err.Error())
+		s.err = cmp.Or(s.err, fmt.Errorf("file %s: %w", urlPath, err))
+		return ""
 	}
-	e.route("GET "+urlPath, ownerSite, func(w http.ResponseWriter, r *http.Request) {
+	s.route("GET "+urlPath, ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, fsys, name)
 	})
-	return e.versioned(urlPath, journal.Hash(body))
+	return s.versioned(urlPath, journal.Hash(body))
 }
 
-func (e *Engine) SetNotFound(c templ.Component) {
-	mustBeOpen(e.mounted, "the not-found page")
-	e.notFound = c
+func (s *Site) SetNotFound(c templ.Component) {
+	mustBeOpen(s.built, "the not-found page")
+	s.notFound = c
 }

@@ -1,21 +1,21 @@
 ---
 title: Wiring
-summary: How a site is put together in Go - the site, its options, the mount and its routes.
+summary: How a site is put together in Go - its identity, its options, the blueprint and its routes.
 ---
 
 A Quire site is one call:
 
 ```go
-quire.Run(site, part, options...)
+quire.Run(identity, blueprint, options...)
 ```
 
-- The **site** is data: what the site is.
-- The **part** says what the site holds. It is your own Go or a [pack](./packs.md), and has up to two steps: [the mount](#the-mount) and [Live](#live).
-- The **options** change how the engine behaves and looks.
+- The **identity** is data: what the site is.
+- The **blueprint** says what the site holds. It is your own Go or a [pack](./packs.md), and has up to two steps: [Declare](#the-blueprint) and [Live](#live).
+- The **options** change how Quire behaves and looks.
 
-## Site
+## Identity
 
-`model.Site` is what the site is:
+`model.Identity` is what the site is:
 
 - `Name` is the publication. The header shows it as the link home; see `WithBrand`.
 - `Author` is who writes it.
@@ -23,17 +23,17 @@ quire.Run(site, part, options...)
 - `BaseURL` is the production address. Setting it enables `/robots.txt` and `/sitemap.xml`.
 - `Dates` is the layouts dates render in.
 
-How the site looks is options, not `Site`.
+How the site looks is options, not `Identity`.
 
 ## Options
 
-An `Option` changes engine behaviour.
+An `Option` changes how Quire behaves.
 
 - `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none. The default is `ThemeLight`, and the visitor's own choice always wins.
 - `WithPalette` and `WithScale` set the colours and the page grid. See [The look](./look.md).
 - `WithStylesheets` and `WithStylesheetsAt` add the site's CSS.
-- `WithBrand(name)` is the name the header shows as the link home, in place of `Site.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
-- `WithFooterText(text)` replaces the footer's line, which is otherwise the year and `Site.Author`, or `Site.Name` when there is no author.
+- `WithBrand(name)` is the name the header shows as the link home, in place of `Identity.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
+- `WithFooterText(text)` replaces the footer's line, which is otherwise the year and `Identity.Author`, or `Identity.Name` when there is no author.
 - `WithFooterLinks(links…)` adds links to the footer, each drawn as its mark alone when it has one. See [Links](./look.md#links). `model.BuiltWithQuire` is one ready made.
 - `WithFooter(component)` replaces the whole footer.
 - `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
@@ -46,51 +46,53 @@ An `Option` changes engine behaviour.
 Datastar is always linked.
 `Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.
 
-## The mount
+## The blueprint
 
-A part's `Mount` is handed the engine and declares the site on it. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
+A blueprint's `Declare` is handed the site and says what it holds. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
 
-A site with nothing but a mount writes it as a function, and `quire.MountFunc` makes that a part:
+A site with nothing but that writes it as a function, and `quire.BlueprintFunc` makes it a blueprint:
 
 ```go
-func mount(e *quire.Engine) error {
-  notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
+func declare(site *quire.Site) error {
+  notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
   if err != nil {
     return err
   }
-  e.AddPage("/", homePage(e.Shell, notes))
-  e.SetNotFound(notFoundPage(e.Shell))
+  site.AddPage("/", homePage(site.Shell, notes))
+  site.SetNotFound(notFoundPage(site.Shell))
   return nil
 }
 
 func main() {
-  quire.Run(site, quire.MountFunc(mount))
+  quire.Run(identity, quire.BlueprintFunc(declare))
 }
 ```
 
 What it can add:
 
-- `AddCollection(spec)` loads documents and mounts their index and pages. See [Content](./content.md#collections).
-- `AddPage(path, component)` mounts a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home. A nil component panics.
+- `AddCollection(spec)` loads documents and adds their index and pages. See [Content](./content.md#collections).
+- `AddPage(path, component)` adds a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home. A nil component fails the build.
 - `SetNotFound(component)` replaces the default not-found page. Like any fixed page it is rendered once at boot and never handed the request, so every missing URL gets the same bytes and none of them reaches the page cache.
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
 - `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
 - `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
 - `SetFooter(component)`, `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` do what the options of those names do.
-- `Site()` is the site the engine was made with.
-A `quire.Part` is anything with a `Mount` method of that signature, so a type of your own is one too, and so is a pack: `quire.Run(site, &docs.Pack{})`.
+- `Identity()` is the identity the site was made with.
+- `Include(blueprint)` runs another blueprint on the same site, its `Live` too, so a site can add a pack to pages of its own.
+
+A `quire.Blueprint` is anything with a `Declare` method of that signature, so a type of your own is one too, and so is a pack: `quire.Run(identity, &docs.Pack{})`.
 
 ## Live
 
-A part that also has a `Live` method adds what only a served site has. A bake never calls it, so this is where a plugin is attached and where anything slow or outside the content belongs: an index, a query, a connection.
+A blueprint that also has a `Live` method adds what only a served site has. A bake never calls it, so this is where a plugin is attached and where anything slow or outside the content belongs: an index, a query, a connection.
 A function cannot have a second method, so a site with a live step is a type:
 
 ```go
 type blog struct{ notes *model.Collection[model.Meta] }
 
-func (b *blog) Mount(e *quire.Engine) error {
+func (b *blog) Declare(site *quire.Site) error {
   var err error
-  b.notes, err = e.AddCollection(model.Basic{ID: "writing"})
+  b.notes, err = site.AddCollection(model.Basic{ID: "writing"})
   return err
 }
 
@@ -102,25 +104,25 @@ func (b *blog) Live(l *quire.Live) error {
 }
 
 func main() {
-  quire.Run(site, &blog{})
+  quire.Run(identity, &blog{})
 }
 ```
 
-`Live` runs after `Mount` on the same value, so what `Mount` loaded is there to use.
+`Live` runs after `Declare` on the same value, so what `Declare` loaded is there to use.
 
 - `Use(plugins…)` attaches plugins. See [Plugins](./plugins.md).
 - `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
 
-Nothing can be added once the mount is over: a call after the handler is taken panics.
-A part is a value, so one can be shipped as a package. That is a [pack](./packs.md).
+Nothing can be added once the site is built: a call after that panics.
+A blueprint is a value, so one can be shipped as a package. That is a [pack](./packs.md).
 
-## Engine, Chrome and Shell
+## Site, Chrome and Shell
 
 Three names come up in every template.
 
-- The `Engine` is the mount: what the site holds (collections, pages, files), then the handler that serves it. Routes and plugins are added on `Live`. A page template does not need it.
-- `Chrome` is the frame's data: the site, nav, plugin controls, assets, icons and theme. It is complete only once the mount is done. The frame reads it: the document, a custom header, the default home and not-found pages.
-- `Shell` (`e.Shell`, `model.Shell`) wraps a page body in the document, reading Chrome when the page renders rather than when it is declared. It is all a page template needs of the engine; everything else it shows is handed to it as data.
+- The `Site` is what a blueprint declares on: what the site holds (collections, pages, files). Routes and plugins are added on `Live`. A page template does not need it.
+- `Chrome` is the frame's data: the identity, nav, plugin controls, assets, icons and theme. It is complete only once the site is built. The frame reads it: the document, a custom header, the default home and not-found pages.
+- `Shell` (`site.Shell`, `model.Shell`) wraps a page body in the document, reading Chrome when the page renders rather than when it is declared. It is all a page template needs of the site; everything else it shows is handed to it as data.
 
 ## The head
 
@@ -129,7 +131,7 @@ A page hands the shell a `model.PageSpec`, and the shell writes the head from it
 | Field | Does |
 |-|-|
 | `Title` | The title, and the share title |
-| `Description` | The description; `Site.Description` when empty |
+| `Description` | The description; `Identity.Description` when empty |
 | `Path` | The page's address, for the canonical URL |
 | `NoIndex` | Keeps the page out of search engines |
 
@@ -137,7 +139,7 @@ A page hands the shell a `model.PageSpec`, and the shell writes the head from it
 - **Sharing.** Every page gets Open Graph and Twitter card tags: title, description, site name and a large image.
 - **The share image** is `ShareImage` when set, else the site's share card, which the bake draws. A document with an `image` shares that picture. See [Images](./images.md#share-images).
 - **Articles.** `Article` marks a page as one: `og:type` is `article` and its published and modified dates are written in ISO form.
-- **Author.** `Site.Author` becomes `<meta name="author">`.
+- **Author.** `Identity.Author` becomes `<meta name="author">`.
 
 `Collection.IndexPage()` and `Collection.ItemPage(d)` fill a `PageSpec` for a collection's pages, so a template of your own rarely builds one by hand.
 The sitemap lists every fixed page and every published document, with a document's `updated` or `date` as its last change.
@@ -154,24 +156,23 @@ Drafts are a separate flag, `--drafts`, so a draft can be checked with productio
 
 ## Reserved paths
 
-A leading `_` segment is a namespace with one owner: `/_quire/` is the engine's, `/_<name>/` is a plugin's and `/_site/` is the site's own.
-Every route is checked the same way, whoever adds it. `AddPage`, `AddRoute` and `AddFile` panic on a path in another owner's namespace or on one already mounted, and a plugin's `Use` returns the same as an error.
+A leading `_` segment is a namespace with one owner: `/_quire/` is Quire's, `/_<name>/` is a plugin's and `/_site/` is the site's own.
+Every route is checked the same way, whoever adds it. `AddPage`, `AddRoute` and `AddFile` fail the build on a path in another owner's namespace or on one already taken, and a plugin's `Use` returns the same error.
 Everything Quire serves for itself is under `/_quire/`: `health`, `reload`, `style.css`, `quire.js`, `datastar.js`, `fonts/`, `img/`.
-Datastar signals follow the same split: `$quire` is the engine's, and a plugin's stream patches only `$<name>`.
+Datastar signals follow the same split: `$quire` is Quire's, and a plugin's stream patches only `$<name>`.
 Only the files that have to be findable at a known location stay at the root: `robots.txt` and `sitemap.xml`.
 
 ## In depth
 
-### The handler
+### The server
 
-`Handler()` finalises. It renders every fixed page, so a template error stops the binary at boot.
+A site has no server in it: its routes are a table.
+The server makes a mux from that table and adds what claims the whole address space: the not-found page for every other path, `robots.txt`, the sitemap, the health check, the `www` redirect and the session cookie.
 
-> [!IMPORTANT]
-> Mount everything before you take the handler. Anything added after it panics.
+Building the site renders every fixed page, so a template error stops the binary at boot.
+A site with routes of its own adds them in [Live](#live) with `AddRoute`, or as a plugin. Both go through the site's route claims, so a clash is an error at boot.
 
-A site with routes of its own adds them in [Live](#live) with `AddRoute`, or as a plugin. Both go through the engine's route claims, so a clash is an error at boot.
-
-`quire.New(site, options...)`, `e.Mount(part)` and `e.Handler()` are for a test: they give a handler for a part or a plugin with no bundle behind it. Only `Run` bakes and loads one.
+`quire.New(identity, blueprint, options...)` is for a test: it returns the server, an `http.Handler`, for a blueprint or a plugin with no bundle behind it. Only `Run` bakes and loads one.
 
 ### Redirects
 
@@ -180,10 +181,10 @@ Both are sent with `Cache-Control: no-cache`, so a browser cannot pin one.
 
 ### Caching and compression
 
-- A fixed page is rendered once, when the handler is taken.
+- A fixed page is rendered once, when the site is built.
 - A collection's document page is rendered on first request and held in a 4MB page cache, keyed by its path.
 - A raw route goes straight to its handler and is never cached.
-- `robots.txt` and `sitemap.xml` are built once, when the handler is taken.
+- `robots.txt` and `sitemap.xml` are built once, at boot.
 - An asset linked with its content hash (`?h=`) is cached by the browser for good. Anything else is revalidated.
 
 A cached body is compressed once, as brotli or gzip, and stored that way. A body under 256 bytes is sent as it is.

@@ -112,7 +112,7 @@ func (p *Plugin) show(w http.ResponseWriter, r *http.Request) {
 
 func New(items ...Item) *Plugin { return &Plugin{items: items, carts: map[string]map[string]int{}} }
 
-// Name is where the plugin is mounted: its routes are under /_basket/.
+// Name is where the plugin lives: its routes are under /_basket/.
 func (p *Plugin) Name() string { return "basket" }
 
 // Attach is called by Use, in the site's Live. UseSessions gives each visitor a session cookie,

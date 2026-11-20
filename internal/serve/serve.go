@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/xml"
+	"fmt"
 	"maps"
 	"net"
 	"net/http"
@@ -167,12 +168,13 @@ func Prepare(path string, c templ.Component, code int) *Prepared {
 	return &Prepared{path: path, c: c, code: code}
 }
 
-func (p *Prepared) Build() {
+func (p *Prepared) Build() error {
 	var buf bytes.Buffer
 	if err := p.c.Render(context.Background(), &buf); err != nil {
-		panic("quire: page " + p.path + ": " + err.Error())
+		return fmt.Errorf("page %s: %w", p.path, err)
 	}
 	p.by = encode(p.code, htmlType, buf.Bytes(), pageQuality)
+	return nil
 }
 
 func (p *Prepared) ServeHTTP(w http.ResponseWriter, r *http.Request) { p.by.ServeHTTP(w, r) }

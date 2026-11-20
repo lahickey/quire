@@ -1,5 +1,5 @@
 ---
-kicker: A site engine for Go
+kicker: Composable parts for static and live sites in Go
 title: A folder of markdown in. A finished website out.
 lede: Quire bakes your words, pictures and diagrams into one binary and serves them. It looks good by default, and every layer of it can be replaced.
 install: go get github.com/lahickey/quire
@@ -61,9 +61,9 @@ import (
 
 func main() {
   quire.Run(
-    model.Site{Name: "Example", BaseURL: "https://example.com"},
-    quire.MountFunc(func(e *quire.Engine) error {
-      _, err := e.AddCollection(model.Basic{ID: "posts"})
+    model.Identity{Name: "Example", BaseURL: "https://example.com"},
+    quire.BlueprintFunc(func(site *quire.Site) error {
+      _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
     }))
 }

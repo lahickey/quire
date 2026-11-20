@@ -26,12 +26,12 @@ You run `go run . bake` yourself when you build the binary that ships.
 
 ## What it makes
 
-The bake mounts the site, reading the content tree rather than the bundle, and makes what the mount asked for:
+The bake runs the site's blueprint, reading the content tree rather than the bundle, and makes what it asked for:
 
-- every variant of every master a document or the mount referred to;
+- every variant of every master a document or the blueprint referred to;
 - every diagram in what it loaded;
 - the share card;
-- every document the mount asked for, converted to HTML with its headings and raw frontmatter, one file each in the journal like any other artifact, and skipped next time unless its source, the converter or the site's widget names change;
+- every document the blueprint asked for, converted to HTML with its headings and raw frontmatter, one file each in the journal like any other artifact, and skipped next time unless its source, the converter or the site's widget names change;
 - a bundle (`.quire/bundle`) holding those files and a journal naming only them. Everything in it is a journal record: a site reads nothing else from the bundle.
 
 Nothing else in the content tree reaches the bundle.
@@ -70,11 +70,11 @@ Two build choices decide what a binary carries.
 Which to use:
 
 - **A static site** uses both. `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json`. The result is one file that serves from any directory. See [Getting started](./getting-started.md#ship-it).
-- **A binary with the bundle beside it** uses the tag alone, and serves a `.quire/bundle` mounted next to it.
+- **A binary with the bundle beside it** uses the tag alone, and serves a `.quire/bundle` kept next to it.
 - **A CMS**, which bakes uploads, uses neither.
 
 ## In depth
 
-A bake works out what to make from the mount, not from the folder. The reasons, and how the journal keeps a bake safe to interrupt, are on the [Design](./architecture.md#one-mount) page.
+A bake works out what to make from the blueprint, not from the folder. The reasons, and how the journal keeps a bake safe to interrupt, are on the [Design](./architecture.md#one-blueprint) page.
 
 Each converter (markdown, diagram, card, picture) has a version, and the version is part of the key every artifact is stored under. When a release changes what a converter produces, its version changes, and the next bake remakes exactly those artifacts.

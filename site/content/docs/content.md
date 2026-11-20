@@ -5,7 +5,7 @@ aliases: [/docs/frontmatter]
 ---
 
 A site's words live in a `content` folder, as markdown files.
-The mount groups them into collections, and each collection gets an index page and a page per document.
+The blueprint groups them into collections, and each collection gets an index page and a page per document.
 
 ## A document
 
@@ -51,18 +51,18 @@ type Piece struct {
 }
 ```
 
-and mounts the collection as `model.Spec[Piece]` instead of `model.Basic`.
+and adds the collection as `model.Spec[Piece]` instead of `model.Basic`.
 
 ### Dates
 
 Dates are parsed once at load into `Date`. Anything that is not ISO fails the build, so a bad date never reaches a page.
-`Site.Dates` is the layouts dates render in, day first by default, and a collection's `LongDate`, `ShortDate` and `ShortMonthYear` format a `Date` to it.
+`Identity.Dates` is the layouts dates render in, day first by default, and a collection's `LongDate`, `ShortDate` and `ShortMonthYear` format a `Date` to it.
 `Date.ISO()` is the machine form. The sitemap and the dates in a page's head always use it.
 A custom formatter takes a parsed `Date`, so it only formats.
 
 ### Drafts, featured and other state
 
-`draft` and `featured` are the two states the engine acts on. Drafts are filtered from the build and the sitemap unless `WithDrafts`. Featured is only ever selected and badged.
+`draft` and `featured` are the two states Quire acts on. Drafts are filtered from the build and the sitemap unless `WithDrafts`. Featured is only ever selected and badged.
 Anything else a document says about its own state is the site's vocabulary: override `Badges() []Marker` on the site's type and Quire renders what it is handed, knowing none of the words.
 
 ### Aliases
@@ -300,10 +300,10 @@ accent spot tone1 tone2 ok warn error
 
 ## Collections
 
-`AddCollection` loads the documents matching a glob and mounts them.
+`AddCollection` loads the documents matching a glob and adds their pages.
 
 ```go
-notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
+notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
 ```
 
 That reads `content/writing/*.md`, serves an index at `/writing` and each document at `/writing/{slug}`, adds the collection to the navigation, and records its pages in the sitemap.
@@ -313,7 +313,7 @@ The fields of a `Spec`:
 - `ID` names the folder and the URL.
 - `Title` and `Description` are shown on the index.
 - `Markdown` is the glob, when it is not `{id}/*.md`.
-- `Index` and `Item` replace the index and document pages. Nil renders `Listing` and `Article`, which show the title, date, tags, hero, contents and body, and link back to the index. Each is handed `model.Shell` as well as the collection, so it needs no closure over the engine.
+- `Index` and `Item` replace the index and document pages. Nil renders `Listing` and `Article`, which show the title, date, tags, hero, contents and body, and link back to the index. Each is handed `model.Shell` as well as the collection, so it needs no closure over the site.
 - `Sort` orders the documents: a comparison, as `slices.SortFunc` takes. Without it they are newest first. Documentation has no dates, so this site keeps one list of its pages in order and sorts on a document's place in it.
 - `Kicker` labels each document in `Entries` rows and cards. Nil uses `ShortMonthYear`. `Entries(c, docs)` renders the same rows anywhere.
 - `Widgets` and `Tags` are covered on this page.
@@ -321,7 +321,7 @@ The fields of a `Spec`:
 Other things to know:
 
 - `model.Basic` is `Spec[Meta]`, the spec for stock frontmatter.
-- Drafts are dropped unless `WithDrafts`. A collection that is empty after that is not mounted.
+- Drafts are dropped unless `WithDrafts`. A collection that is empty after that is not added.
 - A missing slug is the site's 404. Two documents with one slug fail the load.
 - `Featured()` selects from a collection, and `Docs()` is all of it, in order.
 - `Neighbours(d)` is the documents before and after `d` in that order; either is nil at an end. `ui.Pager` renders them as previous and next links.
@@ -344,15 +344,15 @@ A tag matches the whole value, ignoring case.
 
 ## Markdown outside a collection
 
-A page built in Go can still use baked markdown. `e.Markdown(name)` returns one file under the content root as a component:
+A page built in Go can still use baked markdown. `site.Markdown(name)` returns one file under the content root as a component:
 
 ```go
-sample, err := e.Markdown("home/sample.md")
+sample, err := site.Markdown("home/sample.md")
 ```
 
 The file is an ordinary document. Everything on this page works in it: highlighted code, pictures and diagrams.
 
-`e.Document[T](name)` returns the same file with its frontmatter read into `T`, so a page's copy can sit in content rather than in Go. An unknown field fails the load.
+`site.Document[T](name)` returns the same file with its frontmatter read into `T`, so a page's copy can sit in content rather than in Go. An unknown field fails the load.
 The [docs pack](./packs.md) reads this site's landing page that way.
 
 ## In depth

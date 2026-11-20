@@ -107,8 +107,8 @@ Every page without an image of its own shares the site card: one PNG the bake dr
 
 ### How a picture is served
 
-Mounting an image looks its master up in the bundle's journal and mints a URL per slot: `/_quire/img/{key}.{ext}`. It opens no file.
-A binary with no journal entry for a master cannot mount it, and says so at boot rather than 404ing a request later.
+Placing an image looks its master up in the bundle's journal and mints a URL per slot: `/_quire/img/{key}.{ext}`. It opens no file.
+A binary with no journal entry for a master cannot place it, and says so at boot rather than 404ing a request later.
 
 Bytes come from the bundle's files, streamed.
 A video is served from the same address, and a request for a range of it gets that range.

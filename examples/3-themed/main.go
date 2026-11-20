@@ -36,15 +36,15 @@ var harbour = model.Palette{
 	OK:   "grass", Warn: "amber", Error: "red",
 }
 
-// mount declares the site's content and pages. It runs at bake and at boot.
-func mount(e *quire.Engine) error {
+// declare says what the site holds: its content and pages. It runs at bake and at boot.
+func declare(site *quire.Site) error {
 	// content/writing/*.md at /writing, with the default index and article.
-	notes, err := e.AddCollection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds, Widgets: widgets})
+	notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds, Widgets: widgets})
 	if err != nil {
 		return err
 	}
 	// content/projects/*.md at /projects, with its own index: a grid of cards.
-	projects, err := e.AddCollection(model.Basic{
+	projects, err := site.AddCollection(model.Basic{
 		ID:    "projects",
 		Title: "Projects",
 		Tags:  kinds,
@@ -54,18 +54,18 @@ func mount(e *quire.Engine) error {
 		return err
 	}
 	// The home page replaces the default and shows both collections.
-	e.AddPage("/", homePage(e.Shell, notes, projects))
-	e.SetNotFound(notFoundPage(e.Shell))
+	site.AddPage("/", homePage(site.Shell, notes, projects))
+	site.SetNotFound(notFoundPage(site.Shell))
 	return nil
 }
 
 func main() {
-	quire.Run(model.Site{
+	quire.Run(model.Identity{
 		Name:        "Writing",
 		Author:      "A. Writer",
 		BaseURL:     "https://example.com",
 		Description: "Notes on building things, and the things built.",
-	}, quire.MountFunc(mount),
+	}, quire.BlueprintFunc(declare),
 		// Dark unless the visitor or their system says otherwise.
 		quire.WithTheme(model.ThemeDark),
 		quire.WithFooter(siteFooter),

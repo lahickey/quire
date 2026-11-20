@@ -9,35 +9,35 @@ import (
 	"github.com/lahickey/quire/plugin"
 )
 
-// Live is what only a served site has. It is handed to a Part's Live.
-type Live struct{ e *Engine }
+// Live is what only a served site has. It is handed to a blueprint's Live.
+type Live struct{ s *Site }
 
 type liveReload struct {
-	e    *Engine
+	s    *Site
 	boot string
 }
 
-func (e *Engine) attach(p plugin.Plugin) error {
-	mustBeOpen(e.mounted, "plugin "+p.Name())
-	a, err := plugin.Attach(p, e.Shell)
+func (s *Site) attach(p plugin.Plugin) error {
+	mustBeOpen(s.built, "plugin "+p.Name())
+	a, err := plugin.Attach(p, s.Shell)
 	if err != nil {
 		return err
 	}
 	for _, r := range a.Routes {
-		if err := e.claim(r.Method+" "+pagePattern(r.Path), a.Name, r.Handler); err != nil {
+		if err := s.claim(r.Method+" "+pagePattern(r.Path), a.Name, r.Handler); err != nil {
 			return fmt.Errorf("plugin %s: %w", a.Name, err)
 		}
 	}
-	for _, s := range a.Sheets {
-		e.addSheets("plugin", s.At, s.FS, s.Names)
+	for _, sh := range a.Sheets {
+		s.addSheets("plugin", sh.At, sh.FS, sh.Names)
 	}
-	for _, s := range a.Scripts {
-		for _, n := range s.Names {
-			e.scripts = append(e.scripts, assets.File{FS: s.FS, Name: n})
+	for _, sc := range a.Scripts {
+		for _, n := range sc.Names {
+			s.scripts = append(s.scripts, assets.File{FS: sc.FS, Name: n})
 		}
 	}
-	e.chrome.NavEnd = append(e.chrome.NavEnd, a.NavEnd...)
-	e.sessions = e.sessions || a.Sessions
+	s.chrome.NavEnd = append(s.chrome.NavEnd, a.NavEnd...)
+	s.sessions = s.sessions || a.Sessions
 	return nil
 }
 
@@ -45,7 +45,7 @@ func (liveReload) Name() string { return ownerQuire }
 
 func (l liveReload) Attach(m *plugin.Mount) error {
 	streams := m.NewStreams()
-	l.e.chrome.LiveReload = model.LiveReload{On: true, BootID: l.boot, Init: m.Listen("reload")}
+	l.s.chrome.LiveReload = model.LiveReload{On: true, BootID: l.boot, Init: m.Listen("reload")}
 	m.Route("GET", "reload", func(w http.ResponseWriter, r *http.Request) {
 		streams.Subscribe(w, r, "boot", func(s *plugin.Stream) error { return s.Signals(map[string]string{"boot": l.boot}) })
 	})
@@ -57,7 +57,7 @@ func (l *Live) Use(plugins ...plugin.Plugin) error {
 		if p.Name() == ownerQuire || p.Name() == ownerSite {
 			return fmt.Errorf("plugin name %q is reserved", p.Name())
 		}
-		if err := l.e.attach(p); err != nil {
+		if err := l.s.attach(p); err != nil {
 			return err
 		}
 	}
@@ -65,5 +65,5 @@ func (l *Live) Use(plugins ...plugin.Plugin) error {
 }
 
 func (l *Live) AddRoute(method, path string, h http.HandlerFunc) {
-	l.e.route(method+" "+path, ownerSite, h)
+	l.s.route(method+" "+path, ownerSite, h)
 }

@@ -62,7 +62,7 @@ type Collection[T Metadata] struct {
 	desc   string
 	docs   []Document[T]
 	bySlug map[string]Document[T]
-	site   Site
+	site   Identity
 	kicker func(Document[T]) string
 	kinds  map[string]string
 }
@@ -205,7 +205,7 @@ func (c *Collection[T]) Tags(d Document[T]) []Marker {
 	return out
 }
 
-func Collect[T Metadata](spec Spec[T], docs []Document[T], site Site, drafts bool) (*Collection[T], error) {
+func Collect[T Metadata](spec Spec[T], docs []Document[T], site Identity, drafts bool) (*Collection[T], error) {
 	if spec.ID == "" {
 		return nil, fmt.Errorf("collection: empty ID")
 	}

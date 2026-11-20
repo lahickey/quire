@@ -6,6 +6,6 @@ import "errors"
 
 const canBake = false
 
-func bakeSite(*settings, Part) error {
+func bakeSite(*settings, Blueprint) error {
 	return errors.New("quire: built with quire_nobake, so this binary serves a bundle and cannot bake one")
 }

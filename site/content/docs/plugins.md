@@ -1,9 +1,9 @@
 ---
 title: Plugins
-summary: Add behaviour the engine does not have, and update pages live with Datastar.
+summary: Add behaviour Quire does not have, and update pages live with Datastar.
 ---
 
-A plugin is a unit of behaviour the engine does not have: a basket, a search box, a comment thread.
+A plugin is a unit of behaviour Quire does not have: a basket, a search box, a comment thread.
 It brings its own routes, pages, styles and state, and a site opts in with one line.
 
 ## Using a plugin
@@ -78,8 +78,8 @@ func (p *Plugin) Attach(m *plugin.Mount) error {
 }
 ```
 
-`l.Use(p...)` runs `Attach` in the site's `Live`: after the mount, so a plugin can read collections, and before the handler is taken, so its assets reach the stylesheet. A bake runs the mount and never `Live`, so it attaches nothing.
-The plugin API is package `plugin`, and a plugin imports it, `model` and `ui`, never the engine.
+`l.Use(p...)` runs `Attach` in the site's `Live`: after `Declare`, so a plugin can read collections, and before the site is built, so its assets reach the stylesheet. A bake runs `Declare` and never `Live`, so it attaches nothing.
+The plugin API is package `plugin`, and a plugin imports it, `model` and `ui`, never `quire`.
 
 A plugin holds its own state, embeds its own assets, and declares an interface for whatever the host must supply.
 Lifting one into Quire is moving its file; nothing about how it is wired changes.
@@ -124,7 +124,7 @@ The stylesheet is one sheet in four layers, `@layer quire, plugin, pack, site`, 
 So a plugin prefixes every class with its own name (`.basket-line`, not `.line`), and `Use` fails on a stylesheet with a class outside that prefix.
 
 > [!IMPORTANT]
-> Layers beat specificity, so a bare `button {}` in a site sheet outranks a plugin's `.basket-qty-btn`. A site that mounts plugins should scope its element selectors.
+> Layers beat specificity, so a bare `button {}` in a site sheet outranks a plugin's `.basket-qty-btn`. A site that uses plugins should scope its element selectors.
 
 ## Per-visitor content on a cached page
 

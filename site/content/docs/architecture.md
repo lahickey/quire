@@ -8,20 +8,20 @@ You do not need it to build a site. Read it when a rule elsewhere seems arbitrar
 
 ## The short version
 
-- **A site is known by its mount, not its folder.** One description of the site drives both the bake and the serving, so the two cannot disagree.
+- **A site is known by its blueprint, not its folder.** One description of the site drives both the bake and the serving, so the two cannot disagree.
 - **The bake converts and serving composes.** Everything slow happens once, ahead of time, and the binary that serves cannot convert at all.
-- **Layers only point down.** The data knows nothing of the components, and the components nothing of the engine.
+- **Layers only point down.** The data knows nothing of the components, and the components nothing of the site built from them.
 - **The look is tokens.** Sheets read roles and scale properties, never a hue or a pixel width.
 
-## One mount
+## One blueprint
 
-Bake and serve run the same mount. The folder is not a second answer to what the site contains. A file reaches the bundle because the mount read it or referred to it. `AddFile` ships anything else.
+Bake and serve run the same blueprint. The folder is not a second answer to what the site contains. A file reaches the bundle because the blueprint read it or referred to it. `AddFile` ships anything else.
 
 Dev may run a step lazily. It may not skip one. A variant is in a journal or it is an error, in every mode.
 
-A bake reads the source tree. What that mount renders is thrown away: source order is the measured bytes, and those exist only after the encode.
+A bake reads the source tree. What that run renders is thrown away: source order is the measured bytes, and those exist only after the encode.
 
-A bake has no server. The mount's routes and pages are written down and never served. Plugins and raw routes are not the mount's to add: they are on the handle given to a part's `Live`, which only a serving pass calls, since neither can add to a bundle. So a route two patterns contend for, or a plugin that fails to attach, is found when the site boots, not when it bakes.
+A bake has no server. The routes and pages a blueprint declares are written down and never served. Plugins and raw routes are not `Declare`'s to add: they are on the handle given to a blueprint's `Live`, which only serving calls, since neither can add to a bundle. So a route two patterns contend for, or a plugin that fails to attach, is found when the site boots, not when it bakes.
 
 The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a hole for each picture, diagram and site widget, and serving fills each hole: a picture from the journal with the markup `ui` makes today, a widget by running it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one embed.
 
@@ -38,7 +38,7 @@ The bundle is linked from the cache. Nothing edits a bundle file in place.
 A key holds everything its output depends on: the input, the settings, and the converter's version. The versions sit in one table and change by hand, so a refactor rebuilds nothing; a release check fails on any converter whose code or dependencies moved since its version was set.
 
 `quire_nobake` swaps the bake for a stub, so a serving binary cannot convert: no codec, no markdown, no highlighter.
-Where the bundle lives is a separate choice. The bake writes `.quire/ship.go`, which embeds the bundle and hands it to `Ship`; a build adds that file with `-overlay .quire/ship.json`, and without it the bundle is read off disk. A shipped static site uses the tag and the overlay, a CMS uses neither, and a binary built with the tag alone serves a bundle mounted beside it.
+Where the bundle lives is a separate choice. The bake writes `.quire/ship.go`, which embeds the bundle and hands it to `Ship`; a build adds that file with `-overlay .quire/ship.json`, and without it the bundle is read off disk. A shipped static site uses the tag and the overlay, a CMS uses neither, and a binary built with the tag alone serves a bundle kept beside it.
 
 ## Packages
 
@@ -66,7 +66,7 @@ flowchart TD
 
 A plugin sits beside `ui`, and a site opts in with `Use`, in its `Live`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
 
-A pack sits above the engine: it is a part somebody else wrote, with the same `Mount` and `Live` a site has, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
+A pack sits above `quire`: it is a blueprint somebody else wrote, with the same `Declare` and `Live` a site's own has, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
 
 ## Scale
 
@@ -88,20 +88,26 @@ Every custom property is `--qr-*`. A plugin uses its own prefix. Overriding a `-
 
 A palette is roles. Sheets read the role, never a hue, and do not mix tints. The scales are Radix, because the light and dark pairs are already tuned. A test holds text contrast.
 
-A browser face is woff2. Measuring text needs TTF, and only a bake measures, so the two files stay apart. The engine writes `--qr-font` and `--qr-font-mono`.
+A browser face is woff2. Measuring text needs TTF, and only a bake measures, so the two files stay apart. Quire writes `--qr-font` and `--qr-font-mono`.
 
 Mermaid is the diagram format editors already preview. The renderer is heavy, so it lives on the bake side. A diagram is inlined so it can see the page's custom properties. Its name includes the font set, so a bake and a site on different fonts fail the load.
 
 ## Layers
 
-Base is the engine and the default look. `examples/1-minimal` is the proof. A pack is opt-in and is not the base. A site is not a pack.
+Base is `quire` and the default look. `examples/1-minimal` is the proof. A pack is opt-in and is not the base. A site is not a pack.
 
 Quire ships a class only if it ships the rules for it.
 
 ## Serving
 
+A site is a blueprint run over a source, and has no server in it. Its routes are a table.
+The server makes a mux from the table and adds what claims the whole address space: the not-found page for every other path, `robots.txt`, the sitemap, the health check, the `www` redirect and the session cookie.
+So a host that serves a site some other way is bound by none of those.
+
+What fails while a site is built is returned, not panicked: a route two patterns contend for, a file that will not read, a page that will not render.
+
 What happens to a response follows the response, not the mode.
 
-A fixed page is rendered once when `Handler` is taken. A collection item is cached under its path and coding. Anything else goes straight to its handler. The cache key has no method and no cookie, so a stored body is the same for every visitor.
+A fixed page is rendered once when the site is built. A collection item is cached under its path and coding. Anything else goes straight to its handler. The cache key has no method and no cookie, so a stored body is the same for every visitor.
 
-`Handler` finalises. A route added after it panics.
+Building closes the site. A route added after it panics.

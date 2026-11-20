@@ -38,6 +38,11 @@ type testPlugin struct {
 	attach func(*plugin.Mount) error
 }
 
+type wired struct {
+	declare func(*Site) error
+	live    func(*Live) error
+}
+
 func body(s string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := io.WriteString(w, s)
@@ -45,31 +50,29 @@ func body(s string) templ.Component {
 	})
 }
 
-func served(t *testing.T, files fs.FS, site model.Site, mount func(*Engine) error, opts ...Option) (*Engine, error) {
+func served(t *testing.T, files fs.FS, id model.Identity, declare func(*Site) error, opts ...Option) (*Server, error) {
 	t.Helper()
 	content := t.TempDir()
 	if err := os.CopyFS(content, files); err != nil {
 		t.Fatal(err)
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
-	if err := bakeSite(configure(site, append(opts, WithBake(spec))...), MountFunc(mount)); err != nil {
+	if err := bakeSite(configure(id, append(opts, WithBake(spec))...), BlueprintFunc(declare)); err != nil {
 		return nil, err
 	}
-	e := New(site, opts...).load(os.DirFS(spec.Bundle()))
-	return e, mount(e)
+	return configure(id, opts...).serve(os.DirFS(spec.Bundle()), BlueprintFunc(declare))
 }
 
-func mounted(t *testing.T, files fs.FS, name string) (model.Image, *Engine) {
+func placed(t *testing.T, files fs.FS, name string) model.Image {
 	t.Helper()
 	var im model.Image
-	e, err := served(t, files, model.Site{}, func(e *Engine) (err error) {
-		im, err = e.addImage(name)
+	if _, err := served(t, files, model.Identity{}, func(s *Site) (err error) {
+		im, err = s.addImage(name)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
-	return im, e
+	return im
 }
 
 func rungFile(r journal.Record, w int) string {
@@ -81,8 +84,8 @@ func rungFile(r journal.Record, w int) string {
 	return ""
 }
 
-func posts(e *Engine) error {
-	_, err := e.AddCollection(model.Basic{ID: "posts"})
+func posts(s *Site) error {
+	_, err := s.AddCollection(model.Basic{ID: "posts"})
 	return err
 }
 
@@ -100,48 +103,50 @@ func TestShareImages(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	site := model.Site{Name: "Example", BaseURL: "https://example.com", Description: "A site."}
+	site := model.Identity{Name: "Example", BaseURL: "https://example.com", Description: "A site."}
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
-	if err := bakeSite(configure(site, WithBake(spec)), MountFunc(posts)); err != nil {
+	if err := bakeSite(configure(site, WithBake(spec)), BlueprintFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".quire/.gitignore")); err != nil {
 		t.Errorf("the bake left .quire without its .gitignore: %v", err)
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(site).load(bundle)
-	col, err := e.AddCollection(model.Basic{ID: "posts"})
+	var col *model.Collection[model.Meta]
+	v, err := configure(site).serve(bundle, BlueprintFunc(func(s *Site) (err error) {
+		col, err = s.AddCollection(model.Basic{ID: "posts"})
+		return err
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	pic, _ := col.Get("pic")
 	plain, _ := col.Get("plain")
-	if u, want := col.ItemPage(pic).ShareImage, e.chrome.AbsURL(model.ImageURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
+	if u, want := col.ItemPage(pic).ShareImage, v.site.chrome.AbsURL(model.ImageURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
 		t.Errorf("a document with an image shares %q, want its own 1096 rung %q", u, want)
 	}
 	if u := col.ItemPage(plain).ShareImage; u != "" {
 		t.Errorf("a document without an image shares %q of its own, want the site card", u)
 	}
-	h := e.Handler()
-	card := e.chrome.OGImageURL
+	card := v.site.chrome.OGImageURL
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, strings.TrimPrefix(card, "https://example.com"), nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, strings.TrimPrefix(card, "https://example.com"), nil))
 	cfg, format, err := image.DecodeConfig(rec.Body)
 	if err != nil || format != "png" || cfg.Width != 1200 || cfg.Height != 630 {
 		t.Errorf("site card %s: %s %d×%d %v, want a 1200×630 png", card, format, cfg.Width, cfg.Height, err)
 	}
 }
 
-func TestDraftsMountOnlyWithTheFlag(t *testing.T) {
+func TestDraftsShowOnlyWithTheFlag(t *testing.T) {
 	fsys := fstest.MapFS{"posts/d.md": {Data: []byte("---\ntitle: D\ndate: 2026-01-01\ndraft: true\n---\n")}}
 	for _, drafts := range []bool{false, true} {
-		e, err := served(t, fsys, model.Site{}, posts, WithDrafts(drafts))
+		v, err := served(t, fsys, model.Identity{}, posts, WithDrafts(drafts))
 		if err != nil {
 			t.Fatal(err)
 		}
 		rec := httptest.NewRecorder()
-		e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts", nil))
-		inNav := slices.ContainsFunc(e.chrome.Nav, func(it model.NavItem) bool { return it.Href == "/posts" })
+		v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts", nil))
+		inNav := slices.ContainsFunc(v.site.chrome.Nav, func(it model.NavItem) bool { return it.Href == "/posts" })
 		if (rec.Code == http.StatusOK) != drafts || inNav != drafts {
 			t.Errorf("drafts %v: /posts %d, in nav %v", drafts, rec.Code, inNav)
 		}
@@ -149,11 +154,13 @@ func TestDraftsMountOnlyWithTheFlag(t *testing.T) {
 }
 
 func TestArticleHead(t *testing.T) {
-	e := New(model.Site{BaseURL: "https://example.com"})
-	e.Handler()
+	v, err := New(model.Identity{BaseURL: "https://example.com"}, wired{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	head := func(a model.ArticleSEO) string {
 		var b strings.Builder
-		if err := e.Shell(model.PageSpec{Title: "T", Path: "/posts/t", Article: &a}).Render(context.Background(), &b); err != nil {
+		if err := v.site.Shell(model.PageSpec{Title: "T", Path: "/posts/t", Article: &a}).Render(context.Background(), &b); err != nil {
 			t.Fatal(err)
 		}
 		return b.String()
@@ -173,19 +180,23 @@ func TestArticleHead(t *testing.T) {
 // A custom 404 is a fixed page like the default: rendered once at boot and never
 // handed the request, so no URL can make it vary or fill the page cache.
 func TestNotFoundIsPreparedOnce(t *testing.T) {
-	e := New(model.Site{})
 	var renders atomic.Int32
-	e.SetNotFound(templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		renders.Add(1)
-		_, err := io.WriteString(w, "<html>"+strings.Repeat("gone ", 400)+"</html>")
-		return err
+	v, err := New(model.Identity{}, BlueprintFunc(func(s *Site) error {
+		s.SetNotFound(templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+			renders.Add(1)
+			_, err := io.WriteString(w, "<html>"+strings.Repeat("gone ", 400)+"</html>")
+			return err
+		}))
+		return nil
 	}))
-	e.mountDefaults()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for i := range 200 {
 		r := httptest.NewRequest("GET", fmt.Sprintf("/junk-%d", i), nil)
 		r.Header.Set("Accept-Encoding", "gzip")
 		rec := httptest.NewRecorder()
-		e.Handler().ServeHTTP(rec, r)
+		v.ServeHTTP(rec, r)
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("junk-%d: status %d", i, rec.Code)
 		}
@@ -193,7 +204,7 @@ func TestNotFoundIsPreparedOnce(t *testing.T) {
 			t.Fatalf("junk-%d: served uncompressed", i)
 		}
 	}
-	if n := e.pages.Len(); n != 0 {
+	if n := v.pages.Len(); n != 0 {
 		t.Errorf("404 took %d cache entries; it is prepared, not cached", n)
 	}
 	if n := renders.Load(); n != 1 {
@@ -206,15 +217,15 @@ func TestRobotsAndSitemap(t *testing.T) {
 		"a.md": &fstest.MapFile{Data: []byte("---\ntitle: A\ndate: 2026-01-01\n---\nx\n")},
 		"d.md": &fstest.MapFile{Data: []byte("---\ntitle: D\ndate: 2026-02-01\ndraft: true\n---\nx\n")},
 	}
-	e, err := served(t, fsys, model.Site{BaseURL: "https://example.com"}, func(e *Engine) error {
-		_, err := e.AddCollection(model.Spec[note]{
+	v, err := served(t, fsys, model.Identity{BaseURL: "https://example.com"}, func(s *Site) error {
+		_, err := s.AddCollection(model.Spec[note]{
 			ID:       "writing",
 			Markdown: "*.md",
 			Index:    func(model.Shell, *model.Collection[note]) templ.Component { return body("index") },
 			Item:     func(model.Shell, *model.Collection[note], model.Document[note]) templ.Component { return body("item") },
 		})
-		e.AddPage("/contact", body("contact"))
-		e.AddPage("/", body("home"))
+		s.AddPage("/contact", body("contact"))
+		s.AddPage("/", body("home"))
 		return err
 	}, WithDev(true))
 	if err != nil {
@@ -223,7 +234,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 
 	get := func(path string) string {
 		rec := httptest.NewRecorder()
-		e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		return rec.Body.String()
 	}
 	if g := get("/robots.txt"); !strings.Contains(g, "Sitemap: https://example.com/sitemap.xml") {
@@ -248,36 +259,47 @@ func TestRobotsAndSitemap(t *testing.T) {
 // A custom header replaces Quire's nav, so it must still be handed what the nav
 // draws: the page's path and the controls plugins add.
 func TestCustomHeaderSeesNavAndControls(t *testing.T) {
-	e := New(model.Site{}, WithHeader(func(c model.Chrome, p model.PageSpec) templ.Component {
+	v, err := New(model.Identity{}, wired{
+		func(s *Site) error {
+			s.AddPage("/about", s.Shell(model.PageSpec{Path: "/about"}))
+			return nil
+		},
+		func(l *Live) error {
+			return l.Use(testPlugin{"basket", func(m *plugin.Mount) error {
+				m.AddNavEnd(body("basket"))
+				return nil
+			}})
+		},
+	}, WithHeader(func(c model.Chrome, p model.PageSpec) templ.Component {
 		return body(fmt.Sprintf("<header>%s %d</header>", p.Path, len(c.NavEnd)))
 	}))
-	if err := (&Live{e}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
-		m.AddNavEnd(body("basket"))
-		return nil
-	}}); err != nil {
+	if err != nil {
 		t.Fatal(err)
 	}
-	e.AddPage("/about", e.Shell(model.PageSpec{Path: "/about"}))
 	rec := httptest.NewRecorder()
-	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/about", nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/about", nil))
 	if !strings.Contains(rec.Body.String(), "<header>/about 1</header>") {
 		t.Fatalf("header was not handed the path and the plugin's control: %s", rec.Body.String())
 	}
 }
 
 func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
-	e := New(model.Site{BaseURL: "https://example.com"})
 	var live, posts atomic.Int32
-	(&Live{e}).AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = fmt.Fprintf(w, "<html>%d</html>", live.Add(1))
-	})
-	(&Live{e}).AddRoute("POST", "/act", func(w http.ResponseWriter, r *http.Request) {
-		posts.Add(1)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte("<html>posted</html>"))
-	})
-	h := e.Handler()
+	h, err := New(model.Identity{BaseURL: "https://example.com"}, wired{live: func(l *Live) error {
+		l.AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = fmt.Fprintf(w, "<html>%d</html>", live.Add(1))
+		})
+		l.AddRoute("POST", "/act", func(w http.ResponseWriter, r *http.Request) {
+			posts.Add(1)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<html>posted</html>"))
+		})
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	get := func(path string) string {
 		rec := httptest.NewRecorder()
@@ -293,8 +315,8 @@ func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	if rec.Code != http.StatusOK || posts.Load() != 1 {
 		t.Fatalf("POST status %d, handled %d", rec.Code, posts.Load())
 	}
-	if e.pages.Len() != 0 {
-		t.Errorf("%d entries in the page cache; neither route may be stored", e.pages.Len())
+	if h.pages.Len() != 0 {
+		t.Errorf("%d entries in the page cache; neither route may be stored", h.pages.Len())
 	}
 }
 
@@ -302,17 +324,17 @@ func TestAliases(t *testing.T) {
 	doc := func(front string) *fstest.MapFile {
 		return &fstest.MapFile{Data: []byte("---\ntitle: T\ndate: 2026-01-01\n" + front + "---\n")}
 	}
-	e, err := served(t, fstest.MapFS{"posts/new.md": doc("aliases: [/old/name]\n")}, model.Site{}, posts)
+	v, err := served(t, fstest.MapFS{"posts/new.md": doc("aliases: [/old/name]\n")}, model.Identity{}, posts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/old/name", nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/old/name", nil))
 	if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/posts/new" {
 		t.Errorf("alias answered %d to %q", rec.Code, rec.Header().Get("Location"))
 	}
 	shadow := fstest.MapFS{"posts/a.md": doc(""), "posts/b.md": doc("aliases: [/posts/a]\n")}
-	if _, err := served(t, shadow, model.Site{}, posts); err == nil {
+	if _, err := served(t, shadow, model.Identity{}, posts); err == nil {
 		t.Error("an alias shadowing a live document loaded")
 	}
 }
@@ -327,6 +349,20 @@ func TestFrontmatterFailsLoad(t *testing.T) {
 	}
 }
 
+func (b wired) Declare(s *Site) error {
+	if b.declare == nil {
+		return nil
+	}
+	return b.declare(s)
+}
+
+func (b wired) Live(l *Live) error {
+	if b.live == nil {
+		return nil
+	}
+	return b.live(l)
+}
+
 func (p testPlugin) Name() string { return p.name }
 
 func (p testPlugin) Attach(m *plugin.Mount) error { return p.attach(m) }
@@ -334,9 +370,11 @@ func (p testPlugin) Attach(m *plugin.Mount) error { return p.attach(m) }
 func TestPluginScoping(t *testing.T) {
 	ok := func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("x")) }
 
-	e := New(model.Site{BaseURL: "https://example.com"})
+	use := func(declare func(*Site) error, ps ...plugin.Plugin) (*Server, error) {
+		return New(model.Identity{}, wired{declare, func(l *Live) error { return l.Use(ps...) }})
+	}
 	var prefix string
-	err := (&Live{e}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
+	h, err := use(nil, testPlugin{"basket", func(m *plugin.Mount) error {
 		prefix = m.URL("")
 		m.Route("GET", "events", ok)
 		m.Page("GET", "", ok)
@@ -352,7 +390,6 @@ func TestPluginScoping(t *testing.T) {
 	if prefix != "/_basket/" {
 		t.Fatalf("prefix %q", prefix)
 	}
-	h := e.Handler()
 	for _, path := range []string{"/_basket/events", "/_basket", "/shop", "/shop/checkout"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
@@ -361,8 +398,7 @@ func TestPluginScoping(t *testing.T) {
 		}
 	}
 
-	clash := New(model.Site{})
-	err = (&Live{clash}).Use(
+	_, err = use(nil,
 		plugin.At("/checkout", testPlugin{"basket", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
 		plugin.At("/checkout", testPlugin{"tickets", func(m *plugin.Mount) error { m.Page("GET", "", ok); return nil }}),
 	)
@@ -370,24 +406,23 @@ func TestPluginScoping(t *testing.T) {
 		t.Fatalf("a second claim on /checkout must name both plugins, got %v", err)
 	}
 
-	reserved := New(model.Site{})
-	if err := (&Live{reserved}).Use(plugin.At("/_quire", testPlugin{"basket", func(m *plugin.Mount) error {
+	if _, err := use(nil, plugin.At("/_quire", testPlugin{"basket", func(m *plugin.Mount) error {
 		m.Page("GET", "style.css", ok)
 		return nil
 	}})); err == nil {
-		t.Error("a plugin mounted a public page inside the reserved namespace")
+		t.Error("a plugin put a public page inside the reserved namespace")
 	}
 
-	if err := (&Live{New(model.Site{})}).Use(testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
+	if _, err := use(nil, testPlugin{"has/slash", func(*plugin.Mount) error { return nil }}); err == nil {
 		t.Error("a name that would break the prefix was accepted")
 	}
-	if err := (&Live{New(model.Site{}, WithDev(true))}).Use(plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
+	if _, err := use(nil, plugin.At("/q", testPlugin{"quire", func(*plugin.Mount) error { return nil }})); err == nil {
 		t.Error("a site plugin took the name reserved for Quire's own")
 	}
 
 	css := fstest.MapFS{"ok.css": {Data: []byte("/* .line */ .basket-line { background: url(a.svg) } a.basket-x:hover {}")}, "bad.css": {Data: []byte(".basket-line, .line {}")}}
 	for name, want := range map[string]bool{"ok.css": true, "bad.css": false} {
-		err := (&Live{New(model.Site{})}).Use(testPlugin{"basket", func(m *plugin.Mount) error {
+		_, err := use(nil, testPlugin{"basket", func(m *plugin.Mount) error {
 			m.AddStylesheets(css, name)
 			return nil
 		}})
@@ -396,9 +431,11 @@ func TestPluginScoping(t *testing.T) {
 		}
 	}
 
-	taken := New(model.Site{})
-	taken.AddPage("/basket", body("site"))
-	if err := (&Live{taken}).Use(plugin.At("/basket", testPlugin{"basket", func(m *plugin.Mount) error {
+	taken := func(s *Site) error {
+		s.AddPage("/basket", body("site"))
+		return nil
+	}
+	if _, err := use(taken, plugin.At("/basket", testPlugin{"basket", func(m *plugin.Mount) error {
 		m.Page("GET", "", ok)
 		return nil
 	}})); err == nil || !strings.Contains(err.Error(), "site") {
@@ -408,7 +445,7 @@ func TestPluginScoping(t *testing.T) {
 
 func TestSrcSetIsPerSlot(t *testing.T) {
 	body := testkit.Photo(t, 2400, 1600, false)
-	im, _ := mounted(t, fstest.MapFS{"r.png": {Data: body}}, "r.png")
+	im := placed(t, fstest.MapFS{"r.png": {Data: body}}, "r.png")
 	thumb, page := im.SrcSet(model.SlotThumb), im.SrcSet(model.SlotPage)
 	if strings.Count(thumb, ",") != 2 {
 		t.Errorf("thumb srcset is not three rungs: %s", thumb)
@@ -431,8 +468,8 @@ func TestBodyMarkdownImages(t *testing.T) {
 		"images/ridge.png": {Data: body},
 	}
 	var col *model.Collection[model.Meta]
-	e, err := served(t, fsys, model.Site{}, func(e *Engine) (err error) {
-		col, err = e.AddCollection(model.Basic{ID: "posts"})
+	v, err := served(t, fsys, model.Identity{}, func(s *Site) (err error) {
+		col, err = s.AddCollection(model.Basic{ID: "posts"})
 		return err
 	})
 	if err != nil {
@@ -454,9 +491,9 @@ func TestBodyMarkdownImages(t *testing.T) {
 	if strings.Contains(d.HTML, `fetchpriority="high"`) {
 		t.Fatal("body image stole hero priority")
 	}
-	im, ok := e.images["images/ridge.png"]
+	im, ok := v.site.images["images/ridge.png"]
 	if !ok {
-		t.Fatal("e.Image missed the body path")
+		t.Fatal("the site missed the body path")
 	}
 	if !strings.Contains(d.HTML, im.URL(model.SlotPage)) {
 		t.Fatal("figure src is not the hero variant")
@@ -482,31 +519,31 @@ func TestBodyVideo(t *testing.T) {
 		}
 	}
 	var col *model.Collection[model.Meta]
-	e, err := served(t, page(`![a clip](clip.webm "Caption")`), model.Site{}, func(e *Engine) (err error) {
-		col, err = e.AddCollection(model.Basic{ID: "posts"})
+	v, err := served(t, page(`![a clip](clip.webm "Caption")`), model.Identity{}, func(s *Site) (err error) {
+		col, err = s.AddCollection(model.Basic{ID: "posts"})
 		return err
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	d, _ := col.Get("hello")
-	file, _ := e.bundle.Record("posts/clip.webm")
+	file, _ := v.bundle.Record("posts/clip.webm")
 	name, _ := file.File()
-	for _, want := range []string{`src="` + model.ImageURL(name) + `"`, `poster="` + e.images["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
+	for _, want := range []string{`src="` + model.ImageURL(name) + `"`, `poster="` + v.site.images["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
 		if !strings.Contains(d.HTML, want) {
 			t.Errorf("no %s in %s", want, d.HTML)
 		}
 	}
-	if got, _, err := e.bundle.File("posts/clip.webm"); err != nil || string(got) != string(clip) {
+	if got, _, err := v.bundle.File("posts/clip.webm"); err != nil || string(got) != string(clip) {
 		t.Errorf("the bundle holds %q, %v", got, err)
 	}
 
-	if _, err := served(t, page("See ![a clip](clip.webm) here."), model.Site{}, posts); err == nil {
+	if _, err := served(t, page("See ![a clip](clip.webm) here."), model.Identity{}, posts); err == nil {
 		t.Error("a video inside a sentence baked")
 	}
 	noPoster := page("![a clip](clip.webm)")
 	delete(noPoster, "posts/clip.png")
-	if _, err := served(t, noPoster, model.Site{}, posts); err == nil {
+	if _, err := served(t, noPoster, model.Identity{}, posts); err == nil {
 		t.Error("a video with no poster baked")
 	}
 }
@@ -515,13 +552,13 @@ func TestMissingBodyImageFailsLoad(t *testing.T) {
 	fsys := fstest.MapFS{
 		"posts/hello.md": {Data: []byte("---\ntitle: Hello\ndate: 2026-02-01\n---\n\n![](nope.png)\n")},
 	}
-	if _, err := served(t, fsys, model.Site{}, posts); err == nil {
+	if _, err := served(t, fsys, model.Identity{}, posts); err == nil {
 		t.Fatal("a missing body image baked silently")
 	}
 }
 
 func TestNarrowMasterCollapsesSlots(t *testing.T) {
-	im, _ := mounted(t, fstest.MapFS{"small.png": {Data: testkit.Flat(t, 600, 400, false)}}, "small.png")
+	im := placed(t, fstest.MapFS{"small.png": {Data: testkit.Flat(t, 600, 400, false)}}, "small.png")
 	if im.URL(model.SlotPage) != im.URL(model.SlotColumn) {
 		t.Fatalf("600px master serves two files: %s", im.SrcSet(model.SlotPage))
 	}
@@ -540,14 +577,14 @@ func TestMarkdownOutsideACollection(t *testing.T) {
 	files := fstest.MapFS{"home/sample.md": {Data: []byte("---\n---\n\n```go\nx := 1\n```\n")}}
 	var got, missing error
 	var html strings.Builder
-	_, err := served(t, files, model.Site{}, func(e *Engine) error {
-		c, err := e.Markdown("home/sample.md")
+	_, err := served(t, files, model.Identity{}, func(s *Site) error {
+		c, err := s.Markdown("home/sample.md")
 		if err != nil {
 			return err
 		}
 		html.Reset()
 		got = c.Render(t.Context(), &html)
-		_, missing = e.Markdown("home/absent.md")
+		_, missing = s.Markdown("home/absent.md")
 		return nil
 	})
 	if err != nil || got != nil || !strings.Contains(html.String(), `<span class="lx-number">1</span>`) {
@@ -569,11 +606,15 @@ func TestDiagrams(t *testing.T) {
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
 	out := spec.Bundle()
-	if err := bakeSite(configure(model.Site{}, WithBake(spec)), MountFunc(posts)); err != nil {
+	if err := bakeSite(configure(model.Identity{}, WithBake(spec)), BlueprintFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
 	load := func(bundle fs.FS) (string, error) {
-		col, err := New(model.Site{}).load(bundle).AddCollection(model.Basic{ID: "posts"})
+		var col *model.Collection[model.Meta]
+		_, err := configure(model.Identity{}).serve(bundle, BlueprintFunc(func(s *Site) (err error) {
+			col, err = s.AddCollection(model.Basic{ID: "posts"})
+			return err
+		}))
 		if err != nil {
 			return "", err
 		}
@@ -610,17 +651,16 @@ func TestDiagrams(t *testing.T) {
 }
 
 func TestBrokenPageFailsAtBoot(t *testing.T) {
-	e := New(model.Site{})
-	e.AddPage("/about", templ.ComponentFunc(func(context.Context, io.Writer) error { return fmt.Errorf("boom") }))
-	defer func() {
-		if recover() == nil {
-			t.Fatal("a page that cannot render was served")
-		}
-	}()
-	e.Handler()
+	_, err := New(model.Identity{}, BlueprintFunc(func(s *Site) error {
+		s.AddPage("/about", templ.ComponentFunc(func(context.Context, io.Writer) error { return fmt.Errorf("boom") }))
+		return nil
+	}))
+	if err == nil {
+		t.Fatal("a page that cannot render was served")
+	}
 }
 
-func TestBakeIsWhatTheMountAsked(t *testing.T) {
+func TestBakeIsWhatTheBlueprintAsked(t *testing.T) {
 	dir := t.TempDir()
 	post := "---\ntitle: A\ndate: 2026-02-01\nimage: hero.png\n---\n\n![inline](inline.png)\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
 	for name, body := range map[string][]byte{
@@ -641,7 +681,7 @@ func TestBakeIsWhatTheMountAsked(t *testing.T) {
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
 	bakeCounting := func() (decodes, encodes, converts int64) {
 		d0, e0, c0 := picture.Decodes(), picture.Encodes(), markdown.Converts()
-		if err := bakeSite(configure(model.Site{}, WithBake(spec)), MountFunc(posts)); err != nil {
+		if err := bakeSite(configure(model.Identity{}, WithBake(spec)), BlueprintFunc(posts)); err != nil {
 			t.Fatal(err)
 		}
 		return picture.Decodes() - d0, picture.Encodes() - e0, markdown.Converts() - c0
@@ -662,22 +702,22 @@ func TestBakeIsWhatTheMountAsked(t *testing.T) {
 		t.Error("a master nothing refers to was baked")
 	}
 	if !slices.ContainsFunc(slices.Collect(maps.Keys(recs)), func(k string) bool { return strings.HasPrefix(k, "mermaid/") }) {
-		t.Error("the mount's diagram was not drawn")
+		t.Error("the diagram the blueprint asked for was not drawn")
 	}
 	if _, ok := recs["drafts/b.md"]; ok {
-		t.Error("a document the mount did not ask for was baked")
+		t.Error("a document the blueprint did not ask for was baked")
 	}
 	doc, ok := recs["posts/a.md"].File()
 	if !ok {
-		t.Fatal("the mount's document is not in the journal")
+		t.Fatal("the document the blueprint asked for is not in the journal")
 	}
 	bundle := os.DirFS(spec.Bundle())
-	e := New(model.Site{}).load(bundle)
-	if err := posts(e); err != nil {
+	v, err := configure(model.Identity{}).serve(bundle, BlueprintFunc(posts))
+	if err != nil {
 		t.Fatalf("serving from the bake's bundle: %v", err)
 	}
 	rec := httptest.NewRecorder()
-	e.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, model.ImageURL(doc), nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, model.ImageURL(doc), nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("a document's file is served at %s: %d", model.ImageURL(doc), rec.Code)
 	}
@@ -716,7 +756,7 @@ func TestLayers(t *testing.T) {
 				continue
 			}
 			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && !strings.HasPrefix(pkg, q+"/pack/") && pkg != q+"/site" {
-				t.Errorf("%s imports the engine", pkg)
+				t.Errorf("%s imports quire", pkg)
 			}
 			if strings.HasPrefix(pkg, q+"/libs/") && !strings.HasPrefix(imp, q+"/libs/") {
 				t.Errorf("%s imports %s", pkg, imp)

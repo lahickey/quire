@@ -9,12 +9,12 @@ import (
 )
 
 func main() {
-	quire.Run(model.Site{
+	quire.Run(model.Identity{
 		Name:        "Pictures",
 		BaseURL:     "https://example.com",
 		Description: "A Quire site with pictures and no CSS of its own.",
-	}, quire.MountFunc(func(e *quire.Engine) error {
-		_, err := e.AddCollection(model.Basic{ID: "posts"})
+	}, quire.BlueprintFunc(func(site *quire.Site) error {
+		_, err := site.AddCollection(model.Basic{ID: "posts"})
 		return err
 	}))
 }

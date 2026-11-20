@@ -48,7 +48,7 @@ type Landing struct {
 type Pack struct {
 	Widgets map[string]model.Widget
 
-	Home  func(model.Shell, model.Site, model.Document[Landing], *Collection) templ.Component
+	Home  func(model.Shell, model.Identity, model.Document[Landing], *Collection) templ.Component
 	Index func(model.Shell, *Collection) templ.Component
 	Item  func(model.Shell, *Collection, Document) templ.Component
 
@@ -76,8 +76,8 @@ func groups(c *Collection) []group {
 	return out
 }
 
-func (p *Pack) Mount(e *quire.Engine) error {
-	landing, err := e.Document[Landing]("index.md")
+func (p *Pack) Declare(site *quire.Site) error {
+	landing, err := site.Document[Landing]("index.md")
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (p *Pack) Mount(e *quire.Engine) error {
 	if item == nil {
 		item = Item
 	}
-	c, err := e.AddCollection(model.Basic{
+	c, err := site.AddCollection(model.Basic{
 		ID:          "docs",
 		Title:       cmp.Or(l.Docs.Title, "Documentation"),
 		Description: l.Docs.Summary,
@@ -124,16 +124,16 @@ func (p *Pack) Mount(e *quire.Engine) error {
 			return fmt.Errorf("index.md lists %q, which is not a document in docs", slug)
 		}
 	}
-	e.AddStylesheets(css, "docs.css")
-	e.AddStylesheetsAt(model.WidthWide, css, "docs-wide.css")
+	site.AddStylesheets(css, "docs.css")
+	site.AddStylesheetsAt(model.WidthWide, css, "docs-wide.css")
 	if l.Repo != "" {
-		e.AddNavEnd(ui.Link(source(l.Repo), "site-repo"))
-		e.AddFooterLinks(source(l.Repo))
+		site.AddNavEnd(ui.Link(source(l.Repo), "site-repo"))
+		site.AddFooterLinks(source(l.Repo))
 	}
 	if l.Footer != "" {
-		e.SetFooterText(l.Footer)
+		site.SetFooterText(l.Footer)
 	}
-	e.AddPage("/", home(e.Shell, e.Site(), landing, c))
+	site.AddPage("/", home(site.Shell, site.Identity(), landing, c))
 	p.docs = c
 	return nil
 }

@@ -1,7 +1,7 @@
 // A shop: a collection with its own frontmatter type and templates, and a
 // basket plugin that adds routes, a page, sessions and live updates.
 // The basket lives in its own package because a plugin is reusable: any
-// site could mount it.
+// site could use it.
 package main
 
 import (
@@ -30,11 +30,11 @@ type shop struct {
 	basket *basket.Plugin
 }
 
-// Mount says what the site holds: its content and pages. It runs in a bake
+// Declare says what the site holds: its content and pages. It runs in a bake
 // and when serving, so it only declares.
-func (s *shop) Mount(e *quire.Engine) error {
+func (s *shop) Declare(site *quire.Site) error {
 	var err error
-	s.pieces, err = e.AddCollection(model.Spec[Piece]{
+	s.pieces, err = site.AddCollection(model.Spec[Piece]{
 		ID:    "pieces",
 		Title: "Pieces",
 		Index: wall,
@@ -47,7 +47,7 @@ func (s *shop) Mount(e *quire.Engine) error {
 	if err != nil {
 		return err
 	}
-	e.AddPage("/", home(e.Shell, s.pieces))
+	site.AddPage("/", home(site.Shell, s.pieces))
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (s *shop) Live(l *quire.Live) error {
 }
 
 func main() {
-	quire.Run(model.Site{
+	quire.Run(model.Identity{
 		Name:        "Prints",
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",

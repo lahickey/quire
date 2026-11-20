@@ -8,9 +8,9 @@ A blog is the site Quire makes with nothing added: one collection of dated docum
 
 ```go
 func main() {
-  quire.Run(model.Site{Name: "Pictures", BaseURL: "https://example.com"},
-    quire.MountFunc(func(e *quire.Engine) error {
-      _, err := e.AddCollection(model.Basic{ID: "posts"})
+  quire.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"},
+    quire.BlueprintFunc(func(site *quire.Site) error {
+      _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
     }))
 }

@@ -42,7 +42,7 @@ func writeShip(s model.BakeSpec) error {
 	return os.WriteFile(src, fmt.Appendf(nil, shipGo, filepath.ToSlash(s.Bundle())), 0o644)
 }
 
-func bakeSite(s *settings, part Part) error {
+func bakeSite(s *settings, bp Blueprint) error {
 	spec := s.bakeSpec.WithDefaults()
 	if fi, err := os.Stat(spec.Content); err != nil || !fi.IsDir() {
 		spec.Content = ""
@@ -51,11 +51,11 @@ func bakeSite(s *settings, part Part) error {
 	if err != nil {
 		return err
 	}
-	e := s.pass(b)
-	if err := e.Mount(part); err != nil {
+	site := s.site(b)
+	if err := site.Include(bp); err != nil {
 		return err
 	}
-	if err := e.addSiteCard(); err != nil {
+	if err := site.addSiteCard(); err != nil {
 		return err
 	}
 	if err := b.Finish(); err != nil {

@@ -4,7 +4,7 @@ summary: A whole kind of site, ready made. The docs pack is this one.
 ---
 
 A pack is a site's Go somebody else wrote: collections, pages, styles and plugins for one kind of site.
-It has the same two methods a site of your own can have, `Mount` for content and pages and [`Live`](./wiring.md#live) for plugins, so a site hands it to `Run` and writes content.
+It has the same two methods a site of your own can have, `Declare` for content and pages and [`Live`](./wiring.md#live) for plugins, so a site hands it to `Run` and writes content.
 
 ## The docs pack
 
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-  quire.Run(model.Site{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, &docs.Pack{})
+  quire.Run(model.Identity{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, &docs.Pack{})
 }
 ```
 
@@ -35,7 +35,7 @@ Everything else is in `content/`.
 
 ```yaml
 ---
-kicker: A site engine for Go
+kicker: Composable parts for static and live sites in Go
 title: A folder of markdown in. A finished website out.
 lede: One or two sentences under the title.
 install: go get github.com/lahickey/quire
@@ -55,7 +55,7 @@ docs:
 - `title` is the headline. Without it the headline is the site's name.
 - `install` is drawn as a shell command.
 - `repo` puts a Source link in the nav, beside the two buttons and in the footer. Each is a [`ui.Link`](./look.md#links), so a repository on GitHub gets its mark.
-- `footer` replaces the footer's text. Without it the footer is the engine's.
+- `footer` replaces the footer's text. Without it the footer is Quire's.
 - `docs.sections` is the sidebar. See below.
 
 The body of the file is drawn below the hero, as any document is.

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	quire.Run(model.Site{
+	quire.Run(model.Identity{
 		Name:        "Example",
 		BaseURL:     "https://example.com",
 		Description: "What the project is, in a sentence.",

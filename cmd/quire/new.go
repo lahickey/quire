@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	engine   = "github.com/lahickey/quire"
-	scaffold = "scaffold"
+	quirePath = "github.com/lahickey/quire"
+	scaffold  = "scaffold"
 )
 
 func starters() []string {
@@ -42,7 +42,7 @@ func starter(name string) string {
 	return ""
 }
 
-func engineVersion() string {
+func moduleVersion() string {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok || !strings.HasPrefix(bi.Main.Version, "v") || strings.Contains(bi.Main.Version, "+dirty") {
 		return "latest"
@@ -111,7 +111,7 @@ func newSite(args []string) {
 		_ = os.Remove(filepath.Join(dir, "justfile"))
 	}
 	mod := cmp.Or(*module, filepath.Base(dir))
-	if err := rename(dir, engine+"/examples/"+from, mod); err != nil {
+	if err := rename(dir, quirePath+"/examples/"+from, mod); err != nil {
 		log.Fatal(err)
 	}
 
@@ -121,9 +121,9 @@ func newSite(args []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		goTool(dir, "mod", "edit", "-require", engine+"@v0.0.0", "-replace", engine+"="+checkout)
+		goTool(dir, "mod", "edit", "-require", quirePath+"@v0.0.0", "-replace", quirePath+"="+checkout)
 	} else {
-		goTool(dir, "get", engine+"@"+engineVersion())
+		goTool(dir, "get", quirePath+"@"+moduleVersion())
 	}
 	goTool(dir, "mod", "edit", "-tool", "github.com/a-h/templ/cmd/templ")
 	goTool(dir, "mod", "tidy")

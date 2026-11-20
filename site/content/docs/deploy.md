@@ -32,7 +32,7 @@ The image is `FROM scratch`: the binary and nothing else, running as a user that
 
 The binary serves plain HTTP. Put it behind whatever terminates TLS for you: a platform's proxy, a load balancer or a reverse proxy.
 
-Set `Site.BaseURL` to the address visitors use. It decides:
+Set `Identity.BaseURL` to the address visitors use. It decides:
 
 - the canonical URL and share tags of every page, and whether `sitemap.xml` and `robots.txt` exist;
 - the `www` redirect, which sends `www.` on that host to the bare name;

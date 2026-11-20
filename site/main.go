@@ -20,10 +20,10 @@ var widgets = map[string]model.Widget{
 }
 
 func main() {
-	quire.Run(model.Site{
+	quire.Run(model.Identity{
 		Name:        "Quire",
 		BaseURL:     "https://quire.hiddenbridge.io",
-		Description: "A Go engine that turns a folder of markdown into a finished website, served from a single binary.",
+		Description: "Composable parts for static and live sites in Go.",
 	}, &docs.Pack{Widgets: widgets},
 		quire.WithStylesheets(css, "site.css"),
 		quire.WithPalettePicker(),

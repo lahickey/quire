@@ -29,27 +29,27 @@ func (s *settings) addSheets(layer string, at model.Width, fsys fs.FS, names []s
 	}
 }
 
-func (e *Engine) addAssets() {
-	p := assets.Parts{Scale: e.scale, Palette: e.palette, Palettes: e.chrome.Palettes, Sheets: e.sheets, Scripts: e.scripts}
-	p.Fonts, e.chrome.FontPreload = fonts.Faces(e.fonts, fonts.Default(), func(file string, body []byte) string {
-		return e.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
+func (s *Site) addAssets() {
+	p := assets.Parts{Scale: s.scale, Palette: s.palette, Palettes: s.chrome.Palettes, Sheets: s.sheets, Scripts: s.scripts}
+	p.Fonts, s.chrome.FontPreload = fonts.Faces(s.fonts, fonts.Default(), func(file string, body []byte) string {
+		return s.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
 	})
-	e.chrome.StyleURLs = []string{e.addBytes(stylePath, css, assets.Stylesheet(p))}
-	e.chrome.ScriptURL = e.addBytes(scriptPath, javascript, assets.Script(p))
-	e.chrome.ModuleURLs = []string{e.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+	s.chrome.StyleURLs = []string{s.addBytes(stylePath, css, assets.Stylesheet(p))}
+	s.chrome.ScriptURL = s.addBytes(scriptPath, javascript, assets.Script(p))
+	s.chrome.ModuleURLs = []string{s.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
 }
 
-func (e *Engine) addIcons() {
-	for _, i := range e.icons {
+func (s *Site) addIcons() {
+	for _, i := range s.icons {
 		rel := "icon"
 		if strings.HasPrefix(path.Base(i.Name), "apple-touch-icon") {
 			rel = "apple-touch-icon"
 		}
-		e.chrome.Icons = append(e.chrome.Icons, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(i.Name)), Href: e.AddFile("/"+i.Name, i.FS, i.Name)})
+		s.chrome.Icons = append(s.chrome.Icons, model.Icon{Rel: rel, Type: mime.TypeByExtension(path.Ext(i.Name)), Href: s.AddFile("/"+i.Name, i.FS, i.Name)})
 	}
 }
 
-func (e *Engine) addNavItem(id string) {
+func (s *Site) addNavItem(id string) {
 	href, label := "/"+id, model.Label(id)
 	if id == "/" {
 		href, label = "/", "Home"
@@ -58,51 +58,51 @@ func (e *Engine) addNavItem(id string) {
 	}
 	item := model.NavItem{Label: label, Href: href}
 	switch {
-	case slices.ContainsFunc(e.chrome.Nav, func(n model.NavItem) bool { return n.Href == href }):
+	case slices.ContainsFunc(s.chrome.Nav, func(n model.NavItem) bool { return n.Href == href }):
 	case href == "/":
-		e.chrome.Nav = slices.Insert(e.chrome.Nav, 0, item)
+		s.chrome.Nav = slices.Insert(s.chrome.Nav, 0, item)
 	default:
-		e.chrome.Nav = append(e.chrome.Nav, item)
+		s.chrome.Nav = append(s.chrome.Nav, item)
 	}
 }
 
-func (e *Engine) late(page func(model.Chrome) templ.Component) templ.Component {
+func (s *Site) late(page func(model.Chrome) templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return page(e.chrome).Render(ctx, w)
+		return page(s.chrome).Render(ctx, w)
 	})
 }
 
-func (e *Engine) Site() model.Site { return e.chrome.Site }
+func (s *Site) Identity() model.Identity { return s.chrome.Identity }
 
-func (e *Engine) AddStylesheets(fsys fs.FS, names ...string) { e.AddStylesheetsAt(0, fsys, names...) }
+func (s *Site) AddStylesheets(fsys fs.FS, names ...string) { s.AddStylesheetsAt(0, fsys, names...) }
 
-func (e *Engine) AddStylesheetsAt(w model.Width, fsys fs.FS, names ...string) {
-	mustBeOpen(e.mounted, "a stylesheet")
-	e.addSheets("pack", w, fsys, names)
+func (s *Site) AddStylesheetsAt(w model.Width, fsys fs.FS, names ...string) {
+	mustBeOpen(s.built, "a stylesheet")
+	s.addSheets("pack", w, fsys, names)
 }
 
-func (e *Engine) AddNavEnd(cs ...templ.Component) {
-	mustBeOpen(e.mounted, "a nav control")
-	e.chrome.NavEnd = append(e.chrome.NavEnd, cs...)
+func (s *Site) AddNavEnd(cs ...templ.Component) {
+	mustBeOpen(s.built, "a nav control")
+	s.chrome.NavEnd = append(s.chrome.NavEnd, cs...)
 }
 
-func (e *Engine) SetFooter(f func(model.Chrome, model.PageSpec) templ.Component) {
-	mustBeOpen(e.mounted, "the footer")
-	e.chrome.Footer = f
+func (s *Site) SetFooter(f func(model.Chrome, model.PageSpec) templ.Component) {
+	mustBeOpen(s.built, "the footer")
+	s.chrome.Footer = f
 }
 
-func (e *Engine) SetFooterText(text string) {
-	mustBeOpen(e.mounted, "the footer")
-	e.chrome.FooterText = text
+func (s *Site) SetFooterText(text string) {
+	mustBeOpen(s.built, "the footer")
+	s.chrome.FooterText = text
 }
 
-func (e *Engine) AddFooterLinks(links ...model.Link) {
-	mustBeOpen(e.mounted, "a footer link")
-	e.chrome.FooterLinks = append(e.chrome.FooterLinks, links...)
+func (s *Site) AddFooterLinks(links ...model.Link) {
+	mustBeOpen(s.built, "a footer link")
+	s.chrome.FooterLinks = append(s.chrome.FooterLinks, links...)
 }
 
-func (e *Engine) Shell(p model.PageSpec) templ.Component {
+func (s *Site) Shell(p model.PageSpec) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return ui.Shell(e.chrome, p).Render(ctx, w)
+		return ui.Shell(s.chrome, p).Render(ctx, w)
 	})
 }

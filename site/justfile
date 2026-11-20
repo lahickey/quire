@@ -13,7 +13,7 @@ run:
     cd {{ source_directory() }} && go run . --addr :{{ port }}
 
 # Needs `wgo` on PATH; see DEVELOPING.md.
-# Run with live reload: a change to the engine, the site or its content rebuilds and reloads the page.
+# Run with live reload: a change to Quire, the site or its content rebuilds and reloads the page.
 [continue]
 [no-exit-message]
 dev:
