@@ -4,38 +4,29 @@ import (
 	"bytes"
 	"io"
 	"io/fs"
-	"iter"
 	"net/http"
 	"regexp"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/lahickey/quire/bundle"
 )
 
 var variantName = regexp.MustCompile(`^[0-9a-f]{32}\.[a-z0-9]{3,4}$`)
 
 var copyBufs = sync.Pool{New: func() any { b := make([]byte, 256<<10); return &b }}
 
-type variant struct {
-	size   int64
-	format bundle.Format
-}
-
 // Filer is a source whose files can be fetched: a bundle is one, a baker is not.
 type Filer interface {
 	fs.FS
-	Records() iter.Seq[bundle.Record]
+	Served(file string) (mediaType string, size int64, ok bool)
 }
 
 type files struct {
-	from        fs.FS
+	from        Filer
 	dev         bool
 	memoryLimit int
 	cache       *cache[[]byte]
-	byKey       map[string]variant
 }
 
 // writerOnly hides the response's ReadFrom: net's fallback allocates a buffer
@@ -53,8 +44,8 @@ func stream(w io.Writer, f fs.File) {
 	_, _ = io.CopyBuffer(writerOnly{w}, f, *buf)
 }
 
-func (s *files) headers(h http.Header, v variant, file string) {
-	h.Set("Content-Type", v.format.Type)
+func (s *files) headers(h http.Header, mediaType, file string) {
+	h.Set("Content-Type", mediaType)
 	h.Set("ETag", `"`+file+`"`)
 	if !s.dev {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
@@ -62,19 +53,9 @@ func (s *files) headers(h http.Header, v variant, file string) {
 }
 
 func Files(from Filer, memory, memoryLimit int, dev bool) http.Handler {
-	s := &files{from: from, dev: dev, memoryLimit: memoryLimit, byKey: map[string]variant{}}
+	s := &files{from: from, dev: dev, memoryLimit: memoryLimit}
 	if memory > 0 && memoryLimit > 0 {
 		s.cache = newCache(memory, func(b []byte) int { return len(b) })
-	}
-	for rec := range from.Records() {
-		for _, v := range rec.Files {
-			switch {
-			case rec.Kind == bundle.KindPicture:
-				s.byKey[v.Name] = variant{format: rec.Picture.Format, size: v.Size}
-			case rec.Type != "":
-				s.byKey[v.Name] = variant{format: bundle.Format{Type: rec.Type}, size: v.Size}
-			}
-		}
 	}
 	return s
 }
@@ -85,7 +66,7 @@ func (s *files) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	v, ok := s.byKey[file]
+	mediaType, size, ok := s.from.Served(file)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -106,7 +87,7 @@ func (s *files) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	h := w.Header()
 	if r.Header.Get("Range") != "" || r.Header.Get("If-None-Match") != "" || r.Header.Get("If-Range") != "" {
-		s.headers(h, v, file)
+		s.headers(h, mediaType, file)
 		var rs io.ReadSeeker = bytes.NewReader(body)
 		if f != nil {
 			if rs, ok = f.(io.ReadSeeker); !ok {
@@ -118,14 +99,14 @@ func (s *files) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodHead {
-		s.headers(h, v, file)
-		h.Set("Content-Length", strconv.FormatInt(v.size, 10))
+		s.headers(h, mediaType, file)
+		h.Set("Content-Length", strconv.FormatInt(size, 10))
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	if !hit && s.cache != nil && v.size <= int64(s.memoryLimit) {
-		body = make([]byte, v.size)
+	if !hit && s.cache != nil && size <= int64(s.memoryLimit) {
+		body = make([]byte, size)
 		if _, err := io.ReadFull(f, body); err != nil {
 			http.NotFound(w, r)
 			return
@@ -133,8 +114,8 @@ func (s *files) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.cache.put(file, body)
 		hit = true
 	}
-	s.headers(h, v, file)
-	h.Set("Content-Length", strconv.FormatInt(v.size, 10))
+	s.headers(h, mediaType, file)
+	h.Set("Content-Length", strconv.FormatInt(size, 10))
 	w.WriteHeader(http.StatusOK)
 	if hit {
 		_, _ = w.Write(body)

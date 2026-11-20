@@ -150,7 +150,7 @@ templ Card(c CardData) {
 	<a href={ c.Href } class="card">
 		if c.Picture.Hash != "" {
 			<div class="card-picture">
-				@Img(c.Picture, model.SlotColumn, c.Title)
+				@Img(c.Picture, model.SizeColumn, c.Title)
 			</div>
 		}
 		if c.Draft || c.Featured || len(c.Badges) > 0 {

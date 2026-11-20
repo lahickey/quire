@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/fonts"
+	"github.com/lahickey/quire/internal/journal"
 )
 
 const (
@@ -178,7 +178,7 @@ func refreshFonts() error {
 		}
 		log.Printf("%-16s %d faces, measured at %v", fam.Name, len(fam.Faces), slices.Sorted(maps.Keys(fam.Measure)))
 	}
-	set.ID = bundle.Hash(measured.Bytes())
+	set.ID = journal.Hash(measured.Bytes())
 	b, err := json.Marshal(set, json.Deterministic(true))
 	if err != nil {
 		return err

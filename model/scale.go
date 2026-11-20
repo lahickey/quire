@@ -3,8 +3,6 @@ package model
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/lahickey/quire/bundle"
 )
 
 const (
@@ -45,55 +43,55 @@ func (s Scale) narrowClause() string {
 	return "calc(100vw - " + s.Rem(2*s.Gutter()) + ")"
 }
 
-func (s Scale) cols(slot Slot) int {
-	switch slot {
-	case SlotPageWide:
+func (s Scale) cols(size Size) int {
+	switch size {
+	case SizePageWide:
 		return wideCols
-	case SlotPageFull, SlotBleed:
+	case SizePageFull, SizeBleed:
 		return fullCols
 	}
 	return pageCols
 }
 
-func (s Scale) top(slot Slot) int {
-	if slot == SlotThumb {
+func (s Scale) top(size Size) int {
+	if size == SizeThumb {
 		return 3 * s.Thumb()
 	}
-	if slot == SlotBleed {
-		return bundle.MasterCap
+	if size == SizeBleed {
+		return MasterCap
 	}
-	return min(2*s.inner(s.cols(slot)), bundle.MasterCap)
+	return min(2*s.inner(s.cols(size)), MasterCap)
 }
 
-func (s Scale) sizes(slot Slot) string {
-	switch slot {
-	case SlotThumb:
+func (s Scale) sizes(size Size) string {
+	switch size {
+	case SizeThumb:
 		return s.Rem(s.Thumb())
-	case SlotBleed:
+	case SizeBleed:
 		return "100vw"
-	case SlotColumn:
+	case SizeColumn:
 		return fmt.Sprintf("(min-width: %s) %s, %s",
 			s.Rem(s.Measure()), s.Rem(s.Col), s.narrowClause())
 	}
-	n := s.cols(slot)
+	n := s.cols(size)
 	return fmt.Sprintf("(min-width: %s) %s, %s",
 		s.Rem(s.pageWidth(n)), s.Rem(s.inner(n)), s.narrowClause())
 }
 
-func (s Scale) display(slot Slot) int {
-	switch slot {
-	case SlotThumb:
+func (s Scale) display(size Size) int {
+	switch size {
+	case SizeThumb:
 		return s.Thumb()
-	case SlotColumn:
+	case SizeColumn:
 		return s.Col
-	case SlotBleed:
-		return bundle.MasterCap / 2
+	case SizeBleed:
+		return MasterCap / 2
 	}
-	return s.inner(s.cols(slot))
+	return s.inner(s.cols(size))
 }
 
-func (s Scale) bottom(slot Slot) int {
-	if slot == SlotThumb {
+func (s Scale) bottom(size Size) int {
+	if size == SizeThumb {
 		return s.Thumb()
 	}
 	return narrowest - 2*s.Gutter()

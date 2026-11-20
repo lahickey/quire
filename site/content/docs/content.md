@@ -257,7 +257,7 @@ Raw HTML in the body is rendered as it is, because the markdown is the site's ow
 ## Widgets
 
 A widget turns a named fence into HTML of the site's choosing.
-`Spec.Widgets` maps a fence's name to a `Widget`, which is handed the rest of the fence's first line and its body.
+`quire.WithWidgets` maps a fence's name to a `Widget`, which is handed the rest of the fence's first line and its body.
 
 ```go
 var widgets = map[string]model.Widget{
@@ -265,9 +265,11 @@ var widgets = map[string]model.Widget{
     return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
   },
 }
+
+app.Run(identity, blueprint, quire.WithWidgets(widgets))
 ```
 
-A fence named `swatch` in that collection's documents now renders as the chip.
+A fence named `swatch` in any of the site's documents now renders as the chip.
 This site has that widget, and a rule for `.swatch` in its stylesheet:
 
 ````markdown
@@ -292,10 +294,13 @@ accent spot tone1 tone2 ok warn error
 accent spot tone1 tone2 ok warn error
 ```
 
-- `mermaid` and `palette` are Quire's own widgets, and a site's widget of either name replaces it. `palette` draws each role it names from the page's own custom properties: a range (`neutral`, `accent`) as a row of its twelve steps, and the rest side by side with a row for each of their four. The word `all` is every role.
+- `mermaid`, `cards` and `palette` are Quire's own widgets, and a site's widget of one of those names replaces it. `palette` draws each role it names from the page's own custom properties: a range (`neutral`, `accent`) as a row of its twelve steps, and the rest side by side with a row for each of their four. The word `all` is every role.
 - A name after `palette` draws that palette whatever the visitor has picked, if it is one the site's [picker](./look.md#let-the-visitor-choose) offers: `palette moss`.
 - A fence shown inside a longer fence stays code, so a page can show a widget's syntax without running it.
-- A widget runs when the page is composed, not in the bake, so changing one needs no rebake. The bake records only where each fence sits.
+- A widget runs when the page is composed, not in the bake, so changing or adding one needs no rebake. The bake records where each named fence sits and what was in it.
+- A widget cannot take the name of a language Quire highlights, such as `go`. The bake has already made that fence code, so the site fails to load and says which fence. Rename the widget.
+- A fence whose name is neither a language nor a widget is shown as plain code.
+- A pack adds a widget with `site.AddWidget(name, widget)` in its `Declare`, before it reads any content. One added after a document was read fails the load.
 - A widget that returns an error fails the load, the same as bad frontmatter.
 
 ## Collections
@@ -358,4 +363,4 @@ The [docs pack](./packs.md) reads this site's landing page that way.
 ## In depth
 
 Markdown is converted by the bake, not by the serving binary. A shipped binary holds the HTML and not the markdown, and links no markdown library.
-The bake leaves a hole in that HTML for each picture, diagram and widget, and serving fills the holes. That is why a change to a widget, to the scale or to a component needs no rebake.
+The bake leaves a slot in that HTML for each picture and each named fence. It fills the fences it can, which are the ones in a language it highlights, and serving fills the rest: a picture at its size, a widget by running it. That is why a change to a widget, to the scale or to a component needs no rebake.

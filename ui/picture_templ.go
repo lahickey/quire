@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/lahickey/quire/model"
 
-func figure(pic model.Picture, slot model.Slot, alt, caption string, priority bool) templ.Component {
+func figure(pic model.Picture, size model.Size, alt, caption string, priority bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -37,7 +37,7 @@ func figure(pic model.Picture, slot model.Slot, alt, caption string, priority bo
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var2 = []any{figureClass(slot)}
+				var templ_7745c5c3_Var2 = []any{figureClass(size)}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var2...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -77,7 +77,7 @@ func figure(pic model.Picture, slot model.Slot, alt, caption string, priority bo
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.RenderAttributes(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_ElementWriter, "img", pic.Attrs(slot, priority))
+				templ_7745c5c3_Err = templruntime.RenderAttributes(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_ElementWriter, "img", pic.Attrs(size, priority))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -175,7 +175,7 @@ func VideoFigure(src string, poster model.Picture, alt, caption string) templ.Co
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(poster.URL(model.SlotPage)).ResolveURL(ctx)
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(poster.URL(model.SizePage)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/picture.templ`, Line: 20, Col: 38}
 		}
@@ -253,7 +253,7 @@ func VideoFigure(src string, poster model.Picture, alt, caption string) templ.Co
 	})
 }
 
-func Img(pic model.Picture, slot model.Slot, alt string) templ.Component {
+func Img(pic model.Picture, size model.Size, alt string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -279,7 +279,7 @@ func Img(pic model.Picture, slot model.Slot, alt string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.RenderAttributes(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_ElementWriter, "img", pic.Attrs(slot, false))
+				templ_7745c5c3_Err = templruntime.RenderAttributes(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_ElementWriter, "img", pic.Attrs(size, false))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -336,7 +336,7 @@ func LazyFigure(pic model.Picture, alt, caption string) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = figure(pic, model.SlotPage, alt, caption, false).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = figure(pic, model.SizePage, alt, caption, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -344,7 +344,7 @@ func LazyFigure(pic model.Picture, alt, caption string) templ.Component {
 	})
 }
 
-func HeroFigure(pic model.Picture, slot model.Slot, alt, caption string) templ.Component {
+func HeroFigure(pic model.Picture, size model.Size, alt, caption string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -361,7 +361,7 @@ func HeroFigure(pic model.Picture, slot model.Slot, alt, caption string) templ.C
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = figure(pic, slot, alt, caption, true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = figure(pic, size, alt, caption, true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

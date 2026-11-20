@@ -1,4 +1,4 @@
-// Package markdown converts a markdown file to a document: HTML with holes for the site to fill.
+// Package markdown converts a markdown file to a baked document: HTML with a slot for each picture and named fence.
 package markdown
 
 import (
@@ -8,7 +8,6 @@ import (
 	"html"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,14 +22,13 @@ import (
 	"github.com/yuin/goldmark/util"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/libs/lexis"
 	"github.com/lahickey/quire/libs/lexis/langs"
 	"github.com/lahickey/quire/model"
 )
 
 const (
-	Version   = 7
+	Version   = 8
 	headerSep = "---"
 )
 
@@ -52,9 +50,9 @@ var languages = sync.OnceValue(func() *lexis.Languages {
 	return &set
 })
 
-type embeds struct {
-	list []bundle.Embed
-	at   map[bundle.Embed]int
+type slots struct {
+	list []model.Slot
+	at   map[model.Slot]int
 }
 
 type rawBlock struct {
@@ -72,9 +70,9 @@ type spanParser struct{}
 type rawHTMLRenderer struct{}
 
 type imgTransform struct {
-	src    []byte
-	doc    string
-	embeds *embeds
+	src   []byte
+	doc   string
+	slots *slots
 }
 
 type imgTarget struct {
@@ -88,9 +86,8 @@ type calloutTransform struct{ src []byte }
 type linkTransform struct{}
 
 type fenceTransform struct {
-	src     []byte
-	widgets map[string]model.Widget
-	err     error
+	src   []byte
+	slots *slots
 }
 
 func splitFrontmatter(raw []byte) (header, body []byte, err error) {
@@ -113,14 +110,14 @@ func splitFrontmatter(raw []byte) (header, body []byte, err error) {
 	return nil, nil, fmt.Errorf("missing closing %q frontmatter fence", headerSep)
 }
 
-func (e *embeds) hole(em bundle.Embed) string {
-	i, ok := e.at[em]
+func (s *slots) mark(sl model.Slot) string {
+	i, ok := s.at[sl]
 	if !ok {
-		i = len(e.list)
-		e.list = append(e.list, em)
-		e.at[em] = i
+		i = len(s.list)
+		s.list = append(s.list, sl)
+		s.at[sl] = i
 	}
-	return bundle.Hole(i)
+	return model.SlotMark(i)
 }
 
 func headingID(h *ast.Heading) string {
@@ -155,8 +152,8 @@ func nodeText(n ast.Node, src []byte) string {
 	return b.String()
 }
 
-func collectHeadings(n ast.Node, src []byte) []bundle.Heading {
-	var out []bundle.Heading
+func collectHeadings(n ast.Node, src []byte) []model.Heading {
+	var out []model.Heading
 	_ = ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -165,7 +162,7 @@ func collectHeadings(n ast.Node, src []byte) []bundle.Heading {
 		if !ok {
 			return ast.WalkContinue, nil
 		}
-		out = append(out, bundle.Heading{
+		out = append(out, model.Heading{
 			Level: h.Level,
 			Text:  nodeText(h, src),
 			ID:    headingID(h),
@@ -218,9 +215,9 @@ func renderRawHTML(w util.BufWriter, _ []byte, node ast.Node, entering bool) (as
 	return ast.WalkContinue, nil
 }
 
-func (t *imgTransform) hole(img *ast.Image, block bool) string {
+func (t *imgTransform) mark(img *ast.Image, block bool) string {
 	alt := nodeText(img, t.src)
-	return t.embeds.hole(bundle.Embed{Picture: bundle.Resolve(t.doc, string(img.Destination)), Alt: alt, Caption: cmp.Or(string(img.Title), alt), Figure: block})
+	return t.slots.mark(model.Slot{Picture: model.Resolve(t.doc, string(img.Destination)), Alt: alt, Caption: cmp.Or(string(img.Title), alt), Figure: block})
 }
 
 func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
@@ -243,79 +240,6 @@ func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
 		return "", nil
 	}
 	return kind, marker
-}
-
-// paletteGrid draws a grid of colours: down the side and across the top are
-// what it is labelled with, and each cell is the custom property named.
-func paletteGrid(b *strings.Builder, name string, down, across []string, property func(down, across string) string) {
-	if len(down) == 0 || len(across) == 0 {
-		return
-	}
-	attr := ""
-	if name != "" {
-		attr = ` data-palette="` + name + `"`
-	}
-	fmt.Fprintf(b, `<div class="palette" style="grid-template-columns:max-content repeat(%d,1fr)"%s><span class="palette-label">%s</span>`, len(across), attr, name)
-	for _, a := range across {
-		fmt.Fprintf(b, `<span>%s</span>`, a)
-	}
-	for _, d := range down {
-		fmt.Fprintf(b, `<span class="palette-label">%s</span>`, d)
-		for _, a := range across {
-			fmt.Fprintf(b, `<span style="background:var(--qr-%s)"></span>`, property(d, a))
-		}
-	}
-	b.WriteString(`</div>`)
-}
-
-// palette draws the roles its body names: each range as a row of its twelve
-// steps, and the rest side by side with a row for each of their steps.
-func palette(name, body string) (string, error) {
-	roles := (model.Palette{}).Roles()
-	var names, ranges, others, twelve, steps []string
-	for _, r := range roles {
-		names = append(names, r.Name)
-	}
-	for word := range strings.FieldsSeq(body) {
-		i := slices.Index(names, word)
-		switch {
-		case word == "all":
-			for _, r := range roles {
-				if r.Range {
-					ranges = append(ranges, r.Name)
-				} else {
-					others = append(others, r.Name)
-				}
-			}
-		case i < 0:
-			return "", fmt.Errorf("palette: unknown role %q, want all or one of %s", word, strings.Join(names, " "))
-		case roles[i].Range:
-			ranges = append(ranges, word)
-		default:
-			others = append(others, word)
-		}
-	}
-	for i := range 12 {
-		twelve = append(twelve, strconv.Itoa(i+1))
-	}
-	for _, s := range model.Steps {
-		steps = append(steps, s.Name)
-	}
-	var b strings.Builder
-	name = html.EscapeString(name)
-	paletteGrid(&b, name, ranges, twelve, func(role, step string) string { return role + "-" + step })
-	paletteGrid(&b, name, steps, others, func(step, role string) string { return role + "-" + step })
-	return b.String(), nil
-}
-
-func fences(names []string, em *embeds) map[string]model.Widget {
-	out := map[string]model.Widget{"palette": palette}
-	for _, name := range append([]string{"mermaid", "cards"}, names...) {
-		out[name] = func(info, body string) (string, error) {
-			return em.hole(bundle.Embed{Fence: name, Info: info, Body: body}), nil
-		}
-	}
-	return out
 }
 
 func fenceText(b *ast.FencedCodeBlock, src []byte) string {
@@ -389,7 +313,7 @@ func (t *imgTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Cont
 		return ast.WalkSkipChildren, nil
 	})
 	for _, f := range found {
-		html := t.hole(f.img, f.block)
+		html := t.mark(f.img, f.block)
 		var repl ast.Node = &rawInline{html: html}
 		if f.block {
 			repl = &rawBlock{html: html}
@@ -451,6 +375,7 @@ func (linkTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Contex
 
 func Converts() int64 { return converts.Load() }
 
+// Transform makes every named fence a slot: filled with highlighted HTML when the name is a language, and left with its body when not.
 func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	var found []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -461,33 +386,27 @@ func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Co
 	})
 	for _, b := range found {
 		name, info := fenceInfo(b, t.src)
-		p := b.Parent()
 		body := fenceText(b, t.src)
-		if t.widgets[name] == nil {
-			code := html.EscapeString(body)
+		out := model.CodeBlock(html.EscapeString(body))
+		if name != "" {
+			sl := model.Slot{Fence: name, Info: info, Body: body}
 			if next := languages().Named(name, body); next != nil {
-				code = string(lexis.AppendHTML(nil, next))
+				sl.Body, sl.HTML = "", model.CodeBlock(string(lexis.AppendHTML(nil, next)))
 			}
-			p.ReplaceChild(p, b, &rawBlock{html: model.CodeOpen + "<pre><code>" + code + "</code></pre>" + model.CodeClose})
-			continue
+			out = t.slots.mark(sl)
 		}
-		html, err := t.widgets[name](info, body)
-		if err != nil {
-			t.err = fmt.Errorf("%s: %w", name, err)
-			return
-		}
-		p.ReplaceChild(p, b, &rawBlock{html: html})
+		b.Parent().ReplaceChild(b.Parent(), b, &rawBlock{html: out})
 	}
 }
 
-func render(src, doc string, fenceNames []string) (string, []bundle.Heading, []bundle.Embed, error) {
+func render(src, doc string) (string, []model.Heading, []model.Slot, error) {
 	if src == "" {
 		return "", nil, nil, nil
 	}
 	srcb := []byte(src)
-	em := &embeds{at: map[bundle.Embed]int{}}
-	tf := &imgTransform{src: srcb, doc: doc, embeds: em}
-	ft := &fenceTransform{src: srcb, widgets: fences(fenceNames, em)}
+	sl := &slots{at: map[model.Slot]int{}}
+	tf := &imgTransform{src: srcb, doc: doc, slots: sl}
+	ft := &fenceTransform{src: srcb, slots: sl}
 	md := goldmark.New(
 		goldmark.WithExtensions(extension.Table),
 		goldmark.WithParserOptions(
@@ -501,31 +420,27 @@ func render(src, doc string, fenceNames []string) (string, []bundle.Heading, []b
 		),
 	)
 	node := md.Parser().Parse(text.NewReader(srcb))
-	if ft.err != nil {
-		return "", nil, nil, ft.err
-	}
 	var buf bytes.Buffer
 	if err := md.Renderer().Render(&buf, srcb, node); err != nil {
 		return "", nil, nil, err
 	}
-	return buf.String(), collectHeadings(node, srcb), em.list, nil
+	return buf.String(), collectHeadings(node, srcb), sl.list, nil
 }
 
 func (Converter) Name() string { return "markdown" }
 
 func (Converter) Version() int { return Version }
 
-// Convert takes the names of the fences to leave as holes for the site to fill.
 func (Converter) Convert(in bake.Input) (bake.Output, error) {
 	converts.Add(1)
 	header, body, err := splitFrontmatter(in.Body)
 	if err != nil {
 		return bake.Output{}, err
 	}
-	html, headings, embeds, err := render(string(body), in.Name, in.Args)
+	html, headings, slots, err := render(string(body), in.Name)
 	if err != nil {
 		return bake.Output{}, fmt.Errorf("markdown: %w", err)
 	}
-	doc, err := bundle.EncodeDocument(bundle.Document{Path: in.Name, Front: string(header), HTML: html, Words: len(strings.Fields(string(body))), Headings: headings, Embeds: embeds})
+	doc, err := model.BakedDocument{Path: in.Name, Front: string(header), HTML: html, Words: len(strings.Fields(string(body))), Headings: headings, Slots: slots}.Encode()
 	return bake.Output{Body: doc, Ext: "json"}, err
 }

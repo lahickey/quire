@@ -5,6 +5,8 @@ import (
 	"cmp"
 	"crypto/rand"
 	"encoding/json/v2"
+	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 
@@ -24,16 +26,16 @@ const (
 )
 
 // Source is what a site asks for content: a baker answers by converting, and a bundle by reading.
-// Names lists the content files matching a pattern, File is a content file kept as it is,
-// Converted is the output of the named converter for a body and its arguments, and Body is the one file a record names.
-// A baker makes pictures when it finishes, so a record from its Picture names the master and no more.
+// Names lists the content files matching a pattern. File is a content file kept as it is, and Converted the output
+// of the named converter for a body and its arguments; each answers with the bundle file to link to, which Body reads.
+// A baker encodes pictures when it finishes, so its Picture answers with nothing but its agreement.
 type Source interface {
 	Names(pattern string) ([]string, error)
-	Document(name string, fences []string) (bundle.Document, error)
-	Picture(name string) (bundle.Record, error)
-	File(name string) (bundle.Record, error)
-	Converted(converter string, body []byte, args ...string) (bundle.Record, error)
-	Body(bundle.Record) ([]byte, error)
+	Document(name string) (model.BakedDocument, error)
+	Picture(name string) (model.Picture, error)
+	File(name string) (string, error)
+	Converted(converter string, body []byte, args ...string) (file string, err error)
+	Body(file string) ([]byte, error)
 }
 
 // Blueprint says what a site is made of, and is run in a bake as well as when serving.
@@ -51,6 +53,7 @@ type settings struct {
 	palette  model.Palette
 	scale    model.Scale
 	siteCard *model.ShareCard
+	widgets  map[string]model.Widget
 	sheets   []assets.File
 	icons    []assets.File
 	fonts    fonts.FontSet
@@ -69,6 +72,8 @@ type Site struct {
 	blueprints []Blueprint
 	scripts    []assets.File
 	pictures   map[string]model.Picture
+	widgets    map[string]model.Widget
+	read       bool
 
 	routes      map[string]string
 	handlers    []route
@@ -87,6 +92,7 @@ func configure(id model.Identity, opts ...Option) *settings {
 		chrome:  model.Chrome{Identity: id.WithDefaults(), Brand: id.Name, Header: ui.Header, Footer: ui.Footer},
 		palette: model.PaletteEmber,
 		scale:   model.DefaultScale(),
+		widgets: map[string]model.Widget{},
 	}
 	for _, o := range opts {
 		o(s)
@@ -107,6 +113,8 @@ func configure(id model.Identity, opts ...Option) *settings {
 func (s *settings) site(from Source) *Site {
 	site := &Site{settings: *s, from: from, routes: map[string]string{}, pictures: map[string]model.Picture{}, versions: map[string]string{}}
 	site.chrome.NavEnd, site.chrome.FooterLinks, site.sheets = slices.Clip(site.chrome.NavEnd), slices.Clip(site.chrome.FooterLinks), slices.Clip(site.sheets)
+	site.widgets = map[string]model.Widget{"mermaid": site.mermaid, "cards": cards, "palette": palette}
+	maps.Copy(site.widgets, s.widgets)
 	return site
 }
 
@@ -124,11 +132,12 @@ func (s *Site) addSiteCard() error {
 	if err != nil {
 		return err
 	}
-	rec, err := s.from.Converted("card", body, s.fonts.ID)
-	if file, ok := rec.File(); ok {
-		s.chrome.OGImageURL = s.chrome.AbsURL(model.BundleURL(file))
+	file, err := s.from.Converted("card", body, s.fonts.ID)
+	if err != nil {
+		return fmt.Errorf("share card: %w", err)
 	}
-	return err
+	s.chrome.OGImageURL = s.chrome.AbsURL(model.BundleURL(file))
+	return nil
 }
 
 func (s *Site) close() error {

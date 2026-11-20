@@ -6,22 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/ui"
 	"go.yaml.in/yaml/v3"
 )
 
-func load[T any](baked []bundle.Document) ([]model.Document[T], error) {
+func load[T any](baked []model.BakedDocument) ([]model.Document[T], error) {
 	out := make([]model.Document[T], 0, len(baked))
 	bySlug := map[string]string{}
 	for _, b := range baked {
@@ -36,11 +33,7 @@ func load[T any](baked []bundle.Document) ([]model.Document[T], error) {
 			return nil, fmt.Errorf("%s and %s share the slug %q", other, b.Path, slug)
 		}
 		bySlug[slug] = b.Path
-		headings := make([]model.Heading, len(b.Headings))
-		for i, h := range b.Headings {
-			headings[i] = model.Heading(h)
-		}
-		out = append(out, model.Document[T]{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: headings})
+		out = append(out, model.Document[T]{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: b.Headings})
 	}
 	return out, nil
 }
@@ -50,16 +43,12 @@ func (s *Site) picture(name string) (model.Picture, error) {
 	if pic, ok := s.pictures[name]; ok {
 		return pic, nil
 	}
-	r, err := s.from.Picture(name)
+	pic, err := s.from.Picture(name)
 	if err != nil {
-		return model.Picture{}, err
+		return pic, err
 	}
-	files := map[int]string{}
-	for _, v := range r.Files {
-		files[v.W] = v.Name
-	}
-	m, base := r.Picture.Master, path.Base(name)
-	pic := model.Picture{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: s.scale}
+	base := path.Base(name)
+	pic.Name, pic.Scale = strings.TrimSuffix(base, path.Ext(base)), s.scale
 	s.pictures[name] = pic
 	return pic, nil
 }
@@ -69,7 +58,7 @@ func (s *Site) placePicture(name, alt, caption string, figure bool) (string, err
 	if err != nil {
 		return "", err
 	}
-	c := ui.Img(pic, model.SlotPage, alt)
+	c := ui.Img(pic, model.SizePage, alt)
 	if figure {
 		c = ui.LazyFigure(pic, alt, caption)
 	}
@@ -79,7 +68,7 @@ func (s *Site) placePicture(name, alt, caption string, figure bool) (string, err
 }
 
 func (s *Site) placeVideo(name, alt, caption string) (string, error) {
-	rec, err := s.from.File(name)
+	file, err := s.from.File(name)
 	if err != nil {
 		return "", err
 	}
@@ -87,76 +76,23 @@ func (s *Site) placeVideo(name, alt, caption string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s needs a still of the same name as its poster: %w", name, err)
 	}
-	file, _ := rec.File()
 	var b strings.Builder
 	err = ui.VideoFigure(model.BundleURL(file), poster, alt, caption).Render(context.Background(), &b)
 	return b.String(), err
 }
 
-func cards(body string) (string, error) {
-	var written []struct{ Href, Kicker, Title, Description, CTA string }
-	dec := yaml.NewDecoder(strings.NewReader(body))
-	dec.KnownFields(true)
-	if err := dec.Decode(&written); err != nil && !errors.Is(err, io.EOF) {
-		return "", err
-	}
-	list := make([]ui.CardData, len(written))
-	for i, c := range written {
-		list[i] = ui.CardData{Href: c.Href, Kicker: c.Kicker, Title: c.Title, Description: c.Description, CTA: c.CTA}
-	}
-	var b strings.Builder
-	err := ui.CardGrid(list).Render(context.Background(), &b)
-	return b.String(), err
-}
-
-func (s *Site) embed(widgets map[string]model.Widget) func(bundle.Embed) (string, error) {
-	return func(em bundle.Embed) (string, error) {
-		if w, ok := widgets[em.Fence]; ok {
-			html, err := w(em.Info, em.Body)
-			if err != nil {
-				return "", fmt.Errorf("%s: %w", em.Fence, err)
-			}
-			return html, nil
-		}
-		switch em.Fence {
-		case "":
-			if bundle.VideoType(em.Picture) == "" {
-				return s.placePicture(em.Picture, em.Alt, em.Caption, em.Figure)
-			}
-			if !em.Figure {
-				return "", fmt.Errorf("%s: a video goes in a paragraph of its own", em.Picture)
-			}
-			return s.placeVideo(em.Picture, em.Alt, em.Caption)
-		case "cards":
-			html, err := cards(em.Body)
-			if err != nil {
-				return "", fmt.Errorf("cards: %w", err)
-			}
-			return html, nil
-		case "mermaid":
-			rec, err := s.from.Converted("mermaid", []byte(strings.TrimSpace(em.Body)), s.fonts.ID)
-			if err != nil {
-				return "", err
-			}
-			svg, err := s.from.Body(rec)
-			return `<figure class="diagram">` + string(svg) + "</figure>", err
-		}
-		return "", fmt.Errorf("no widget %q; rebake", em.Fence)
-	}
-}
-
-func (s *Site) documents(pattern string, widgets map[string]model.Widget) ([]bundle.Document, error) {
+func (s *Site) documents(pattern string) ([]model.BakedDocument, error) {
 	names, err := s.from.Names(pattern)
 	if err != nil {
 		return nil, err
 	}
-	fences := slices.Sorted(maps.Keys(widgets))
-	docs := make([]bundle.Document, len(names))
+	s.read = true
+	docs := make([]model.BakedDocument, len(names))
 	for i, name := range names {
-		if docs[i], err = s.from.Document(name, fences); err != nil {
+		if docs[i], err = s.from.Document(name); err != nil {
 			return nil, err
 		}
-		if docs[i].HTML, err = docs[i].Fill(s.embed(widgets)); err != nil {
+		if docs[i].HTML, err = docs[i].Fill(s.fill); err != nil {
 			return nil, err
 		}
 	}
@@ -164,7 +100,7 @@ func (s *Site) documents(pattern string, widgets map[string]model.Widget) ([]bun
 }
 
 func (s *Site) Document[T any](name string) (model.Document[T], error) {
-	baked, err := s.documents(name, nil)
+	baked, err := s.documents(name)
 	if err == nil && len(baked) != 1 {
 		err = fmt.Errorf("quire: markdown %s: no such file under the content root", name)
 	}
@@ -184,7 +120,7 @@ func (s *Site) Markdown(name string) (templ.Component, error) {
 }
 
 func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
-	baked, err := s.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"), spec.Widgets)
+	baked, err := s.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"))
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +133,7 @@ func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Colle
 		if name == "" {
 			continue
 		}
-		if docs[i].Picture, err = s.picture(bundle.Resolve(d.Path, name)); err != nil {
+		if docs[i].Picture, err = s.picture(model.Resolve(d.Path, name)); err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
 		}
 	}

@@ -31,12 +31,12 @@ The markup carries `width` and `height`, so nothing shifts while a picture loads
 In a template of your own, place a document's picture with a component:
 
 ```templ
-@ui.Img(doc.Picture, model.SlotPage, title)
+@ui.Img(doc.Picture, model.SizePage, title)
 ```
 
-- `ui.Img(picture, slot, alt)` is the picture alone.
+- `ui.Img(picture, size, alt)` is the picture alone.
 - `ui.LazyFigure(picture, alt, caption)` is a figure at page width that loads when it nears the screen. A picture in a document's body is one of these.
-- `ui.HeroFigure(picture, slot, alt, caption)` is a figure fetched at high priority, for the picture at the top of a page. It draws nothing when the document has no picture.
+- `ui.HeroFigure(picture, size, alt, caption)` is a figure fetched at high priority, for the picture at the top of a page. It draws nothing when the document has no picture.
 
 ## Recordings
 
@@ -68,20 +68,20 @@ Most sites commit their pictures as they are and never think about this.
 > [!CAUTION]
 > A picture committed by hand keeps its EXIF, XMP and ICC profile in the repository, GPS from a phone included. Quire strips them only from what it writes, so run a phone picture through `quire ingest` first.
 
-For a source too big to commit, `quire ingest` writes a master from it: 8-bit, long edge at most `max(2560, widest slot)`, EXIF/XMP/ICC stripped, and nothing beside it.
+For a source too big to commit, `quire ingest` writes a master from it: 8-bit, long edge at most `max(2560, widest size)`, EXIF/XMP/ICC stripped, and nothing beside it.
 A source already under the cap is not upscaled, and shrinking one says so.
 
 ```sh
 go run github.com/lahickey/quire/cmd/quire ingest art eight-thirty ./press.tif
 ```
 
-## Slots
+## Sizes
 
-A slot says how wide a picture is shown where it is placed.
-Slots are widths, not roles: `thumb`, `column`, `page`, `page-wide`, `page-full`, `bleed`, narrowest first, and the set is closed.
-A card is rendered at a column and a hero at a page; the template says where, and the slot's name says how wide.
+A size says how wide a picture is shown where it is placed.
+Sizes are widths, not roles: `thumb`, `column`, `page`, `page-wide`, `page-full`, `bleed`, narrowest first, and the set is closed.
+A card is rendered at a column and a hero at a page; the template says where, and the size's name says how wide.
 
-`HeroFigure(im, SlotBleed, …)` is the whole of running one to the window edge, with fetch priority.
+`HeroFigure(picture, SizeBleed, …)` is the whole of running one to the window edge, with fetch priority.
 
 ## The ladder
 
@@ -96,7 +96,7 @@ flowchart LR
 
 The ladder is one global list of widths from a thumbnail up to the cap. Nothing about a layout reaches it: a width taken from the grid is wrong as soon as a site's own sheet changes the grid.
 A picture offers the rungs below its master plus the master itself, so art authored at an exact width is served at it and nothing is upscaled.
-A slot picks which rung `src` lands on and where `srcset` stops, so a 4rem thumb lists three rungs, not ten. Every picture with the same master encodes the same files.
+A size picks which rung `src` lands on and where `srcset` stops, so a 4rem thumb lists three rungs, not ten. Every picture with the same master encodes the same files.
 
 ## Share images
 
@@ -107,7 +107,7 @@ Every page without a picture of its own shares the site card: one PNG the bake d
 
 ### How a picture is served
 
-Placing a picture looks its master up in the bundle's journal and mints a URL per slot: `/_quire/img/{key}.{ext}`. It opens no file.
+Placing a picture looks its master up in the bundle's journal and mints a URL per size: `/_quire/img/{key}.{ext}`. It opens no file.
 A binary with no journal entry for a master cannot place it, and says so at boot rather than 404ing a request later.
 
 Bytes come from the bundle's files, streamed.
@@ -127,4 +127,4 @@ A bake reads whatever master content refers to and corrects it in memory, so non
 - A master over the cap is fitted in memory every bake, and the committed file is bigger than anything that will be served from it.
 - A master with an EXIF orientation flag is rotated in memory each time.
 - A master added by hand keeps its EXIF, XMP and ICC profile in the repository, GPS from a phone included. Quire strips them only from what it writes.
-- A master narrower than the widest slot that uses it is served at its own width. Nothing breaks; the picture is just soft on a dense screen.
+- A master narrower than the widest size that uses it is served at its own width. Nothing breaks; the picture is just soft on a dense screen.

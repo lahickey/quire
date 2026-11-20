@@ -14,7 +14,7 @@ Rules for coding agents working on Quire.
 | `*.go` at the root | The site and the server |
 | `app/` | The helpers: `Run` |
 | `model/`, `ui/`, `plugin/` | Data, components, the plugin API |
-| `bundle/` | What a bake leaves, and its reader |
+| `bundle/` | Opens what a bake left |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
 | `libs/` | Packages for use outside Quire, such as `libs/lexis` |
 | `bake/` | The baker: cache, keys, journal |

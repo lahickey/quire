@@ -2,6 +2,7 @@ package quire
 
 import (
 	"io/fs"
+	"maps"
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
@@ -77,6 +78,11 @@ func WithFooterLinks(links ...model.Link) Option {
 
 func WithNavEnd(cs ...templ.Component) Option {
 	return func(s *settings) { s.chrome.NavEnd = append(s.chrome.NavEnd, cs...) }
+}
+
+// WithWidgets fills every fence of each name, in any document of the site.
+func WithWidgets(ws map[string]model.Widget) Option {
+	return func(s *settings) { maps.Copy(s.widgets, ws) }
 }
 
 func WithSiteCard(c model.ShareCard) Option {

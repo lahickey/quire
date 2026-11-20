@@ -211,7 +211,7 @@ The page grid is two numbers: `Root` and `Col`.
 - Gutter and thumb are rem from `Root`.
 - A `.page` is two columns of `Col`, `.page--wide` three, `.page--full` four. `Col` defaults to 336.
 
-`WithScale` sets both. Page widths, the breakpoint and the slot sizes follow.
+`WithScale` sets both. Page widths, the breakpoint and the picture sizes follow.
 Read the properties with `var()`; never restate the number.
 
 ### Tokens

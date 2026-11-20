@@ -1,6 +1,7 @@
 package quire
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"image"
@@ -21,6 +22,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/bake"
 	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/testkit"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/convert"
@@ -107,11 +109,9 @@ func placed(t *testing.T, files fs.FS, name string) model.Picture {
 	return im
 }
 
-func rungFile(r bundle.Record, w int) string {
-	for _, v := range r.Files {
-		if v.W == w {
-			return v.Name
-		}
+func rungFile(r journal.Record, w int) string {
+	if i := slices.Index(r.Picture().Widths, w); i >= 0 {
+		return r.Files[i].Name
 	}
 	return ""
 }
@@ -372,10 +372,10 @@ func TestAliases(t *testing.T) {
 }
 
 func TestFrontmatterFailsLoad(t *testing.T) {
-	if _, err := load[note]([]bundle.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
+	if _, err := load[note]([]model.BakedDocument{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
 		t.Error("an unknown frontmatter field loaded")
 	}
-	docs := []bundle.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
+	docs := []model.BakedDocument{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
 	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
 		t.Errorf("two documents with one slug loaded: %v", err)
 	}
@@ -475,10 +475,10 @@ func TestPluginScoping(t *testing.T) {
 	}
 }
 
-func TestSrcSetIsPerSlot(t *testing.T) {
+func TestSrcSetIsPerSize(t *testing.T) {
 	body := testkit.Photo(t, 2400, 1600, false)
 	im := placed(t, fstest.MapFS{"r.png": {Data: body}}, "r.png")
-	thumb, page := im.SrcSet(model.SlotThumb), im.SrcSet(model.SlotPage)
+	thumb, page := im.SrcSet(model.SizeThumb), im.SrcSet(model.SizePage)
 	if strings.Count(thumb, ",") != 2 {
 		t.Errorf("thumb srcset is not three rungs: %s", thumb)
 	}
@@ -527,7 +527,7 @@ func TestBodyMarkdownImages(t *testing.T) {
 	if !ok {
 		t.Fatal("the site missed the body path")
 	}
-	if !strings.Contains(d.HTML, im.URL(model.SlotPage)) {
+	if !strings.Contains(d.HTML, im.URL(model.SizePage)) {
 		t.Fatal("figure src is not the hero variant")
 	}
 	if strings.Count(d.HTML, `<figure class="figure">`) != 2 {
@@ -559,14 +559,13 @@ func TestBodyVideo(t *testing.T) {
 		t.Fatal(err)
 	}
 	d, _ := col.Get("hello")
-	file, _ := v.site.from.File("posts/clip.webm")
-	name, _ := file.File()
-	for _, want := range []string{`src="` + model.BundleURL(name) + `"`, `poster="` + v.site.pictures["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
+	name, _ := v.site.from.File("posts/clip.webm")
+	for _, want := range []string{`src="` + model.BundleURL(name) + `"`, `poster="` + v.site.pictures["posts/clip.png"].URL(model.SizePage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
 		if !strings.Contains(d.HTML, want) {
 			t.Errorf("no %s in %s", want, d.HTML)
 		}
 	}
-	if got, err := v.site.from.Body(file); err != nil || string(got) != string(clip) {
+	if got, err := v.site.from.Body(name); err != nil || string(got) != string(clip) {
 		t.Errorf("the bundle holds %q, %v", got, err)
 	}
 
@@ -589,19 +588,19 @@ func TestMissingBodyImageFailsLoad(t *testing.T) {
 	}
 }
 
-func TestNarrowMasterCollapsesSlots(t *testing.T) {
+func TestNarrowMasterCollapsesSizes(t *testing.T) {
 	im := placed(t, fstest.MapFS{"small.png": {Data: testkit.Flat(t, 600, 400, false)}}, "small.png")
-	if im.URL(model.SlotPage) != im.URL(model.SlotColumn) {
-		t.Fatalf("600px master serves two files: %s", im.SrcSet(model.SlotPage))
+	if im.URL(model.SizePage) != im.URL(model.SizeColumn) {
+		t.Fatalf("600px master serves two files: %s", im.SrcSet(model.SizePage))
 	}
-	if n := strings.Count(im.SrcSet(model.SlotPage), " 600w"); n != 1 {
-		t.Fatalf("width 600 listed %d times: %s", n, im.SrcSet(model.SlotPage))
+	if n := strings.Count(im.SrcSet(model.SizePage), " 600w"); n != 1 {
+		t.Fatalf("width 600 listed %d times: %s", n, im.SrcSet(model.SizePage))
 	}
-	if im.Sizes(model.SlotPage) == im.Sizes(model.SlotColumn) {
+	if im.Sizes(model.SizePage) == im.Sizes(model.SizeColumn) {
 		t.Error("a collapsed file must not collapse the sizes")
 	}
-	if !strings.Contains(im.SrcSet(model.SlotPage), im.URL(model.SlotPage)+" 600w") {
-		t.Fatalf("src is not in srcset: %s vs %s", im.URL(model.SlotPage), im.SrcSet(model.SlotPage))
+	if !strings.Contains(im.SrcSet(model.SizePage), im.URL(model.SizePage)+" 600w") {
+		t.Fatalf("src is not in srcset: %s vs %s", im.URL(model.SizePage), im.SrcSet(model.SizePage))
 	}
 }
 
@@ -624,6 +623,54 @@ func TestMarkdownOutsideACollection(t *testing.T) {
 	}
 	if missing == nil {
 		t.Fatal("a missing file is not an error")
+	}
+}
+
+func TestWidgets(t *testing.T) {
+	files := fstest.MapFS{"home/a.md": {Data: []byte("---\n---\n\n```box Title\ninside\n```\n\n```go\nx := 1\n```\n\n```nothing\nplain\n```\n")}}
+	box := func(info, body string) (string, error) {
+		return "<aside>" + info + ":" + strings.TrimSpace(body) + "</aside>", nil
+	}
+	var html strings.Builder
+	read := func(s *Site) error {
+		c, err := s.Markdown("home/a.md")
+		if err != nil {
+			return err
+		}
+		html.Reset()
+		return c.Render(t.Context(), &html)
+	}
+	if _, err := served(t, files, model.Identity{}, read, WithWidgets(map[string]model.Widget{"box": box})); err != nil {
+		t.Fatal(err)
+	}
+	for what, want := range map[string]string{
+		"a widget's fence, outside any collection": "<aside>Title:inside</aside>",
+		"a fence in a language":                    "lx-number",
+		"a fence nothing claims":                   "<pre><code>plain\n</code></pre>",
+	} {
+		if !strings.Contains(html.String(), want) {
+			t.Errorf("%s: no %s in %s", what, want, html.String())
+		}
+	}
+	if _, err := served(t, files, model.Identity{}, read, WithWidgets(map[string]model.Widget{"go": box})); err == nil || !strings.Contains(err.Error(), "language") {
+		t.Errorf("a widget named for a language the bake highlights must fail the build, got %v", err)
+	}
+	late := func(s *Site) error {
+		s.AddWidget("box", box)
+		return nil
+	}
+	if _, err := served(t, files, model.Identity{}, func(s *Site) error { return cmp.Or(read(s), late(s)) }); err == nil {
+		t.Error("a widget added after content was read was accepted")
+	}
+}
+
+func TestPaletteDrawsRangesAndTheRest(t *testing.T) {
+	html, err := palette("moss", "all\n")
+	if err != nil || strings.Count(html, `data-palette="moss"`) != 2 || !strings.Contains(html, "var(--qr-accent-12)") || !strings.Contains(html, "var(--qr-error-text)") || strings.Contains(html, "--qr-error-1") {
+		t.Errorf("a named palette, whole: %v\n%s", err, html)
+	}
+	if _, err := palette("", "everything\n"); err == nil {
+		t.Error("an unknown role drew")
 	}
 }
 
@@ -662,7 +709,7 @@ func TestDiagrams(t *testing.T) {
 		t.Fatalf("diagram not inlined:\n%s", baked)
 	}
 	lacking := fstest.MapFS{}
-	var kept []bundle.Record
+	var kept []journal.Record
 	for name, r := range testkit.ReadJournal(t, out) {
 		if strings.HasPrefix(name, "mermaid/") {
 			continue
@@ -676,7 +723,7 @@ func TestDiagrams(t *testing.T) {
 			lacking[v.Name] = &fstest.MapFile{Data: body}
 		}
 	}
-	lacking[bundle.JournalName] = &fstest.MapFile{Data: bundle.WriteJournal(kept)}
+	lacking[journal.Name] = &fstest.MapFile{Data: journal.Write(kept)}
 	if _, err := load(lacking); err == nil || !strings.Contains(err.Error(), "not baked") {
 		t.Fatalf("a document whose diagram the bundle lacks must fail the load, got %v", err)
 	}
@@ -784,7 +831,8 @@ func TestLayers(t *testing.T) {
 		t.Fatal(err)
 	}
 	may := map[string]func(string) bool{
-		q + "/model":  func(p string) bool { return p == q+"/bundle" || p == q+"/internal/radix" },
+		q + "/model":  func(p string) bool { return p == q+"/internal/radix" },
+		q + "/bundle": func(p string) bool { return p == q+"/model" || p == q+"/internal/journal" },
 		q + "/ui":     func(p string) bool { return p == q+"/model" },
 		q + "/plugin": func(p string) bool { return p == q+"/model" || p == q+"/internal/session" },
 	}

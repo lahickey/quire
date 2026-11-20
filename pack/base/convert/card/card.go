@@ -19,7 +19,6 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/fonts/measure"
 	"github.com/lahickey/quire/internal/radix"
 	"github.com/lahickey/quire/model"
@@ -95,7 +94,7 @@ func (p pen) text(s string, size float64, c color.Color, x, y int, track float64
 }
 
 func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
-	const margin, width = 96, bundle.ShareWidth - 2*96
+	const margin, width = 96, model.ShareWidth - 2*96
 	ink := map[string]color.Color{}
 	n := radix.Scales[c.Palette.Neutral].Dark
 	for name, hex := range map[string]string{"bg": n[0], "text": n[11], "secondary": n[10], "muted": n[9], "accent": radix.Scales[c.Palette.Accent].Dark[10]} {
@@ -105,7 +104,7 @@ func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
 		}
 		ink[name] = col
 	}
-	img := image.NewRGBA(image.Rect(0, 0, bundle.ShareWidth, height))
+	img := image.NewRGBA(image.Rect(0, 0, model.ShareWidth, height))
 	imgdraw.Draw(img, img.Bounds(), image.NewUniform(ink["bg"]), image.Point{}, imgdraw.Src)
 	bold, regular := pen{img, faces.Face(false, 700)}, pen{img, faces.Face(false, 400)}
 
@@ -144,7 +143,7 @@ func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
 		}
 		y += 36
 	}
-	if err := regular.text(c.Domain, 20, ink["muted"], bundle.ShareWidth-margin, height-88, 0, true); err != nil {
+	if err := regular.text(c.Domain, 20, ink["muted"], model.ShareWidth-margin, height-88, 0, true); err != nil {
 		return nil, err
 	}
 	return img, nil
@@ -159,15 +158,15 @@ func (Converter) Version() int { return Version }
 // Convert takes a model.ShareCard as JSON, and the font set's id as its one argument.
 func (c Converter) Convert(in bake.Input) (bake.Output, error) {
 	if len(in.Args) != 1 || in.Args[0] != c.faces.Set.ID {
-		return bake.Output{}, fmt.Errorf("quire: card: asked for in fonts %q, and the bake has %s", in.Args, c.faces.Set.ID)
+		return bake.Output{}, fmt.Errorf("asked for in fonts %q, and the bake has %s", in.Args, c.faces.Set.ID)
 	}
 	var card model.ShareCard
 	if err := json.Unmarshal(in.Body, &card); err != nil {
-		return bake.Output{}, fmt.Errorf("quire: card: %w", err)
+		return bake.Output{}, err
 	}
 	img, err := draw(card, c.faces)
 	if err != nil {
-		return bake.Output{}, fmt.Errorf("quire: card: %w", err)
+		return bake.Output{}, err
 	}
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 )
 
@@ -62,7 +62,7 @@ func (s *Site) versioned(url, hash string) string {
 
 func (s *Site) addBytes(url, contentType string, body []byte) string {
 	s.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
-	return s.versioned(url, bundle.Hash(body))
+	return s.versioned(url, journal.Hash(body))
 }
 
 func (s *Site) prepare(path string, c templ.Component, code int) *serve.Prepared {
@@ -94,7 +94,7 @@ func (s *Site) AddFile(urlPath string, fsys fs.FS, name string) string {
 	s.route("GET "+urlPath, ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, fsys, name)
 	})
-	return s.versioned(urlPath, bundle.Hash(body))
+	return s.versioned(urlPath, journal.Hash(body))
 }
 
 func (s *Site) SetNotFound(c templ.Component) {

@@ -1,6 +1,4 @@
-package bundle
-
-import "fmt"
+package model
 
 const (
 	MasterCap  = 2560
@@ -10,11 +8,8 @@ const (
 
 var ladder = []int{64, 128, 232, 408, 680, 1096, 1704, MasterCap}
 
-func PictureKey(version int, srcDigest string) string {
-	return Hash(fmt.Appendf(nil, "v=%d\nsrc=%s\n", version, srcDigest))
-}
-
-func LadderFor(masterW int) []int {
+// Ladder is the widths a master is encoded at: the standard rungs below it, and the master itself.
+func Ladder(masterW int) []int {
 	if masterW < 1 {
 		return nil
 	}
@@ -31,7 +26,7 @@ func LadderFor(masterW int) []int {
 	return append(out, masterW)
 }
 
-func Snap(ladder []int, want int) int {
+func snap(ladder []int, want int) int {
 	for _, w := range ladder {
 		if w >= want {
 			return w

@@ -9,10 +9,10 @@ import (
 )
 
 var fingerprints = map[string]string{
-	"card":     "748a1d3740481de7",
-	"markdown": "d290d2d3bcf46dd4",
-	"mermaid":  "f9a51c7cbea42c13",
-	"picture":  "5e040776d4436245",
+	"card":     "d2e610632bc225eb",
+	"markdown": "95e1f65c45a9d4f6",
+	"mermaid":  "ec391902b229b6c6",
+	"picture":  "f614115b8149a323",
 }
 
 func TestConverterFingerprints(t *testing.T) { baketest.Fingerprints(t, fingerprints) }

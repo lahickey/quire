@@ -14,7 +14,7 @@ import "github.com/lahickey/quire/model"
 import "github.com/lahickey/quire/ui"
 
 // The home page: the newest piece edge to edge, then every piece as a card.
-// SlotBleed is the full width of the window; SlotColumn is one column of the grid.
+// SizeBleed is the full width of the window; SizeColumn is one column of the grid.
 func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -48,7 +48,7 @@ func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = ui.HeroFigure(c.Docs()[0].Picture, model.SlotBleed, c.Docs()[0].Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.HeroFigure(c.Docs()[0].Picture, model.SizeBleed, c.Docs()[0].Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -87,7 +87,7 @@ func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = ui.Img(d.Picture, model.SlotColumn, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ui.Img(d.Picture, model.SizeColumn, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -137,7 +137,7 @@ func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 }
 
 // The /pieces index: a wall, one piece across the widest page the site builds.
-// .page--full is four columns, and SlotPageFull is the picture that fills it.
+// .page--full is four columns, and SizePageFull is the picture that fills it.
 func wall(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -202,7 +202,7 @@ func wall(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = ui.Img(d.Picture, model.SlotPageFull, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ui.Img(d.Picture, model.SizePageFull, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -312,7 +312,7 @@ func piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece], 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = ui.HeroFigure(d.Picture, model.SlotPageWide, d.Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.HeroFigure(d.Picture, model.SizePageWide, d.Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

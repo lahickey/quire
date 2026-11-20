@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/bake"
 	"github.com/lahickey/quire/internal/cache"
 )
 
@@ -20,21 +20,21 @@ func outStem(name string) (string, error) {
 	return s, nil
 }
 
-func Ingest(dir, name string, src []byte) (bundle.MasterMeta, string, error) {
+func Ingest(dir, name string, src []byte) (bake.MasterInfo, string, error) {
 	stem, err := outStem(name)
 	if err != nil {
-		return bundle.MasterMeta{}, "", err
+		return bake.MasterInfo{}, "", err
 	}
 	m, ext, body, err := master(name, src)
 	if err != nil {
-		return bundle.MasterMeta{}, "", err
+		return bake.MasterInfo{}, "", err
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return bundle.MasterMeta{}, "", err
+		return bake.MasterInfo{}, "", err
 	}
 	master := stem + "." + ext
 	if err := cache.Dir(dir).Write(master, body); err != nil {
-		return bundle.MasterMeta{}, "", err
+		return bake.MasterInfo{}, "", err
 	}
 	return m, master, nil
 }

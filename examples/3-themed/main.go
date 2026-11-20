@@ -23,7 +23,8 @@ var static embed.FS
 var kinds = model.Tags{"lang": {"Go"}, "topic": {"Design"}}
 
 // A widget turns a named markdown fence into HTML: a ```swatch fence becomes a
-// coloured chip. It runs at serve time, so changing it needs no rebake.
+// coloured chip, in any document of the site. It runs at serve time, so
+// changing it needs no rebake.
 var widgets = map[string]model.Widget{
 	"swatch": func(_, body string) (string, error) {
 		return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
@@ -40,7 +41,7 @@ var harbour = model.Palette{
 // declare says what the site holds: its content and pages. It runs at bake and at boot.
 func declare(site *quire.Site) error {
 	// content/writing/*.md at /writing, with the default index and article.
-	notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds, Widgets: widgets})
+	notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds})
 	if err != nil {
 		return err
 	}
@@ -75,6 +76,7 @@ func main() {
 		// palette and two more of the built-in ones.
 		quire.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk),
 		quire.WithIcons(static, "favicon.svg"),
+		quire.WithWidgets(widgets),
 		// site.css applies at every width, site-narrow.css only on narrow screens.
 		quire.WithStylesheets(static, "site.css"),
 		quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),

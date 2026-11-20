@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/internal/journal"
 )
 
 func TestRedirect(t *testing.T) {
@@ -118,14 +119,10 @@ func TestFiles(t *testing.T) {
 	b, err := bundle.Open(fstest.MapFS{
 		name: {Data: []byte("webp")},
 		clip: {Data: []byte("mp4")},
-		bundle.JournalName: {Data: bundle.WriteJournal([]bundle.Record{{
-			Name: "a.jpg", Kind: bundle.KindPicture,
-			Files:   []bundle.File{{Name: name, W: 64, Size: 4}},
-			Picture: bundle.Picture{Format: bundle.Format{Ext: "webp", Type: "image/webp"}},
-		}, {
-			Name: "a.mp4", Kind: bundle.KindFile, Type: "video/mp4",
-			Files: []bundle.File{{Name: clip, Size: 3}},
-		}})},
+		journal.Name: {Data: journal.Write([]journal.Record{
+			journal.Record{Name: "a.jpg", Kind: journal.KindPicture, Files: []journal.File{{Name: name, Size: 4}}}.WithPicture(journal.Picture{Type: "image/webp", Widths: []int{64}}),
+			{Name: "a.mp4", Kind: journal.KindFile, Type: "video/mp4", Files: []journal.File{{Name: clip, Size: 3}}},
+		})},
 	})
 	if err != nil {
 		t.Fatal(err)

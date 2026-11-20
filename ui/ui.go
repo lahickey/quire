@@ -32,8 +32,8 @@ func navClass(path, href string) string {
 	return "nav-link"
 }
 
-func figureClass(slot model.Slot) string {
-	if slot == model.SlotBleed {
+func figureClass(size model.Size) string {
+	if size == model.SizeBleed {
 		return "figure figure--bleed"
 	}
 	return "figure"
@@ -49,7 +49,7 @@ func Render(c templ.Component) http.HandlerFunc {
 }
 
 func Code(text string) templ.Component {
-	return templ.Raw(model.CodeOpen + "<pre><code>" + templ.EscapeString(text) + "</code></pre>" + model.CodeClose)
+	return templ.Raw(model.CodeBlock(templ.EscapeString(text)))
 }
 
 func CurrentYear() string { return strconv.Itoa(time.Now().Year()) }

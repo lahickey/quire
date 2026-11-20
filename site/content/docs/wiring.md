@@ -41,6 +41,7 @@ An `Option` changes how Quire behaves.
 - `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
 - `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd`, `ui.PalettePicker` and `ui.ThemeToggle`.
 - `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
+- `WithWidgets` gives the site its [widgets](./content.md#widgets).
 - `WithSiteCard` changes the share card the bake draws.
 - `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
 
@@ -77,6 +78,7 @@ What it can add:
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
 - `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
 - `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
+- `AddWidget(name, widget)` adds a [widget](./content.md#widgets), and has to come before any content is read.
 - `SetFooter(component)`, `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` do what the options of those names do.
 - `Identity()` is the identity the site was made with.
 - `Include(blueprint)` runs another blueprint on the same site, its `Live` too, so a site can add a pack to pages of its own.

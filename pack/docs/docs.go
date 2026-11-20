@@ -46,8 +46,6 @@ type Landing struct {
 
 // Pack's fields each replace one page; nil is the default of the same name.
 type Pack struct {
-	Widgets map[string]model.Widget
-
 	Home  func(model.Shell, model.Identity, model.Document[Landing], *Collection) templ.Component
 	Index func(model.Shell, *Collection) templ.Component
 	Item  func(model.Shell, *Collection, Document) templ.Component
@@ -105,7 +103,6 @@ func (p *Pack) Declare(site *quire.Site) error {
 		ID:          "docs",
 		Title:       cmp.Or(l.Docs.Title, "Documentation"),
 		Description: l.Docs.Summary,
-		Widgets:     p.Widgets,
 		Kicker:      func(d Document) string { return places[d.Slug].section },
 		Sort:        func(a, b Document) int { return cmp.Compare(places[a.Slug].order, places[b.Slug].order) },
 		Index:       index,

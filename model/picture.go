@@ -8,20 +8,19 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/bundle"
 )
 
 const BundlePath = "/_quire/img/"
 
-type Slot int
+type Size int
 
 const (
-	SlotThumb Slot = iota + 1
-	SlotColumn
-	SlotPage
-	SlotPageWide
-	SlotPageFull
-	SlotBleed
+	SizeThumb Size = iota + 1
+	SizeColumn
+	SizePage
+	SizePageWide
+	SizePageFull
+	SizeBleed
 )
 
 type Picture struct {
@@ -57,61 +56,61 @@ func (p Picture) shareURL() string {
 	}
 	w := rungs[0]
 	for _, r := range rungs {
-		if r <= bundle.ShareWidth {
+		if r <= ShareWidth {
 			w = r
 		}
 	}
 	return BundleURL(p.Files[w])
 }
 
-func (s Slot) String() string {
+func (s Size) String() string {
 	switch s {
-	case SlotThumb:
+	case SizeThumb:
 		return "thumb"
-	case SlotColumn:
+	case SizeColumn:
 		return "column"
-	case SlotPage:
+	case SizePage:
 		return "page"
-	case SlotPageWide:
+	case SizePageWide:
 		return "page-wide"
-	case SlotPageFull:
+	case SizePageFull:
 		return "page-full"
-	case SlotBleed:
+	case SizeBleed:
 		return "bleed"
 	}
-	return "slot(" + strconv.Itoa(int(s)) + ")"
+	return "size(" + strconv.Itoa(int(s)) + ")"
 }
 
 func BundleURL(file string) string { return BundlePath + file }
 
-func (p Picture) URL(slot Slot) string {
-	name, ok := p.Files[bundle.Snap(p.rungs(), 2*p.Scale.display(slot))]
+func (p Picture) URL(size Size) string {
+	name, ok := p.Files[snap(p.rungs(), 2*p.Scale.display(size))]
 	if !ok {
 		return ""
 	}
 	return BundleURL(name)
 }
 
-func (p Picture) SrcSet(slot Slot) string {
+func (p Picture) SrcSet(size Size) string {
 	rungs := p.rungs()
 	if len(rungs) == 0 {
 		return ""
 	}
-	w := 2 * p.Scale.display(slot)
+	w := 2 * p.Scale.display(size)
 	var parts []string
-	for _, r := range window(rungs, min(p.Scale.bottom(slot), w), max(p.Scale.top(slot), w)) {
+	for _, r := range window(rungs, min(p.Scale.bottom(size), w), max(p.Scale.top(size), w)) {
 		parts = append(parts, fmt.Sprintf("%s %dw", BundleURL(p.Files[r]), r))
 	}
 	return strings.Join(parts, ", ")
 }
 
-func (p Picture) Sizes(slot Slot) string { return p.Scale.sizes(slot) }
+func (p Picture) Sizes(size Size) string { return p.Scale.sizes(size) }
 
-func (p Picture) Attrs(slot Slot, priority bool) templ.Attributes {
+func (p Picture) Attrs(size Size, priority bool) templ.Attributes {
 	a := templ.Attributes{
-		"src":      p.URL(slot),
-		"srcset":   p.SrcSet(slot),
-		"sizes":    p.Sizes(slot),
+		"src":      p.URL(size),
+		"srcset":   p.SrcSet(size),
+		"sizes":    p.Sizes(size),
 		"width":    strconv.Itoa(p.Width),
 		"height":   strconv.Itoa(p.Height),
 		"decoding": "async",

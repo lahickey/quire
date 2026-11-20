@@ -12,7 +12,8 @@ import (
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
 
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/bake"
+	"github.com/lahickey/quire/model"
 )
 
 var decodes atomic.Int64
@@ -60,15 +61,15 @@ func read(name string, src []byte) (*image.NRGBA, error) {
 	if err != nil {
 		return nil, fmt.Errorf("quire: picture %s: %w", name, err)
 	}
-	frame := fit(applyOrientation(img, jpegOrientation(src)), bundle.MasterCap)
+	frame := fit(applyOrientation(img, jpegOrientation(src)), model.MasterCap)
 	if frame.Bounds().Dx() < 1 || frame.Bounds().Dy() < 1 {
 		return nil, fmt.Errorf("quire: picture %s: empty frame", name)
 	}
 	return frame, nil
 }
 
-func describe(frame *image.NRGBA, src []byte) bundle.MasterMeta {
-	m := bundle.MasterMeta{
+func describe(frame *image.NRGBA, src []byte) bake.MasterInfo {
+	m := bake.MasterInfo{
 		W:     frame.Bounds().Dx(),
 		H:     frame.Bounds().Dy(),
 		Alpha: !frame.Opaque(),

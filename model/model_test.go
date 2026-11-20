@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"math"
+	"slices"
 	"testing"
 
 	"github.com/lahickey/quire/internal/radix"
@@ -87,5 +88,25 @@ func TestTags(t *testing.T) {
 	}
 	if _, err := Collect(Basic{ID: "x", Tags: tags}, doc("golang"), Identity{}, false); err == nil {
 		t.Error("a tag outside the vocabulary loaded")
+	}
+}
+
+func TestLadderIsTheMaster(t *testing.T) {
+	for _, c := range []struct {
+		master int
+		want   []int
+	}{
+		{2400, []int{64, 128, 232, 408, 680, 1096, 1704, 2400}},
+		{1704, []int{64, 128, 232, 408, 680, 1096, 1704}},
+		{1100, []int{64, 128, 232, 408, 680, 1100}},
+		{50, []int{50}},
+	} {
+		got := Ladder(c.master)
+		if !slices.Equal(got, c.want) {
+			t.Errorf("Ladder(%d) = %v, want %v", c.master, got, c.want)
+		}
+		if slices.Max(got) != c.master {
+			t.Errorf("Ladder(%d) tops at %d, not the master", c.master, slices.Max(got))
+		}
 	}
 }

@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/model"
 )
 
-func converted(name, raw string) (bundle.Document, error) {
+func converted(name, raw string) (model.BakedDocument, error) {
 	out, err := Converter{}.Convert(bake.Input{Name: name, Body: []byte(raw)})
 	if err != nil {
-		return bundle.Document{}, err
+		return model.BakedDocument{}, err
 	}
-	return bundle.DecodeDocument(out.Body)
+	return model.DecodeBaked(out.Body)
 }
 
 func TestCallouts(t *testing.T) {
@@ -25,7 +25,7 @@ func TestCallouts(t *testing.T) {
 		{"> [!NOTE]", "[!NOTE]", "callout"},
 		{"> [!SHOUT]\n> Not a kind.", "[!SHOUT]", "callout"},
 	} {
-		html, _, _, err := render(c.src, "", nil)
+		html, _, _, err := render(c.src, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,7 +42,7 @@ func TestBracketedSpans(t *testing.T) {
 		{"Not [a span]{style=red}.", "[a span]{style=red}", "<span"},
 		{"[<b>]{.x}", `<span class="x">&lt;b&gt;</span>`, "<b>"},
 	} {
-		html, _, _, err := render(c.src, "", nil)
+		html, _, _, err := render(c.src, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestLinksAndHeadingAnchors(t *testing.T) {
 		"[a](./notes.mdx)":              `href="./notes.mdx"`,
 		"## Shipping it":                `<h2 id="shipping-it">Shipping it<a class="heading-anchor" href="#shipping-it"`,
 	} {
-		html, _, _, err := render(src, "", nil)
+		html, _, _, err := render(src, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,40 +71,47 @@ func TestLinksAndHeadingAnchors(t *testing.T) {
 	}
 }
 
-func TestFencesAreHoles(t *testing.T) {
-	box := bundle.Embed{Fence: "box", Info: "Title", Body: "inside\n"}
+func TestNamedFencesAreSlots(t *testing.T) {
+	box := model.Slot{Fence: "box", Info: "Title", Body: "inside\n"}
 	for _, c := range []struct {
 		name, src string
-		want      []bundle.Embed
+		want      []model.Slot
 		not       string
 	}{
-		{"one", "Hello\n\n```box Title\ninside\n```\n\nAfter.\n", []bundle.Embed{box}, "```"},
-		{"adjacent", "```box one\nbody\n```\n```box two\nbody\n```\n", []bundle.Embed{{Fence: "box", Info: "one", Body: "body\n"}, {Fence: "box", Info: "two", Body: "body\n"}}, "<p>"},
-		{"in a list", "- item\n\n  ```box nested\n  x\n  ```\n", []bundle.Embed{{Fence: "box", Info: "nested", Body: "x\n"}}, "language-box"},
-		{"shown, not run", "````md\n```box Title\ninside\n```\n````\n", nil, "\x00"},
+		{"one", "Hello\n\n```box Title\ninside\n```\n\nAfter.\n", []model.Slot{box}, "```"},
+		{"adjacent", "```box one\nbody\n```\n```box two\nbody\n```\n", []model.Slot{{Fence: "box", Info: "one", Body: "body\n"}, {Fence: "box", Info: "two", Body: "body\n"}}, "<p>"},
+		{"in a list", "- item\n\n  ```box nested\n  x\n  ```\n", []model.Slot{{Fence: "box", Info: "nested", Body: "x\n"}}, "language-box"},
+		{"shown, not run", "````md\n```box Title\ninside\n```\n````\n", nil, "language-box"},
 	} {
-		html, _, embeds, err := render(c.src, "", []string{"box"})
+		html, _, slots, err := render(c.src, "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Equal(embeds, c.want) || strings.Contains(html, c.not) {
-			t.Errorf("%s: %+v\n%s", c.name, embeds, html)
+		boxes := slices.DeleteFunc(slots, func(sl model.Slot) bool { return sl.Fence != "box" })
+		if !slices.Equal(boxes, c.want) || strings.Contains(html, c.not) {
+			t.Errorf("%s: %+v\n%s", c.name, boxes, html)
 		}
 	}
 }
 
-func TestOnlyCodeGetsACopyButton(t *testing.T) {
-	html, _, _, err := render("```go\nx := 1\n```\n\n```\nplain\n```\n\n```box\ny\n```\n", "", []string{"box"})
-	if err != nil {
-		t.Fatal(err)
+func TestTheBakeFillsALanguageAndLeavesTheRest(t *testing.T) {
+	html, _, slots, err := render("```go\nx := 1\n```\n\n```\nplain\n```\n\n```box\ny\n```\n", "")
+	if err != nil || len(slots) != 2 {
+		t.Fatalf("%v %+v", err, slots)
 	}
-	if strings.Count(html, `class="code-copy"`) != 2 || strings.Count(html, "</div>") != 2 {
-		t.Errorf("want a button round each code block and none round the widget:\n%s", html)
+	if code := slots[0]; code.Body != "" || !strings.Contains(code.HTML, `class="code-copy"`) || !strings.Contains(code.HTML, "lx-number") {
+		t.Errorf("a fence in a language is not filled with highlighted code: %+v", code)
+	}
+	if box := slots[1]; box.Body != "y\n" || box.HTML != "" {
+		t.Errorf("a fence in no language is not left with its body: %+v", box)
+	}
+	if strings.Count(html, `class="code-copy"`) != 1 {
+		t.Errorf("a fence with no name is not a plain code block in place:\n%s", html)
 	}
 }
 
 func TestTables(t *testing.T) {
-	html, _, _, err := render("| Key | Does |\n|-|-|\n| `a` | Annotate |\n", "", nil)
+	html, _, _, err := render("| Key | Does |\n|-|-|\n| `a` | Annotate |\n", "")
 	if err != nil || !strings.Contains(html, "<th>Key</th>") || !strings.Contains(html, "<td><code>a</code></td>") {
 		t.Errorf("a table with a one-dash separator did not render: %v\n%s", err, html)
 	}
@@ -127,30 +134,20 @@ func TestFrontmatter(t *testing.T) {
 	}
 }
 
-func TestEmbedsAreHoles(t *testing.T) {
+func TestPicturesAndFencesAreSlots(t *testing.T) {
 	d, err := converted("posts/a.md", "---\ntitle: A\n---\n![x](p.png)\n\nSee ![x](p.png).\n\n```mermaid\nflowchart LR\n```\n")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []bundle.Embed{
+	want := []model.Slot{
 		{Fence: "mermaid", Body: "flowchart LR\n"},
 		{Picture: "posts/p.png", Alt: "x", Caption: "x", Figure: true},
 		{Picture: "posts/p.png", Alt: "x", Caption: "x"},
 	}
-	if !slices.Equal(d.Embeds, want) {
-		t.Fatalf("embeds %+v", d.Embeds)
+	if !slices.Equal(d.Slots, want) {
+		t.Fatalf("slots %+v", d.Slots)
 	}
 	if strings.Contains(d.HTML, "<img") || strings.Contains(d.HTML, "language-mermaid") {
-		t.Fatalf("an embed was rendered rather than left for serving: %s", d.HTML)
-	}
-}
-
-func TestPaletteDrawsRangesAndTheRest(t *testing.T) {
-	html, _, _, err := render("```palette moss\nall\n```\n", "", nil)
-	if err != nil || strings.Count(html, `data-palette="moss"`) != 2 || !strings.Contains(html, "var(--qr-accent-12)") || !strings.Contains(html, "var(--qr-error-text)") || strings.Contains(html, "--qr-error-1") {
-		t.Errorf("a named palette, whole: %v\n%s", err, html)
-	}
-	if _, _, _, err := render("```palette\neverything\n```\n", "", nil); err == nil {
-		t.Error("an unknown role drew")
+		t.Fatalf("a slot was rendered rather than left for serving: %s", d.HTML)
 	}
 }

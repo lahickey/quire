@@ -31,7 +31,7 @@ The bake runs the site's blueprint, reading the content tree rather than the bun
 - every variant of every master a document or the blueprint referred to;
 - every diagram in what it loaded;
 - the share card;
-- every document the blueprint asked for, converted to HTML with its headings and raw frontmatter, one file each in the journal like any other artifact, and skipped next time unless its source, the converter or the site's widget names change;
+- every document the blueprint asked for, converted to HTML with its headings and raw frontmatter, one file each in the journal like any other artifact, and skipped next time unless its source or the converter changes;
 - a bundle (`.quire/bundle`) holding those files and a journal naming only them. Everything in it is a journal record: a site reads nothing else from the bundle.
 
 Nothing else in the content tree reaches the bundle.

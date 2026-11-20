@@ -11,8 +11,8 @@ import (
 
 // A code block is wrapped in these, which give it its copy button.
 const (
-	CodeOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
-	CodeClose = `</div>`
+	codeOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
+	codeClose = `</div>`
 )
 
 type Marker struct {
@@ -38,9 +38,9 @@ type Meta struct {
 }
 
 type Heading struct {
-	Level int
-	Text  string
-	ID    string
+	Level int    `json:"level"`
+	Text  string `json:"text"`
+	ID    string `json:"id"`
 }
 
 type Widget = func(info, body string) (string, error)
@@ -72,7 +72,6 @@ type Spec[T Metadata] struct {
 	Title       string
 	Description string
 	Markdown    string
-	Widgets     map[string]Widget
 	Tags        Tags
 	Kicker      func(Document[T]) string
 	Sort        func(a, b Document[T]) int
@@ -81,6 +80,11 @@ type Spec[T Metadata] struct {
 }
 
 type Basic = Spec[Meta]
+
+// CodeBlock wraps escaped or highlighted code as the block every page shows, with its copy button.
+func CodeBlock(code string) string {
+	return codeOpen + "<pre><code>" + code + "</code></pre>" + codeClose
+}
 
 func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	if drafts {

@@ -15,7 +15,6 @@ import (
 	webp "github.com/gen2brain/webp"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/bundle"
 )
 
 const (
@@ -24,10 +23,10 @@ const (
 )
 
 var (
-	formatJPEG         = bundle.Format{Ext: "jpg", Type: "image/jpeg", Quality: 82}
-	formatWebPLossless = bundle.Format{Ext: "webp", Type: "image/webp", Lossless: true}
+	formatJPEG         = format{Ext: "jpg", Type: "image/jpeg", Quality: 82}
+	formatWebPLossless = format{Ext: "webp", Type: "image/webp", Lossless: true}
 
-	formatWebP = bundle.Format{Ext: "webp", Type: "image/webp", Quality: 78}
+	formatWebP = format{Ext: "webp", Type: "image/webp", Quality: 78}
 
 	encodes atomic.Int64
 
@@ -39,8 +38,14 @@ var (
 	}
 )
 
+type format struct {
+	Ext, Type string
+	Quality   int
+	Lossless  bool
+}
+
 type encoder interface {
-	encode(img image.Image, f bundle.Format) ([]byte, error)
+	encode(img image.Image, f format) ([]byte, error)
 
 	codec() string
 }
@@ -79,7 +84,7 @@ func moduleVersion(path string) string {
 
 func (jpegEncoder) codec() string { return "stdlib/jpeg@" + runtime.Version() }
 
-func (jpegEncoder) encode(img image.Image, f bundle.Format) ([]byte, error) {
+func (jpegEncoder) encode(img image.Image, f format) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: f.Quality}); err != nil {
 		return nil, err
@@ -92,7 +97,7 @@ func (webpEncoder) codec() string {
 		" m=" + strconv.Itoa(webpMethod)
 }
 
-func (webpEncoder) encode(img image.Image, f bundle.Format) ([]byte, error) {
+func (webpEncoder) encode(img image.Image, f format) ([]byte, error) {
 	var buf bytes.Buffer
 	opts := webp.Options{Quality: f.Quality, Lossless: f.Lossless, Method: webpMethod}
 	if err := webp.Encode(&buf, img, opts); err != nil {
@@ -101,14 +106,14 @@ func (webpEncoder) encode(img image.Image, f bundle.Format) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func id(f bundle.Format) string {
+func id(f format) string {
 	return fmt.Sprintf("%s|%d|%t|%s", f.Ext, f.Quality, f.Lossless, encoders[f.Ext].codec())
 }
 
-func master(name string, src []byte) (bundle.MasterMeta, string, []byte, error) {
+func master(name string, src []byte) (bake.MasterInfo, string, []byte, error) {
 	frame, err := read(name, src)
 	if err != nil {
-		return bundle.MasterMeta{}, "", nil, err
+		return bake.MasterInfo{}, "", nil, err
 	}
 	m := describe(frame, src)
 
@@ -119,9 +124,8 @@ func master(name string, src []byte) (bundle.MasterMeta, string, []byte, error) 
 
 	body, err := encoders[mf.Ext].encode(frame, mf)
 	if err != nil {
-		return bundle.MasterMeta{}, "", nil, fmt.Errorf("quire/bake: %s: %w", name, err)
+		return bake.MasterInfo{}, "", nil, fmt.Errorf("quire/bake: %s: %w", name, err)
 	}
-	m.Hash = bundle.Hash(body)
 	return m, mf.Ext, body, nil
 }
 
@@ -129,7 +133,9 @@ func Encodes() int64 { return encodes.Load() }
 
 func (Codec) Version() int { return Version }
 
-func (Codec) Format() bundle.Format { return formatWebP }
+func (Codec) Ext() string { return formatWebP.Ext }
+
+func (Codec) Type() string { return formatWebP.Type }
 
 func (Codec) ID() string { return id(formatWebP) }
 
@@ -138,7 +144,7 @@ func (Codec) Open(name string, src []byte) (bake.Master, error) {
 	return opened{frame, src}, err
 }
 
-func (o opened) Meta() bundle.MasterMeta { return describe(o.frame, o.src) }
+func (o opened) Info() bake.MasterInfo { return describe(o.frame, o.src) }
 
 func (o opened) Rung(width int) ([]byte, error) {
 	encodes.Add(1)

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/internal/journal"
 )
 
 type Dir string
@@ -62,15 +62,15 @@ func (d Dir) Size(name string) (int64, bool) {
 	return st.Size(), true
 }
 
-func (d Dir) Journal() map[string]bundle.Record {
-	recs, err := bundle.LoadJournal(os.DirFS(string(d)))
+func (d Dir) Journal() map[string]journal.Record {
+	recs, err := journal.Load(os.DirFS(string(d)))
 	if err != nil {
-		return map[string]bundle.Record{}
+		return map[string]journal.Record{}
 	}
 	return recs
 }
 
-func (d Dir) CopyOut(dest string, records []bundle.Record) error {
+func (d Dir) CopyOut(dest string, records []journal.Record) error {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (d Dir) CopyOut(dest string, records []bundle.Record) error {
 			}
 		}
 	}
-	if err := out.Write(bundle.JournalName, bundle.WriteJournal(records)); err != nil {
+	if err := out.Write(journal.Name, journal.Write(records)); err != nil {
 		return err
 	}
 	if err := os.RemoveAll(dest); err != nil {

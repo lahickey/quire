@@ -46,7 +46,7 @@ func (c Converter) Convert(in bake.Input) (bake.Output, error) {
 	first, _, _ := strings.Cut(src, "\n")
 	set := c.faces.Set
 	if len(in.Args) != 1 || in.Args[0] != set.ID {
-		return bake.Output{}, fmt.Errorf("quire: mermaid %q: asked for in fonts %q, and the bake has %s", first, in.Args, set.ID)
+		return bake.Output{}, fmt.Errorf("%q: asked for in fonts %q, and the bake has %s", first, in.Args, set.ID)
 	}
 	out, err := sketch.Render(src, sketch.RenderOptions{
 		Measurer:       measurer(c),
@@ -56,7 +56,7 @@ func (c Converter) Convert(in bake.Input) (bake.Output, error) {
 		IDPrefix: new("d" + in.ID[len(in.ID)-8:]),
 	})
 	if err != nil {
-		return bake.Output{}, fmt.Errorf("quire: mermaid %q: %w", first, err)
+		return bake.Output{}, fmt.Errorf("%q: %w", first, err)
 	}
 	return bake.Output{Body: []byte(out.Data), Ext: "svg"}, nil
 }

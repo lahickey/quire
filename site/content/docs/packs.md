@@ -84,11 +84,7 @@ A document that no section lists fails the load, and so does a name with no docu
 
 ### Widgets and CSS
 
-`Pack.Widgets` is the documents' [widgets](./content.md#widgets), as `Spec.Widgets` is for a collection:
-
-```go
-&docs.Pack{Widgets: widgets}
-```
+The documents take the site's [widgets](./content.md#widgets), set with `quire.WithWidgets` as for any site.
 
 The pack's CSS is in the `pack` layer, so the site's own sheets win over it.
 The page beside the sidebar is a [region](./wiring.md#scripts), so the sidebar is not redrawn when a link in it is followed. A page of your own keeps that by putting `data-region="docs"` on its content, as the defaults do.

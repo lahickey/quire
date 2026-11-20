@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/bake"
 	"github.com/lahickey/quire/internal/testkit"
 )
 
@@ -43,7 +43,7 @@ func exifJPEG(t *testing.T, body []byte, orientation byte) []byte {
 	return append([]byte{0xff, 0xd8}, append(append(app1, app2...), body[2:]...)...)
 }
 
-func ingested(t *testing.T, name string, src []byte) (bundle.MasterMeta, []byte) {
+func ingested(t *testing.T, name string, src []byte) (bake.MasterInfo, []byte) {
 	t.Helper()
 	dir := t.TempDir()
 	m, file, err := Ingest(dir, name, src)
@@ -58,7 +58,7 @@ func ingested(t *testing.T, name string, src []byte) (bundle.MasterMeta, []byte)
 }
 
 func TestVariantNameCoversTheEncode(t *testing.T) {
-	softer := bundle.Format{Ext: "jpg", Type: "image/jpeg", Quality: 70}
+	softer := format{Ext: "jpg", Type: "image/jpeg", Quality: 70}
 	same := id(formatJPEG)
 	for what, got := range map[string]string{
 		"quality": id(softer),

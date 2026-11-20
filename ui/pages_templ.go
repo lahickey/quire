@@ -55,7 +55,7 @@ func Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T])
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = Img(d.Picture, model.SlotThumb, d.Meta.Base().Title).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = Img(d.Picture, model.SizeThumb, d.Meta.Base().Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -335,7 +335,7 @@ func Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mode
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = HeroFigure(d.Picture, model.SlotPage, d.Meta.Base().Title, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = HeroFigure(d.Picture, model.SizePage, d.Meta.Base().Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -24,7 +24,10 @@ The nouns:
 - **Bundle.** A journal and the files it names. It is a source that only reads.
 - **Assets.** Stylesheets, scripts and fonts. They are embedded with the code, assembled and hashed at boot, and never baked.
 - **Font set.** The fonts a site uses, chosen once. A bake measures text with it and the browser draws with it, so both are handed the same set; only the file format differs.
-- **Document.** One file of content, converted: HTML with holes, its frontmatter and its headings. It is not a page, which is an address, nor markdown, which is one format a document can come from.
+- **Document.** One file of content, converted. It is not a page, which is an address, nor markdown, which is one format a document can come from. As a converter leaves it, it is a baked document: HTML with slots, its raw frontmatter and its headings.
+- **Slot.** A place in a baked document that something goes: a picture, or a named fence. The bake fills the fences it can, and the site fills the rest when the page is composed.
+- **Size.** How wide a picture is shown where it is placed: thumb, column, page, bleed.
+- **Journal and record.** The index of a bundle, and one entry in it. Both are private to the baker and the bundle's reader. A record is what every baked thing has in common, with a payload for whatever its kind needs beyond that.
 - **Master.** The file a picture is made from.
 - **Picture.** A master and the ladder of variants made from it. "Image" is used only where somebody else's standard says it: the `<img>` tag, markdown's syntax, `og:image`.
 - **Mermaid.** A diagram written as mermaid, and the name of what converts and places it. "Diagram" is left free for charts and graphs, which are a separate thing to come.
@@ -82,7 +85,7 @@ A serving `main` written by hand against the parts is about six lines, and earns
 - A converter has a version of its own, in the key of everything it makes.
 - A codec is for what is costly to open: a picture decoded once for every rung, a video opened once for every frame.
 - A document converter claims a file extension, so markdown is one way to a document and not the only one.
-- Core defines the few structures it reads, and does not know what made or will render them. A **document** is one, since collections are built from it. A **picture** is one, widths and the file for each, since slots and the scale are core's layout.
+- Core defines the few structures it reads, and does not know what made or will render them. A **document** is one, since collections are built from it. A **picture** is one, widths and the file for each, since sizes and the scale are core's layout. Both are in `model`, and nothing else of a bundle's insides is public.
 - Anything else a converter makes is one file that only its widget understands. Mermaid's is an SVG its widget inlines, and charts will likely be the same.
 - A plugin is for live features only.
 - A fence may need all three: a live chart converts at bake, is placed by a widget, and is updated by a plugin.
@@ -158,14 +161,13 @@ Each step leaves everything working and is worth having if nothing after it happ
 
 1. **Split the engine into site and server.** Done.
 2. **Make the source, the baker and the bundle public.** Done.
-3. **Declare widgets once for a site.**
-   They are per collection today, and the bake is told fence names so it knows which holes to leave.
-   A pack that brings a fence declares it once.
+3. **Declare widgets once for a site.** Done.
 4. **Packs provide the parts.**
    A pack can carry converters, widgets, plugins, components, stylesheets, fonts and palettes.
-   What Quire does as a special case moves into base: the mermaid and picture cases where holes are filled, the share card, and the default home page, index, article and not-found page.
+   What Quire does as a special case moves into base: the mermaid, cards and palette widgets, the picture and video cases where slots are filled, the share card, and the default home page, index, article and not-found page.
    The layer test grows a rule: base imports only what an outside pack could.
    `app.Run` bakes with base's set and nothing else; it is given a way to be handed a pack's converters.
+   `model.Slot` is split into what it is: a picture slot and a fence slot, each with only the fields that mean something on it. It is one flat struct of both today. What a picture slot carries is settled here, once placing a picture is base's.
    Whether Datastar is linked on a page with nothing live is settled here.
 5. **Services.**
    The interface and its lifecycle, the handle that gives a plugin its services and its logger, and a store with an implementation in memory.
@@ -189,8 +191,13 @@ Each step leaves everything working and is worth having if nothing after it happ
 11. **Tidy the helper layer.**
    `Run`, `model.Basic` and the other shortcuts sit together in `app`, and say which parts they compose.
    A helper for each common pattern, so the smallest example is one call.
+12. **Make the examples templates as well as tutorials.**
+   A proper pass over every example once the parts and the helpers have settled, so each is written the way a site should be.
+   Each is a kind of site somebody starts from with `quire new`: a simple site, a blog, documentation, a shop.
+   The shop takes what is worth keeping from the toys project, which is no longer worked on.
+   Each still teaches one thing more than the one before, and reads from top to bottom.
 
-The Examples page with screenshots in step 10 depends on nothing before it, and nor does making the examples look their best.
+The Examples page with screenshots in step 10 depends on nothing before it.
 
 ## To decide
 
@@ -272,12 +279,12 @@ Each of these is easier, or only possible, once the step it names is done.
     - **Master still carrying EXIF, XMP or an ICC profile.** Quire strips what it writes, but a file added by hand is committed, embedded and served as it is — GPS from a phone included. Nothing warns today, and nothing else will notice.
     - **Master that is neither JPEG nor WebP.** A PNG master works: it is decoded and every rung encoded. But the widest rung can never be a copy, and the repo carries a file several times the size of anything served.
     - **Master with a non-sRGB ICC profile.** Quire strips profiles, and no variant format it emits could carry one anyway. The pixels are then read as sRGB, so a Display P3 or Adobe RGB original renders oversaturated and nobody can tell it was avoidable. Convert before ingest.
-    - **Master narrower than the widest slot that uses it.** The ladder stops at the master, so nothing breaks — the hero is just soft, and nobody finds out until they look at it on a dense screen.
+    - **Master narrower than the widest size that uses it.** The ladder stops at the master, so nothing breaks — the hero is just soft, and nobody finds out until they look at it on a dense screen.
 
     **Everything else.**
 
     - **Bake of hundreds of pictures into a FROM-scratch binary.** A bake writes one file per rung per format, seven for a full ladder. Tens of pictures is fine. Hundreds makes the artefact fat and the build slow — the person will notice; a warning should say so.
-    - **A slot wider than the 2560 floor.** The cap follows the widest slot, so one slot silently makes every master on the site bigger. Intended when someone wants a full-bleed hero on a large desktop; an accident when a width was typed with an extra digit.
+    - **A size wider than the 2560 floor.** The cap follows the widest size, so one size silently makes every master on the site bigger. Intended when someone wants a full-bleed hero on a large desktop; an accident when a width was typed with an extra digit.
     - **A public-bucket URL for a variant the bucket does not hold.** Once the browser is sent to the bucket, Quire is out of the loop: the visitor gets a broken image. The bake did not run.
 
 - **After step 7: what is kept can be dropped.**

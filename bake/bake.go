@@ -18,6 +18,7 @@ import (
 
 	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/cache"
+	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/model"
 )
 
@@ -43,16 +44,25 @@ type Converter interface {
 	Convert(Input) (Output, error)
 }
 
+// MasterInfo is a master as it was read: its size once fitted and turned upright, and the size of the file it came from.
+type MasterInfo struct {
+	W, H       int
+	SrcW, SrcH int
+	Alpha      bool
+}
+
 // Master is a picture opened once, to be asked for any number of rungs.
 type Master interface {
-	Meta() bundle.MasterMeta
+	Info() MasterInfo
 	Rung(width int) ([]byte, error)
 }
 
-// Codec opens masters. Its ID is in the name of every file it writes, so it covers the format and the encoder.
+// Codec opens masters and writes their rungs as files of one extension and media type.
+// Its ID is in the name of every file it writes, so it covers the encoder and its settings.
 type Codec interface {
 	Version() int
-	Format() bundle.Format
+	Ext() string
+	Type() string
 	ID() string
 	Open(name string, src []byte) (Master, error)
 }
@@ -70,9 +80,9 @@ type Baker struct {
 	tools  Tools
 	source fs.FS
 	cache  cache.Dir
-	done   map[string]bundle.Record
+	done   map[string]journal.Record
 	wanted map[string]int64
-	made   map[string]bundle.Record
+	made   map[string]journal.Record
 }
 
 func report(name string, encoded, kept int) {
@@ -109,7 +119,7 @@ func (b *Baker) read(name string) ([]byte, error) {
 	return fs.ReadFile(b.source, name)
 }
 
-func (b *Baker) single(rec bundle.Record, make func() (Output, error)) ([]byte, error) {
+func (b *Baker) single(rec journal.Record, make func() (Output, error)) ([]byte, error) {
 	if made, ok := b.made[rec.Name]; ok {
 		file, _ := made.File()
 		return b.cache.Read(file)
@@ -127,51 +137,47 @@ func (b *Baker) single(rec bundle.Record, make func() (Output, error)) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	file := bundle.Hash(out.Body) + "." + out.Ext
+	file := journal.Hash(out.Body) + "." + out.Ext
 	if err := b.cache.Write(file, out.Body); err != nil {
 		return nil, err
 	}
-	rec.Type, rec.Files = out.Type, []bundle.File{{Name: file, Size: int64(len(out.Body))}}
+	rec.Type, rec.Files = out.Type, []journal.File{{Name: file, Size: int64(len(out.Body))}}
 	b.made[rec.Name] = rec
 	report(rec.Name, 1, 0)
 	return out.Body, nil
 }
 
-func variants(m bundle.MasterMeta, c Codec) []bundle.File {
-	var out []bundle.File
-	for _, w := range bundle.LadderFor(m.W) {
-		name := bundle.Hash(fmt.Appendf(nil, "%s|%d|%s", m.Hash, w, c.ID())) + "." + c.Format().Ext
-		out = append(out, bundle.File{Name: name, W: w})
+func variants(p journal.Picture, c Codec) []journal.File {
+	var out []journal.File
+	for _, w := range p.Widths {
+		out = append(out, journal.File{Name: journal.Hash(fmt.Appendf(nil, "%s|%d|%s", p.Hash, w, c.ID())) + "." + c.Ext()})
 	}
 	return out
 }
 
-func (b *Baker) work(name string) (bundle.Record, int, error) {
+func (b *Baker) work(name string) (journal.Record, int, error) {
 	src, err := b.read(name)
 	if err != nil {
-		return bundle.Record{}, 0, err
+		return journal.Record{}, 0, err
 	}
 	c := b.tools.Pictures
-	hash := bundle.Hash(src)
-	key := bundle.PictureKey(c.Version(), hash)
+	hash := journal.Hash(src)
+	key := journal.PictureKey(c.Version(), hash)
 	var master Master
 	open := func() (err error) {
 		master, err = c.Open(name, src)
 		return err
 	}
-	m := b.done[name].Picture.Master
+	p := b.done[name].Picture()
 	if b.done[name].Key != key {
 		if err := open(); err != nil {
-			return bundle.Record{}, 0, err
+			return journal.Record{}, 0, err
 		}
-		m = master.Meta()
-		m.Hash = hash
+		m := master.Info()
+		p = journal.Picture{Hash: hash, W: m.W, H: m.H, SrcW: m.SrcW, SrcH: m.SrcH, Alpha: m.Alpha, Type: c.Type(), Widths: model.Ladder(m.W)}
 	}
 
-	rec := bundle.Record{
-		Name: name, Kind: bundle.KindPicture, Key: key,
-		Files: variants(m, c), Picture: bundle.Picture{Master: m, Format: c.Format()},
-	}
+	rec := journal.Record{Name: name, Kind: journal.KindPicture, Key: key, Files: variants(p, c)}.WithPicture(p)
 	made := 0
 	for i := range rec.Files {
 		v := &rec.Files[i]
@@ -181,15 +187,15 @@ func (b *Baker) work(name string) (bundle.Record, int, error) {
 		}
 		if master == nil {
 			if err := open(); err != nil {
-				return bundle.Record{}, 0, err
+				return journal.Record{}, 0, err
 			}
 		}
-		body, err := master.Rung(v.W)
+		body, err := master.Rung(p.Widths[i])
 		if err != nil {
-			return bundle.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
+			return journal.Record{}, 0, fmt.Errorf("quire: %s: %w", name, err)
 		}
 		if err := b.cache.Write(v.Name, body); err != nil {
-			return bundle.Record{}, 0, err
+			return journal.Record{}, 0, err
 		}
 		v.Size = int64(len(body))
 		made++
@@ -197,8 +203,8 @@ func (b *Baker) work(name string) (bundle.Record, int, error) {
 	return rec, made, nil
 }
 
-func (b *Baker) encode() (map[string]bundle.Record, error) {
-	records := map[string]bundle.Record{}
+func (b *Baker) encode() (map[string]journal.Record, error) {
+	records := map[string]journal.Record{}
 	var (
 		mu    sync.Mutex
 		wg    sync.WaitGroup
@@ -283,7 +289,7 @@ func Start(s model.BakeSpec, sets ...Tools) (*Baker, error) {
 		cache:  cache.Dir(s.Cache()),
 		done:   cache.Dir(s.Cache()).Journal(),
 		wanted: map[string]int64{},
-		made:   map[string]bundle.Record{},
+		made:   map[string]journal.Record{},
 	}
 	if s.Content != "" {
 		b.source = os.DirFS(s.Content)
@@ -303,79 +309,78 @@ func (b *Baker) Names(pattern string) ([]string, error) {
 	return names, nil
 }
 
-func (b *Baker) Document(name string, fences []string) (bundle.Document, error) {
+func (b *Baker) Document(name string) (model.BakedDocument, error) {
 	c := b.tools.Documents[path.Ext(name)]
 	if c == nil {
-		return bundle.Document{}, fmt.Errorf("quire: %s: no converter makes a document of it", name)
+		return model.BakedDocument{}, fmt.Errorf("quire: %s: no converter makes a document of it", name)
 	}
 	raw, err := b.read(name)
 	if err != nil {
-		return bundle.Document{}, err
+		return model.BakedDocument{}, err
 	}
-	key := bundle.Hash(fmt.Appendf(nil, "%s\x00%d\x00%s\x00%s", c.Name(), c.Version(), strings.Join(fences, "\x00"), raw))
-	body, err := b.single(bundle.Record{Name: name, Kind: bundle.KindDocument, Key: key}, func() (Output, error) {
-		out, err := c.Convert(Input{Name: name, ID: bundle.Hash(raw), Body: raw, Args: fences})
+	key := journal.Hash(fmt.Appendf(nil, "%s\x00%d\x00%s", c.Name(), c.Version(), raw))
+	body, err := b.single(journal.Record{Name: name, Kind: journal.KindDocument, Key: key}, func() (Output, error) {
+		out, err := c.Convert(Input{Name: name, ID: journal.Hash(raw), Body: raw})
 		if err != nil {
 			return out, fmt.Errorf("%s: %w", name, err)
 		}
 		return out, nil
 	})
 	if err != nil {
-		return bundle.Document{}, err
+		return model.BakedDocument{}, err
 	}
-	return bundle.DecodeDocument(body)
+	return model.DecodeBaked(body)
 }
 
-// Picture notes that a master is wanted. Pictures are encoded together by Finish, so what comes back names the master and no more:
-// the record is in the bundle Finish returns.
-func (b *Baker) Picture(name string) (bundle.Record, error) {
+// Picture notes that a master is wanted. Pictures are encoded together by Finish, so nothing is known of it yet
+// and what comes back is empty: the picture is in the bundle Finish returns.
+func (b *Baker) Picture(name string) (model.Picture, error) {
 	if b.tools.Pictures == nil {
-		return bundle.Record{}, fmt.Errorf("quire: %s: the bake has no codec for pictures", name)
+		return model.Picture{}, fmt.Errorf("quire: %s: the bake has no codec for pictures", name)
 	}
 	if b.source == nil {
-		return bundle.Record{}, fmt.Errorf("quire: %s: no content to read it from", name)
+		return model.Picture{}, fmt.Errorf("quire: %s: no content to read it from", name)
 	}
 	st, err := fs.Stat(b.source, name)
 	if err != nil {
-		return bundle.Record{}, err
+		return model.Picture{}, err
 	}
 	b.wanted[name] = st.Size()
-	return bundle.Record{Name: name}, nil
+	return model.Picture{}, nil
 }
 
-func (b *Baker) File(name string) (bundle.Record, error) {
+func (b *Baker) madeFile(name string, err error) (string, error) {
+	file, _ := b.made[name].File()
+	return file, err
+}
+
+func (b *Baker) File(name string) (string, error) {
 	src, err := b.read(name)
 	if err != nil {
-		return bundle.Record{}, err
+		return "", err
 	}
-	rec := bundle.Record{Name: name, Kind: bundle.KindFile, Key: bundle.Hash(src)}
+	rec := journal.Record{Name: name, Kind: journal.KindFile, Key: journal.Hash(src)}
 	_, err = b.single(rec, func() (Output, error) {
-		return Output{Body: src, Ext: strings.TrimPrefix(path.Ext(name), "."), Type: bundle.VideoType(name)}, nil
+		return Output{Body: src, Ext: strings.TrimPrefix(path.Ext(name), "."), Type: journal.VideoType(name)}, nil
 	})
-	return b.made[name], err
+	return b.madeFile(name, err)
 }
 
-func (b *Baker) Converted(converter string, body []byte, args ...string) (bundle.Record, error) {
+func (b *Baker) Converted(converter string, body []byte, args ...string) (string, error) {
 	i := slices.IndexFunc(b.tools.Converters, func(c Converter) bool { return c.Name() == converter })
 	if i < 0 {
-		return bundle.Record{}, fmt.Errorf("quire: the bake has no converter %q", converter)
+		return "", fmt.Errorf("quire: the bake has no converter %q", converter)
 	}
 	c := b.tools.Converters[i]
-	name := bundle.ConvertedName(converter, body, args)
-	key := bundle.Hash(fmt.Appendf(nil, "%s\x00%d", name, c.Version()))
-	_, err := b.single(bundle.Record{Name: name, Kind: bundle.Kind(converter), Key: key}, func() (Output, error) {
+	name := journal.ConvertedName(converter, body, args)
+	key := journal.Hash(fmt.Appendf(nil, "%s\x00%d", name, c.Version()))
+	_, err := b.single(journal.Record{Name: name, Kind: journal.Kind(converter), Key: key}, func() (Output, error) {
 		return c.Convert(Input{ID: path.Base(name), Body: body, Args: args})
 	})
-	return b.made[name], err
+	return b.madeFile(name, err)
 }
 
-func (b *Baker) Body(rec bundle.Record) ([]byte, error) {
-	file, ok := rec.File()
-	if !ok {
-		return nil, fmt.Errorf("quire: %s is not one file", rec.Name)
-	}
-	return b.cache.Read(file)
-}
+func (b *Baker) Body(file string) ([]byte, error) { return b.cache.Read(file) }
 
 // Finish encodes the pictures asked for, journals everything, and returns the bundle of what this bake was asked for.
 func (b *Baker) Finish() (*bundle.Bundle, error) {
@@ -384,7 +389,7 @@ func (b *Baker) Finish() (*bundle.Bundle, error) {
 
 	kept := maps.Clone(b.done)
 	maps.Copy(kept, records)
-	if err := b.cache.Write(bundle.JournalName, bundle.WriteJournal(slices.Collect(maps.Values(kept)))); err != nil {
+	if err := b.cache.Write(journal.Name, journal.Write(slices.Collect(maps.Values(kept)))); err != nil {
 		return nil, errors.Join(first, err)
 	}
 	if first != nil {
