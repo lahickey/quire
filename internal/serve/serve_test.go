@@ -7,7 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
 )
 
 func TestRedirect(t *testing.T) {
@@ -112,24 +112,25 @@ func TestEvictsByBytes(t *testing.T) {
 	}
 }
 
-func TestStore(t *testing.T) {
+func TestFiles(t *testing.T) {
 	const name = "0123456789abcdef0123456789abcdef.webp"
 	const clip = "0123456789abcdef0123456789abcdee.mp4"
-	s := NewStore(0, 0, false, "")
-	if err := s.Load(fstest.MapFS{
+	b, err := bundle.Open(fstest.MapFS{
 		name: {Data: []byte("webp")},
 		clip: {Data: []byte("mp4")},
-		journal.JournalName: {Data: journal.WriteJournal([]journal.Record{{
-			Name: "a.jpg", Kind: journal.KindPicture,
-			Files:   []journal.File{{Name: name, W: 64, Size: 4}},
-			Picture: journal.Picture{Format: journal.Format{Ext: "webp", Type: "image/webp"}},
+		bundle.JournalName: {Data: bundle.WriteJournal([]bundle.Record{{
+			Name: "a.jpg", Kind: bundle.KindPicture,
+			Files:   []bundle.File{{Name: name, W: 64, Size: 4}},
+			Picture: bundle.Picture{Format: bundle.Format{Ext: "webp", Type: "image/webp"}},
 		}, {
-			Name: "a.mp4", Kind: journal.KindVideo,
-			Files: []journal.File{{Name: clip, Size: 3}},
+			Name: "a.mp4", Kind: bundle.KindFile, Type: "video/mp4",
+			Files: []bundle.File{{Name: clip, Size: 3}},
 		}})},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	s := Files(b, 0, 0, false)
 	for file, want := range map[string]int{
 		name:                                    http.StatusOK,
 		clip:                                    http.StatusOK,

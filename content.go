@@ -14,14 +14,14 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/ui"
 	"go.yaml.in/yaml/v3"
 )
 
-func load[T any](baked []journal.Document) ([]model.Document[T], error) {
+func load[T any](baked []bundle.Document) ([]model.Document[T], error) {
 	out := make([]model.Document[T], 0, len(baked))
 	bySlug := map[string]string{}
 	for _, b := range baked {
@@ -45,51 +45,51 @@ func load[T any](baked []journal.Document) ([]model.Document[T], error) {
 	return out, nil
 }
 
-func (s *Site) addImage(name string) (model.Image, error) {
+func (s *Site) picture(name string) (model.Picture, error) {
 	name = path.Clean(filepath.ToSlash(name))
-	if im, ok := s.images[name]; ok {
-		return im, nil
+	if pic, ok := s.pictures[name]; ok {
+		return pic, nil
 	}
-	r, err := s.from.Master(name)
+	r, err := s.from.Picture(name)
 	if err != nil {
-		return model.Image{}, err
+		return model.Picture{}, err
 	}
 	files := map[int]string{}
 	for _, v := range r.Files {
 		files[v.W] = v.Name
 	}
 	m, base := r.Picture.Master, path.Base(name)
-	im := model.Image{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: s.scale}
-	s.images[name] = im
-	return im, nil
+	pic := model.Picture{Name: strings.TrimSuffix(base, path.Ext(base)), Hash: m.Hash, Width: m.W, Height: m.H, Alpha: m.Alpha, Files: files, Scale: s.scale}
+	s.pictures[name] = pic
+	return pic, nil
 }
 
-func (s *Site) picture(name, alt, caption string, figure bool) (string, error) {
-	im, err := s.addImage(name)
+func (s *Site) placePicture(name, alt, caption string, figure bool) (string, error) {
+	pic, err := s.picture(name)
 	if err != nil {
 		return "", err
 	}
-	c := ui.Img(im, model.SlotPage, alt)
+	c := ui.Img(pic, model.SlotPage, alt)
 	if figure {
-		c = ui.LazyFigure(im, alt, caption)
+		c = ui.LazyFigure(pic, alt, caption)
 	}
 	var b strings.Builder
 	err = c.Render(context.Background(), &b)
 	return b.String(), err
 }
 
-func (s *Site) video(name, alt, caption string) (string, error) {
-	rec, err := s.from.Video(name)
+func (s *Site) placeVideo(name, alt, caption string) (string, error) {
+	rec, err := s.from.File(name)
 	if err != nil {
 		return "", err
 	}
-	poster, err := s.addImage(strings.TrimSuffix(name, path.Ext(name)) + ".png")
+	poster, err := s.picture(strings.TrimSuffix(name, path.Ext(name)) + ".png")
 	if err != nil {
 		return "", fmt.Errorf("%s needs a still of the same name as its poster: %w", name, err)
 	}
 	file, _ := rec.File()
 	var b strings.Builder
-	err = ui.VideoFigure(model.ImageURL(file), poster, alt, caption).Render(context.Background(), &b)
+	err = ui.VideoFigure(model.BundleURL(file), poster, alt, caption).Render(context.Background(), &b)
 	return b.String(), err
 }
 
@@ -109,8 +109,8 @@ func cards(body string) (string, error) {
 	return b.String(), err
 }
 
-func (s *Site) embed(widgets map[string]model.Widget) func(journal.Embed) (string, error) {
-	return func(em journal.Embed) (string, error) {
+func (s *Site) embed(widgets map[string]model.Widget) func(bundle.Embed) (string, error) {
+	return func(em bundle.Embed) (string, error) {
 		if w, ok := widgets[em.Fence]; ok {
 			html, err := w(em.Info, em.Body)
 			if err != nil {
@@ -120,13 +120,13 @@ func (s *Site) embed(widgets map[string]model.Widget) func(journal.Embed) (strin
 		}
 		switch em.Fence {
 		case "":
-			if journal.VideoType(em.Picture) == "" {
-				return s.picture(em.Picture, em.Alt, em.Caption, em.Figure)
+			if bundle.VideoType(em.Picture) == "" {
+				return s.placePicture(em.Picture, em.Alt, em.Caption, em.Figure)
 			}
 			if !em.Figure {
 				return "", fmt.Errorf("%s: a video goes in a paragraph of its own", em.Picture)
 			}
-			return s.video(em.Picture, em.Alt, em.Caption)
+			return s.placeVideo(em.Picture, em.Alt, em.Caption)
 		case "cards":
 			html, err := cards(em.Body)
 			if err != nil {
@@ -134,19 +134,28 @@ func (s *Site) embed(widgets map[string]model.Widget) func(journal.Embed) (strin
 			}
 			return html, nil
 		case "mermaid":
-			svg, err := s.from.Diagram(em.Body)
-			return `<figure class="diagram">` + svg + "</figure>", err
+			rec, err := s.from.Converted("mermaid", []byte(strings.TrimSpace(em.Body)), s.fonts.ID)
+			if err != nil {
+				return "", err
+			}
+			svg, err := s.from.Body(rec)
+			return `<figure class="diagram">` + string(svg) + "</figure>", err
 		}
 		return "", fmt.Errorf("no widget %q; rebake", em.Fence)
 	}
 }
 
-func (s *Site) documents(pattern string, widgets map[string]model.Widget) ([]journal.Document, error) {
-	docs, err := s.from.Documents(pattern, slices.Sorted(maps.Keys(widgets)))
+func (s *Site) documents(pattern string, widgets map[string]model.Widget) ([]bundle.Document, error) {
+	names, err := s.from.Names(pattern)
 	if err != nil {
 		return nil, err
 	}
-	for i := range docs {
+	fences := slices.Sorted(maps.Keys(widgets))
+	docs := make([]bundle.Document, len(names))
+	for i, name := range names {
+		if docs[i], err = s.from.Document(name, fences); err != nil {
+			return nil, err
+		}
 		if docs[i].HTML, err = docs[i].Fill(s.embed(widgets)); err != nil {
 			return nil, err
 		}
@@ -184,11 +193,11 @@ func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Colle
 		return nil, err
 	}
 	for i, d := range docs {
-		name := d.Meta.Base().Image
+		name := d.Meta.Base().Picture
 		if name == "" {
 			continue
 		}
-		if docs[i].Image, err = s.addImage(journal.Resolve(d.Path, name)); err != nil {
+		if docs[i].Picture, err = s.picture(bundle.Resolve(d.Path, name)); err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
 		}
 	}

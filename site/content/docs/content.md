@@ -31,7 +31,7 @@ The stock fields are `model.Meta`:
 - `title`: the page title.
 - `summary`: one line, shown in listings and used as the page description.
 - `date` and `updated`: ISO dates, `YYYY-MM-DD`.
-- `image`: a picture beside the document. See [Pictures](#pictures).
+- `picture`: a picture beside the document. See [Pictures](#pictures).
 - `tag`: a YAML list, `tag: [Go, NATS]`.
 - `draft`: leaves the document out unless the site runs with `--drafts`.
 - `featured`: marks the document so a page can select and badge it.
@@ -98,7 +98,7 @@ is this figure:
 
 ![The ridge at first light](ridge.jpg "Dawn on the ridge")
 
-The frontmatter `image` resolves the same way. The default look renders it as a listing thumbnail, an article hero and the share image, with no CSS of your own. [A blog](./blog.md) shows all three, and [Images](./images.md) covers how a picture is encoded and served.
+The frontmatter `picture` resolves the same way. The default look renders it as a listing thumbnail, an article hero and the share image, with no CSS of your own. [A blog](./blog.md) shows all three, and [Pictures](./pictures.md) covers how a picture is encoded and served.
 
 ### Code
 
@@ -183,9 +183,9 @@ A `cards` fence is a grid of cards, each a link. Its body is a YAML list.
 
 ````markdown
 ```cards
-- href: /docs/images
+- href: /docs/pictures
   kicker: Pictures
-  title: Images, end to end
+  title: Pictures, end to end
   description: From a picture beside a document to a responsive ladder.
 - href: /docs/look
   kicker: The look
@@ -195,9 +195,9 @@ A `cards` fence is a grid of cards, each a link. Its body is a YAML list.
 ````
 
 ```cards
-- href: /docs/images
+- href: /docs/pictures
   kicker: Pictures
-  title: Images, end to end
+  title: Pictures, end to end
   description: From a picture beside a document to a responsive ladder.
 - href: /docs/look
   kicker: The look

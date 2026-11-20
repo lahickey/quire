@@ -5,7 +5,8 @@ The model as it is today is [the design page](./site/content/docs/architecture.m
 
 ## Where it is going
 
-Quire today is a site engine in one binary: `Run` bakes, builds and serves, and the parts under it are private.
+Quire's site, server, baker and bundle are parts with public interfaces, and `app.Run` is the site engine in one binary over them.
+What it ships by default is still wired into the site and the helper, and is not yet a pack.
 The plan separates the parts so that each has one job and a public interface, and so that nothing Quire ships is a special case.
 Quire is then the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
 
@@ -17,14 +18,20 @@ The nouns:
 
 - **Identity.** A site's name, base URL and description. Data only.
 - **Blueprint.** The code that says what a site is made of: which documents it reads, which pages it has and how it looks. It does nothing by itself. Several go into one site: the site's own, and one from each pack that has pages.
-- **Source.** The requests a site makes for content: documents, a picture, the output of a converter. Everything below either answers them or asks them.
-- **Baker.** A source that converts. It writes a journal and content-addressed files into a cache, and knows nothing of sites, routes or servers.
+- **Core.** What cannot be removed: the site, the server, the baker's machinery and the bundle's format. It converts nothing and draws nothing by itself.
+- **Source.** The requests a site makes for content: a document, a picture, the output of a converter. Everything below either answers them or asks them.
+- **Baker.** A source that converts. It keeps the cache, the keys and the journal, runs the work and writes the bundle. It knows no formats: every conversion is a converter or a codec registered with it. It knows nothing of sites, routes or servers.
 - **Bundle.** A journal and the files it names. It is a source that only reads.
 - **Assets.** Stylesheets, scripts and fonts. They are embedded with the code, assembled and hashed at boot, and never baked.
+- **Font set.** The fonts a site uses, chosen once. A bake measures text with it and the browser draws with it, so both are handed the same set; only the file format differs.
+- **Document.** One file of content, converted: HTML with holes, its frontmatter and its headings. It is not a page, which is an address, nor markdown, which is one format a document can come from.
+- **Master.** The file a picture is made from.
+- **Picture.** A master and the ladder of variants made from it. "Image" is used only where somebody else's standard says it: the `<img>` tag, markdown's syntax, `og:image`.
+- **Mermaid.** A diagram written as mermaid, and the name of what converts and places it. "Diagram" is left free for charts and graphs, which are a separate thing to come.
 - **Site.** Blueprints run over a source: collections, pages, chrome, files and a table of routes. It has no server. Over an empty source it is a site with no bundle.
 - **Server.** It holds entries, each a root, a bundle and a site, and owns the mux, the caches and the services' lifecycle.
 
-Converter, widget, plugin, service and pack are under their own headings below.
+Converter, codec, widget, plugin, service and pack are under their own headings below.
 
 The verbs:
 
@@ -52,17 +59,32 @@ A helper is one function for a common pattern, such as a content folder baked an
 Helpers sit in a layer above the parts, call only what is public, and are where the smallest site stays small.
 Nothing in the parts calls a helper.
 
+The helpers are a package of their own, `app` for now, so the compiler holds the layers apart: `quire` cannot import it.
+`app.Run` is the site engine in one binary: it bakes, builds and serves.
+`Collect` and `Build` are not helpers. They are the verbs, and the only way a site is made.
+
+The parts need no build tag. A program with its own bake program never links a codec into what it ships.
+`quire_nobake` lives on inside `app` only, to stub the bake half of `Run` for a site that wants one `main`.
+A serving `main` written by hand against the parts is about six lines, and earns a helper when something needs it.
+
 ### What a feature is made of
 
 | Role | Runs | Does |
 |-|-|-|
-| Converter | at bake | turns input into stored output |
+| Converter | at bake | bytes and settings in, one file out |
+| Codec | at bake | opens an input once, answers many requests |
 | Widget | at page render | places output in the page |
 | Plugin | while serving | routes, streams, sessions |
 
-- A plugin is for live features only.
+- A feature is these under one name. The name is what joins the half that bakes to the half that renders.
+- They are registered apart because they are linked apart: what converts is heavy and stays out of a serving binary, and what renders is light and is in it.
+- A converter or a codec sits in a package of its own, so a serving binary that imports the widget and the plugin does not link it.
 - A converter has a version of its own, in the key of everything it makes.
-- A converter sits in a package of its own, so a serving binary that imports the widget and the plugin does not link it.
+- A codec is for what is costly to open: a picture decoded once for every rung, a video opened once for every frame.
+- A document converter claims a file extension, so markdown is one way to a document and not the only one.
+- Core defines the few structures it reads, and does not know what made or will render them. A **document** is one, since collections are built from it. A **picture** is one, widths and the file for each, since slots and the scale are core's layout.
+- Anything else a converter makes is one file that only its widget understands. Mermaid's is an SVG its widget inlines, and charts will likely be the same.
+- A plugin is for live features only.
 - A fence may need all three: a live chart converts at bake, is placed by a widget, and is updated by a plugin.
 - A plugin is attached per site. One instance attached to several sites shares whatever state it keeps.
 
@@ -101,14 +123,16 @@ A pack provides any number of converters, widgets, plugins, services, components
 Changes to the base colour system are a pack's to make too.
 A pack with a blueprint is a whole kind of site, as `pack/docs` is.
 
-What Quire ships is two packs, under working names:
+What Quire ships is one pack, **base**, which holds every default: markdown, the WebP codec, mermaid, the share card, the default look and its components, the default fonts and palettes, search, sessions and the store in memory.
+Each is a package of its own inside it.
+Without base Quire is naked: it serves what a program declares and converts nothing.
 
-- **Core** cannot be turned off: documents from markdown, and the picture record with its ladder. Everything else fills the holes these leave or reads what they record.
-- **Base** can: mermaid, the share card, the default look and its components, the default fonts and palettes, search, sessions and the store in memory.
-
-Both are written against the interfaces any other pack uses, and a test holds them to it.
+Base is written against the interfaces any other pack uses, and a test holds it to it.
 Turning something off is not registering it, never a flag: what is not imported is not linked.
 A helper gives a site the standard set, so the smallest site stays as small as it is.
+
+What base weighs in a binary is mostly its fonts, 212KB, then Datastar at 36KB, which is linked on every page today whether or not anything on it is live.
+Its stylesheets are 27KB and its templates less.
 
 ### One server, several sites
 
@@ -125,71 +149,71 @@ A program with a web layer of its own uses Quire for as much as it wants and no 
 - **Nothing baked.** A site whose pages are all Go has no bundle, and its assets are still embedded and served.
 
 Whatever claims the whole address space is the server's, so a host that does not use the server is not bound by it: the catch-all not-found page, `robots.txt`, the sitemap, the health check, the redirect to the apex and the session cookie.
+A site's own files, its pictures among them, are routes in its table and go where it is mounted.
 What fails while a site is built is returned as an error, for the host to act on.
 
 ## The steps
 
 Each step leaves everything working and is worth having if nothing after it happens.
 
-1. **Make the source, the baker and the bundle public.**
-   The `quire` package stops importing the bake.
-   Converters become a public interface, and mermaid, the share card and the picture codec move onto it.
-   A bundle is made from any `fs.FS`, so a program can embed one itself, and `Ship` with its build overlay is the helper's way.
-   A site builds over an empty source, so one with nothing baked needs no bundle.
-   `Run` becomes a helper that composes the parts.
-2. **Declare widgets once for a site.**
+1. **Split the engine into site and server.** Done.
+2. **Make the source, the baker and the bundle public.** Done.
+3. **Declare widgets once for a site.**
    They are per collection today, and the bake is told fence names so it knows which holes to leave.
    A pack that brings a fence declares it once.
-3. **Packs provide the parts.**
+4. **Packs provide the parts.**
    A pack can carry converters, widgets, plugins, components, stylesheets, fonts and palettes.
-   What Quire does as a special case moves into core and base: the mermaid and picture cases where holes are filled, the share card, and the default home page, index, article and not-found page.
-   The layer test grows a rule: core and base import only what an outside pack could.
-4. **Services.**
+   What Quire does as a special case moves into base: the mermaid and picture cases where holes are filled, the share card, and the default home page, index, article and not-found page.
+   The layer test grows a rule: base imports only what an outside pack could.
+   `app.Run` bakes with base's set and nothing else; it is given a way to be handed a pack's converters.
+   Whether Datastar is linked on a page with nothing live is settled here.
+5. **Services.**
    The interface and its lifecycle, the handle that gives a plugin its services and its logger, and a store with an implementation in memory.
    Sessions move out of the server and become one, which needs a way to wrap a request that plugins do not have today.
-5. **Give the server entries.**
+6. **Give the server entries.**
    Several of root, bundle and site.
    `Ship` registers bundles by name, and one `ship.go` embeds every bundle under `.quire`.
-6. **Let a route state its cache policy.**
+7. **Let a route state its cache policy.**
    Shared or none, on any route, and a way to drop what is kept.
-7. **Root a site at a path.**
+8. **Root a site at a path.**
    The root is prepended wherever a URL is built, and a rendered page has its root-absolute URLs prefixed before it is cached, so a hand-written `/writing` is still right.
    A site at `/` skips all of it.
    The session cookie and the saved theme and palette are scoped to the root.
    `examples_test.go` serves every example a second time under a root and fails on any URL that escapes it.
-8. **Offer the pieces to a host.**
+9. **Offer the pieces to a host.**
    The assets, the cache headers, live reload and sessions are each reachable without a site or a server.
    An example is a program with its own mux that mounts a documentation site at a root and draws a page of its own from the pieces.
-9. **Show the examples on the documentation site.**
+10. **Show the examples on the documentation site.**
    An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
    Then each example live, as an entry under `/examples/`.
-10. **Tidy the helper layer.**
-   `Run`, `model.Basic` and the other shortcuts sit together above the parts, and say which parts they compose.
+11. **Tidy the helper layer.**
+   `Run`, `model.Basic` and the other shortcuts sit together in `app`, and say which parts they compose.
+   A helper for each common pattern, so the smallest example is one call.
 
-The Examples page with screenshots in step 9 depends on nothing before it, and nor does making the examples look their best.
+The Examples page with screenshots in step 10 depends on nothing before it, and nor does making the examples look their best.
 
 ## To decide
 
-- **Two entry points, or `quire_nobake`.**
-  A serving `main` that does not import the baker links no codecs, with no build tag, and it is the only way to keep a pack's converter out of a serving binary without the pack's author tagging their files.
-  The price is a site with one `main` to bake and one to serve.
-  Leaning to two entry points; decide in step 1.
-- **Names for core and base.**
+- **A name for the helper package.**
+  `app` for now.
+- **Letting a site choose its font set.**
+  The default is wired in today, in the site and in the bake.
+  Once step 2 hands the set to both, choosing one is an option like the palette.
 - **How the documentation site imports the examples.**
   Each is a `package main`, which nothing can import.
   Either the site's build generates importable copies and the examples stay as they are, or the examples become a package with a small `main` beside it and `quire new` flattens the two.
-  Decide in step 9.
+  Decide in step 10.
 - **How a plugin reaches a service.**
   It asks its handle for one by type, or the site hands it to the plugin's constructor.
   Either way it is checked by the compiler, not looked up by reflection.
-  Decide in step 4.
+  Decide in step 5.
 - **Where a program's own live pages go.**
   A page rendered per request is a plugin's or a raw route today, and both were shaped for an addition to a site, not for the body of a tool.
   Either a plugin is the right home and says so, or a site declares live pages as it declares fixed ones.
-  Decide before step 8.
+  Decide before step 9.
 - **A name for the plugin's handle.**
   It is `plugin.Mount`, and mount means one thing.
-  Decide in step 4.
+  Decide in step 5.
 - **Many sites from many repositories on one machine.**
   Entries cover sites built into one binary.
   Sites that ship as separate binaries would need a front that routes by hostname and starts each on its first request, perhaps as `quire host`.
@@ -199,7 +223,7 @@ The Examples page with screenshots in step 9 depends on nothing before it, and n
 These depend on none of the steps.
 
 - **Feeds** — RSS/Atom. `Collection` already holds everything required.
-  It would live in base once step 3 lands.
+  It would live in base once step 4 lands.
 - **archr on Quire's Lexis.** archr still carries a copy of the highlighter.
   1. **Tag a release** with Lexis in it, so archr can require it.
   2. **Repoint archr** and delete its copy.
@@ -221,13 +245,13 @@ These depend on none of the steps.
   With it, such a page is a markdown file placed with `Markdown` in the shell like any other.
   Whether it stays out of the sitemap as well is a second choice, and may not be the same answer for every page.
 - **Full-bleed and the scrollbar.** `.figure--bleed` measures in `cqw` against `main`, because `100vw` counts the scrollbar and would put a horizontal scrollbar on every desktop. The price is `container-type: inline-size` on `main`, whose layout containment makes it the containing block for any `position: fixed` descendant. Revisit against the two alternatives: hiding the document scrollbar in CSS (`scrollbar-width: none`, which costs every visitor their scroll position indicator), or setting the gutter width once from the classic script. Measured and written up in this session; no decision taken.
-- **A bleed hero on a short screen.** Full width, a hero can fill a laptop screen with no text in sight. The usual answers: cap its height (50–60% of the screen, cropped with `object-fit: cover`) so text always shows below; a focal point per image so the crop keeps what matters; different crops per screen size through `<picture>`. Height cap and focal point are options on the bleed figure; laying title and buttons over the picture is a site's layout choice. Tried with 884px art, which also showed the page padding left between nav and a bleed hero.
+- **A bleed hero on a short screen.** Full width, a hero can fill a laptop screen with no text in sight. The usual answers: cap its height (50–60% of the screen, cropped with `object-fit: cover`) so text always shows below; a focal point per picture so the crop keeps what matters; different crops per screen size through `<picture>`. Height cap and focal point are options on the bleed figure; laying title and buttons over the picture is a site's layout choice. Tried with 884px art, which also showed the page padding left between nav and a bleed hero.
 
 ## Waiting on a step
 
 Each of these is easier, or only possible, once the step it names is done.
 
-- **After step 1: the baker is public.**
+- **After step 2: the baker is public.**
 
   - **Settings at the call site.** A picture's conversion is chosen where it is placed, in the markdown or the template: lossless, a quality, a second format such as AVIF, a shorter ladder. Variant names already cover every setting and a record already lists formats, so the bake's `Master` takes the options and nothing else moves. Every variant is lossy WebP until then.
     A second format is then a codec a pack can bring.
@@ -236,7 +260,7 @@ Each of these is easier, or only possible, once the step it names is done.
     Lexis's languages page is then a document written by hand, and `just lexis languages` goes.
   - **A ladder from use.** The bake renders its pages too, records which rungs each placement can pick, and encodes only those rather than the whole ladder for every master. It is the same record as the call-site settings.
 
-- **After step 4: there is a log.**
+- **After step 5: there is a log.**
 
   - **Logging.** None yet. When there is a logger, these are the gremlins to warn on.
 
@@ -252,18 +276,18 @@ Each of these is easier, or only possible, once the step it names is done.
 
     **Everything else.**
 
-    - **Bake of hundreds of images into a FROM-scratch binary.** A bake writes one file per rung per format, seven for a full ladder. Tens of images is fine. Hundreds makes the artefact fat and the build slow — the person will notice; a warning should say so.
+    - **Bake of hundreds of pictures into a FROM-scratch binary.** A bake writes one file per rung per format, seven for a full ladder. Tens of pictures is fine. Hundreds makes the artefact fat and the build slow — the person will notice; a warning should say so.
     - **A slot wider than the 2560 floor.** The cap follows the widest slot, so one slot silently makes every master on the site bigger. Intended when someone wants a full-bleed hero on a large desktop; an accident when a width was typed with an extra digit.
     - **A public-bucket URL for a variant the bucket does not hold.** Once the browser is sent to the bucket, Quire is out of the loop: the visitor gets a broken image. The bake did not run.
 
-- **After step 6: what is kept can be dropped.**
+- **After step 7: what is kept can be dropped.**
 
   - **Dev re-bakes in-process.** A site already bakes before it serves; with `--dev` it could also re-bake when content or masters change, so a watcher is only for Go and templ. A CMS needs the same thing: re-bake after an upload and swap the bundle, rather than a second bundle beside the first.
     Swapping a bundle is replacing an entry's and dropping what was kept from the old one.
 
-- **After step 7: a site can be rooted at a path.**
+- **After step 8: a site can be rooted at a path.**
 
   - **Pre-rendered pages.** The bake runs the blueprints, so after the make a server over the new bundle can render every page the page cache would render once for everyone into the bundle, as Astro's `dist/` and Hugo's `public/` do, and the shipped binary serves finished HTML. Plugin routes and anything per visitor stay live, the per-route split Astro and Next make. It is a third axis beside `quire_nobake` and the ship overlay: whether its pages are pre-rendered (a light site's would be). A site with no live routes at all needs no server, only its bundle on a static host. Documents are already converted in the bake, so the gain is boot time and static hosting rather than weight.
     A static host often serves under a path, which is what the root is for.
   - **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
-    The image URL is built in the same place the root is applied.
+    A picture's URL is built in the same place the root is applied.

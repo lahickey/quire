@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 )
 
@@ -60,7 +61,7 @@ func declare(site *quire.Site) error {
 }
 
 func main() {
-	quire.Run(model.Identity{
+	app.Run(model.Identity{
 		Name:        "Writing",
 		Author:      "A. Writer",
 		BaseURL:     "https://example.com",

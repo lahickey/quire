@@ -6,12 +6,14 @@ summary: How a site is put together in Go - its identity, its options, the bluep
 A Quire site is one call:
 
 ```go
-quire.Run(identity, blueprint, options...)
+app.Run(identity, blueprint, options...)
 ```
 
 - The **identity** is data: what the site is.
 - The **blueprint** says what the site holds. It is your own Go or a [pack](./packs.md), and has up to two steps: [Declare](#the-blueprint) and [Live](#live).
 - The **options** change how Quire behaves and looks.
+
+`Run` is in package `app`, the helpers. Everything else on this page is package `quire`.
 
 ## Identity
 
@@ -40,7 +42,6 @@ An `Option` changes how Quire behaves.
 - `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd`, `ui.PalettePicker` and `ui.ThemeToggle`.
 - `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
 - `WithSiteCard` changes the share card the bake draws.
-- `WithBake` says where the content and the bake's output live. See [Baking](./bake.md).
 - `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
 
 Datastar is always linked.
@@ -64,7 +65,7 @@ func declare(site *quire.Site) error {
 }
 
 func main() {
-  quire.Run(identity, quire.BlueprintFunc(declare))
+  app.Run(identity, quire.BlueprintFunc(declare))
 }
 ```
 
@@ -80,7 +81,7 @@ What it can add:
 - `Identity()` is the identity the site was made with.
 - `Include(blueprint)` runs another blueprint on the same site, its `Live` too, so a site can add a pack to pages of its own.
 
-A `quire.Blueprint` is anything with a `Declare` method of that signature, so a type of your own is one too, and so is a pack: `quire.Run(identity, &docs.Pack{})`.
+A `quire.Blueprint` is anything with a `Declare` method of that signature, so a type of your own is one too, and so is a pack: `app.Run(identity, &docs.Pack{})`.
 
 ## Live
 
@@ -104,7 +105,7 @@ func (b *blog) Live(l *quire.Live) error {
 }
 
 func main() {
-  quire.Run(identity, &blog{})
+  app.Run(identity, &blog{})
 }
 ```
 
@@ -137,7 +138,7 @@ A page hands the shell a `model.PageSpec`, and the shell writes the head from it
 
 - **Canonical.** A page with a `Path` gets `<link rel="canonical">` and `og:url`, made from `BaseURL`. A page with no `Path`, a `NoIndex` page and a draft get `<meta name="robots" content="noindex">` instead.
 - **Sharing.** Every page gets Open Graph and Twitter card tags: title, description, site name and a large image.
-- **The share image** is `ShareImage` when set, else the site's share card, which the bake draws. A document with an `image` shares that picture. See [Images](./images.md#share-images).
+- **The share image** is `ShareImage` when set, else the site's share card, which the bake draws. A document with a `picture` shares that picture. See [Pictures](./pictures.md#share-images).
 - **Articles.** `Article` marks a page as one: `og:type` is `article` and its published and modified dates are written in ISO form.
 - **Author.** `Identity.Author` becomes `<meta name="author">`.
 
@@ -172,7 +173,70 @@ The server makes a mux from that table and adds what claims the whole address sp
 Building the site renders every fixed page, so a template error stops the binary at boot.
 A site with routes of its own adds them in [Live](#live) with `AddRoute`, or as a plugin. Both go through the site's route claims, so a clash is an error at boot.
 
-`quire.New(identity, blueprint, options...)` is for a test: it returns the server, an `http.Handler`, for a blueprint or a plugin with no bundle behind it. Only `Run` bakes and loads one.
+A test of a blueprint or a plugin needs no bundle: `quire.Build(identity, nil, blueprint)` and `quire.NewServer` give its handler.
+
+### Without Run
+
+Serving is three calls, and a program that wants a `main` of its own makes them itself:
+
+```go
+//go:embed all:.quire/bundle
+var embedded embed.FS
+
+func main() {
+  files, err := fs.Sub(embedded, ".quire/bundle")
+  if err != nil {
+    log.Fatal(err)
+  }
+  baked, err := bundle.Open(files)
+  if err != nil {
+    log.Fatal(err)
+  }
+  site, err := quire.Build(identity, baked, blueprint)
+  if err != nil {
+    log.Fatal(err)
+  }
+  server, err := quire.NewServer(site)
+  if err != nil {
+    log.Fatal(err)
+  }
+  log.Fatal(http.ListenAndServe(":8090", server))
+}
+```
+
+- `bundle.Open` reads a bundle from any `fs.FS`: one embedded by hand, as here, or a folder through `os.DirFS`.
+- `quire.Build` runs the blueprint over it, `Live` included, and returns the site. It takes options as `Run` does.
+- `quire.NewServer` returns the server, which is an `http.Handler`.
+
+`quire.Build(identity, nil, blueprint)` builds a site with nothing baked. Its pages are all Go, it needs no bundle, and its stylesheet, scripts and fonts are served as for any other site.
+What a site asks of a bundle is `quire.Source`, and anything with those six methods can stand in for one.
+
+### A bake of your own
+
+Baking is three calls too:
+
+```go
+func main() {
+  baker, err := bake.Start(model.BakeSpec{Content: "content", Dir: ".quire"}, convert.Standard())
+  if err != nil {
+    log.Fatal(err)
+  }
+  if err := quire.Collect(identity, baker, blueprint); err != nil {
+    log.Fatal(err)
+  }
+  if _, err := baker.Finish(); err != nil {
+    log.Fatal(err)
+  }
+}
+```
+
+- `bake.Start` is told where the content and the output live, and handed what it can convert. `convert.Standard()`, from `pack/base/convert`, is the default set: markdown, mermaid, the share card and WebP pictures. Several sets are combined, and two converters of one name are refused.
+- `quire.Collect` runs the blueprint over the baker, so the site asks for everything it needs. It calls no `Live`.
+- `Finish` encodes the pictures, writes the bundle to `.quire/bundle`, and returns it.
+
+A baker asked for a picture has not made it yet, because pictures are encoded together in `Finish`. Until then its answer is the master's name and nothing more, and the record is in the bundle `Finish` returns.
+
+A program that serves with `quire` and bakes in a program of its own, as these two do, links no codec, no markdown and no highlighter into what it ships, with no build tag.
 
 ### Redirects
 

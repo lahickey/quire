@@ -16,15 +16,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/fonts"
-	"github.com/lahickey/quire/internal/journal"
 )
 
 const (
 	text         = "Inter:wght@100..900"
 	mono         = "JetBrains Mono:wght@100..800"
 	webDir       = "internal/fonts/web"
-	measureDir   = "internal/bake/diagram/fonts"
+	measureDir   = "internal/fonts/measure/fonts"
 	datastarFile = "internal/assets/datastar.js"
 )
 
@@ -178,7 +178,7 @@ func refreshFonts() error {
 		}
 		log.Printf("%-16s %d faces, measured at %v", fam.Name, len(fam.Faces), slices.Sorted(maps.Keys(fam.Measure)))
 	}
-	set.ID = journal.Hash(measured.Bytes())
+	set.ID = bundle.Hash(measured.Bytes())
 	b, err := json.Marshal(set, json.Deterministic(true))
 	if err != nil {
 		return err

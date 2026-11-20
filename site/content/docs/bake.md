@@ -51,13 +51,14 @@ It never encodes: a variant it was not given is a 404.
 
 ## Controls
 
-`WithBake` is the whole control, with paths relative to where the bake runs:
+`Run` bakes `content` into `.quire`, both relative to where it runs.
+A site that keeps them elsewhere, or bakes with other converters, writes [a bake of its own](./wiring.md#a-bake-of-your-own) and says where:
 
 ```go
-quire.WithBake(model.BakeSpec{
-  Content: "content", // the default
-  Dir:     ".quire",  // the default; holds bundle/ and cache/
-})
+bake.Start(model.BakeSpec{
+  Content: "content",
+  Dir:     ".quire", // holds bundle/ and cache/
+}, convert.Standard())
 ```
 
 ## The shipped binary
@@ -77,4 +78,4 @@ Which to use:
 
 A bake works out what to make from the blueprint, not from the folder. The reasons, and how the journal keeps a bake safe to interrupt, are on the [Design](./architecture.md#one-blueprint) page.
 
-Each converter (markdown, diagram, card, picture) has a version, and the version is part of the key every artifact is stored under. When a release changes what a converter produces, its version changes, and the next bake remakes exactly those artifacts.
+Each converter (markdown, mermaid, card, picture) has a version, and the version is part of the key every artifact is stored under. When a release changes what a converter produces, its version changes, and the next bake remakes exactly those artifacts.

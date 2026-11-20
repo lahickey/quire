@@ -31,7 +31,7 @@ check:
     @cd {{ dir }} && ! git grep -nP '\t' -- '*.md' ':!{{ corpus }}' ':!{{ shown }}'
     @cd {{ dir }} && go vet ./...
     @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /site)
-    @cd {{ dir }} && go vet -tags release ./internal/bake
+    @cd {{ dir }} && go vet -tags release ./pack/base/convert
     @cd {{ dir }} && golangci-lint run --show-stats=false ./...
     @cd {{ dir }} && sh -c 'out=$(gopls check -severity=hint $({{ gofiles }})); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'
 
@@ -40,7 +40,7 @@ test: generate check release-check
 
 # Before a release: fails on any converter whose code or dependencies changed since its version was set.
 release-check:
-    @cd {{ dir }} && go test -tags release -run Fingerprints -count=1 ./internal/bake
+    @cd {{ dir }} && go test -tags release -run Fingerprints -count=1 ./pack/base/convert
 
 # Check everything, then tag HEAD on master. Prints the push; never pushes.
 release version:

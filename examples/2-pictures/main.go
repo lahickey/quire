@@ -5,11 +5,12 @@ package main
 
 import (
 	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 )
 
 func main() {
-	quire.Run(model.Identity{
+	app.Run(model.Identity{
 		Name:        "Pictures",
 		BaseURL:     "https://example.com",
 		Description: "A Quire site with pictures and no CSS of its own.",

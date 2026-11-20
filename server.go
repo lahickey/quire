@@ -2,13 +2,13 @@ package quire
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/internal/session"
-	"github.com/lahickey/quire/model"
 )
 
 const (
@@ -16,18 +16,20 @@ const (
 	pageCache  = 4 << 20
 )
 
-// Server serves one site from its bundle, and owns what claims the whole address space.
+// Server serves one site, and owns what claims the whole address space.
 type Server struct {
 	site   *Site
-	bundle *serve.Store
 	mux    *http.ServeMux
 	pages  *serve.Pages
 	apex   string
 	secure bool
 }
 
-func newServer(site *Site, bundle *serve.Store) (*Server, error) {
-	v := &Server{site: site, bundle: bundle, mux: http.NewServeMux(), pages: serve.NewPages(pageCache, site.dev)}
+func NewServer(site *Site) (*Server, error) {
+	if !site.built {
+		return nil, errors.New("quire: a server takes a site from Build")
+	}
+	v := &Server{site: site, mux: http.NewServeMux(), pages: serve.NewPages(pageCache, site.dev)}
 	if !site.dev {
 		v.apex, v.secure = site.chrome.Host(), strings.HasPrefix(site.chrome.BaseURL, "https://")
 	}
@@ -46,7 +48,6 @@ func newServer(site *Site, bundle *serve.Store) (*Server, error) {
 		v.mux.HandleFunc(pattern, h)
 	}
 	own("GET "+healthPath, serve.Health)
-	own("GET "+model.ImagePath+"{file}", bundle.ServeHTTP)
 	own("GET /{path...}", site.notFound404.ServeHTTP)
 	if site.chrome.BaseURL != "" {
 		robots := serve.Robots(site.chrome.AbsURL("/sitemap.xml"))

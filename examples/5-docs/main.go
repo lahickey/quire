@@ -3,12 +3,13 @@ package main
 
 import (
 	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/docs"
 )
 
 func main() {
-	quire.Run(model.Identity{
+	app.Run(model.Identity{
 		Name:        "Example",
 		BaseURL:     "https://example.com",
 		Description: "What the project is, in a sentence.",

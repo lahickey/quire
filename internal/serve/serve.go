@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
 )
 
 const htmlType = "text/html; charset=utf-8"
@@ -113,7 +113,7 @@ func (page *page) write(w http.ResponseWriter, r *http.Request) {
 func newPage(code int, hdr http.Header, body []byte, coding string, quality int) *page {
 	ct := hdr.Get("Content-Type")
 	out, enc := compressed(body, ct, coding, quality)
-	etag := `"` + journal.Hash(body)
+	etag := `"` + bundle.Hash(body)
 	if enc != "" {
 		etag += "-" + enc
 	}

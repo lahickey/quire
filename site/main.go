@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/docs"
 )
@@ -20,7 +21,7 @@ var widgets = map[string]model.Widget{
 }
 
 func main() {
-	quire.Run(model.Identity{
+	app.Run(model.Identity{
 		Name:        "Quire",
 		BaseURL:     "https://quire.hiddenbridge.io",
 		Description: "Composable parts for static and live sites in Go.",

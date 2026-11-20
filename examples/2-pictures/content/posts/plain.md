@@ -4,7 +4,7 @@ date: 2026-01-12
 summary: The listing holds both kinds without being told.
 ---
 
-An entry with no image sits in the same list as one that has a thumbnail.
+An entry with no picture sits in the same list as one that has a thumbnail.
 
 A mermaid fence is drawn by the same bake as the pictures, and inlined so it follows the palette:
 

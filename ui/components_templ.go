@@ -19,7 +19,7 @@ import (
 type CardData struct {
 	Href, Kicker, Title, Description, CTA string
 	Draft, Featured                       bool
-	Image                                 model.Image
+	Picture                               model.Picture
 	Badges                                []model.Marker
 	Tags                                  []model.Marker
 	Extra                                 int
@@ -128,7 +128,7 @@ func DocCard[T model.Metadata](c *model.Collection[T], d model.Document[T]) Card
 		Description: d.Meta.Base().Summary,
 		Draft:       d.Meta.Base().Draft,
 		Featured:    d.Meta.Base().Featured,
-		Image:       d.Image,
+		Picture:     d.Picture,
 		Badges:      d.Meta.Badges(),
 		Tags:        c.Tags(d),
 	}
@@ -650,12 +650,12 @@ func Card(c CardData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if c.Image.Hash != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"card-image\">")
+		if c.Picture.Hash != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"card-picture\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = Img(c.Image, model.SlotColumn, c.Title).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Img(c.Picture, model.SlotColumn, c.Title).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

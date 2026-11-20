@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lahickey/quire/internal/bake/picture"
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
+	"github.com/lahickey/quire/pack/base/convert/picture"
 )
 
 const usage = `usage: quire <command>
@@ -43,7 +43,7 @@ func ingest(args []string) {
 
 	if m.SrcW > m.W || m.SrcH > m.H {
 		fmt.Printf("  scaled down from %d×%d (%s source). The master caps at %d.\n",
-			m.SrcW, m.SrcH, humanBytes(len(src)), journal.MasterCap)
+			m.SrcW, m.SrcH, humanBytes(len(src)), bundle.MasterCap)
 	}
 }
 

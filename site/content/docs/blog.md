@@ -8,7 +8,7 @@ A blog is the site Quire makes with nothing added: one collection of dated docum
 
 ```go
 func main() {
-  quire.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"},
+  app.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
       _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
@@ -25,7 +25,7 @@ A post is a file in `content/posts`.
 title: The ridge at first light
 date: 2026-02-01
 summary: One line of frontmatter is the whole of it.
-image: ridge.jpg
+picture: ridge.jpg
 tag: [Go]
 ---
 
@@ -36,15 +36,15 @@ Each field shows up somewhere, and none of it needs a template.
 
 ## The index
 
-`/posts` lists every post, newest first: its month, title and summary, and its `image` as a thumbnail.
+`/posts` lists every post, newest first: its month, title and summary, and its `picture` as a thumbnail.
 
 ![The post index of the pictures example, one post with a thumbnail and one without](shots/listing.jpg "The index: a post with a picture and a post without")
 
 ## The post's page
 
-`/posts/{name}` is the post: its title and date, its `image` as the hero, then the body.
+`/posts/{name}` is the post: its title and date, its `picture` as the hero, then the body.
 
-![A post's page, with its date under the title and its image as the hero](shots/article.jpg "A post: date, hero, body")
+![A post's page, with its date under the title and its picture as the hero](shots/article.jpg "A post: date, hero, body")
 
 Tags sit under the date, and a post with headings gets a table of contents.
 
@@ -55,7 +55,7 @@ Tags sit under the date, and a post with headings gets a table of contents.
 - **A home page** with the site's name, its description and a link to each collection. `AddPage("/", …)` replaces it.
 - **Navigation**, with the collection in it, and a light and dark toggle.
 - **`sitemap.xml` and `robots.txt`**, once `BaseURL` is set.
-- **A share image** for each post: its `image`, or the site's card when it has none.
+- **A share image** for each post: its `picture`, or the site's card when it has none.
 
 ## Drafts and featured posts
 

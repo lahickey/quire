@@ -27,11 +27,12 @@ package main
 
 import (
   "github.com/lahickey/quire"
+  "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
 )
 
 func main() {
-  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
+  app.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
       _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
@@ -80,15 +81,15 @@ Put a picture beside the document and name it in the frontmatter.
 ---
 title: Hello
 date: 2026-02-01
-image: ridge.jpg
+picture: ridge.jpg
 ---
 
 ![The ridge at first light](ridge.jpg "Dawn on the ridge")
 ```
 
-The `image:` line gives the post a thumbnail in the index, a hero on its page and a share image.
+The `picture:` line gives the post a thumbnail in the index, a hero on its page and a share image.
 The picture in the body becomes a figure with a caption.
-Each is served as WebP in several widths, and the browser picks one. See [Images](./images.md).
+Each is served as WebP in several widths, and the browser picks one. See [Pictures](./pictures.md).
 
 A fence named `mermaid` is a diagram:
 

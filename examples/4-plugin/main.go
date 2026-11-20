@@ -9,6 +9,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/examples/4-plugin/basket"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
@@ -18,7 +19,7 @@ import (
 var css embed.FS
 
 // Piece is the frontmatter of a print: the stock fields, plus a medium.
-// Embedding model.Meta keeps title, date, image and the rest working.
+// Embedding model.Meta keeps title, date, picture and the rest working.
 type Piece struct {
 	model.Meta `yaml:",inline"`
 	Medium     string `yaml:"medium"`
@@ -65,7 +66,7 @@ func (s *shop) Live(l *quire.Live) error {
 }
 
 func main() {
-	quire.Run(model.Identity{
+	app.Run(model.Identity{
 		Name:        "Prints",
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",

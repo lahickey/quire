@@ -6,9 +6,9 @@ templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]
 	<div class="entries-list">
 		for _, d := range docs {
 			<a href={ c.Href(d) } class="entry-item">
-				if d.Image.Hash != "" {
+				if d.Picture.Hash != "" {
 					<span class="entry-thumb">
-						@Img(d.Image, model.SlotThumb, d.Meta.Base().Title)
+						@Img(d.Picture, model.SlotThumb, d.Meta.Base().Title)
 					</span>
 				}
 				<span class="entry-body">
@@ -62,7 +62,7 @@ templ Article[T model.Metadata](shell model.Shell, c *model.Collection[T], d mod
 				}
 				@Tags(c.Tags(d))
 			</header>
-			@HeroFigure(d.Image, model.SlotPage, d.Meta.Base().Title, "")
+			@HeroFigure(d.Picture, model.SlotPage, d.Meta.Base().Title, "")
 			@Contents(d.Headings)
 			<div class="prose">
 				@templ.Raw(d.HTML)

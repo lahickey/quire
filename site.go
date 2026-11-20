@@ -1,28 +1,39 @@
+// Package quire builds a site from a blueprint and a source, and serves it. Docs: https://quire.hiddenbridge.io
 package quire
 
 import (
 	"cmp"
 	"crypto/rand"
+	"encoding/json/v2"
 	"net/http"
 	"slices"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/internal/fonts"
-	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/ui"
 )
 
-const assetPrefix = "/_quire/"
+const (
+	assetPrefix      = "/_quire/"
+	imageMemory      = 12 << 20
+	imageMemoryLimit = 64 << 10
+)
 
-type source interface {
-	Master(name string) (journal.Record, error)
-	Video(name string) (journal.Record, error)
-	Diagram(src string) (string, error)
-	Documents(pattern string, fences []string) ([]journal.Document, error)
-	Card(name string, c model.ShareCard) (journal.Record, error)
+// Source is what a site asks for content: a baker answers by converting, and a bundle by reading.
+// Names lists the content files matching a pattern, File is a content file kept as it is,
+// Converted is the output of the named converter for a body and its arguments, and Body is the one file a record names.
+// A baker makes pictures when it finishes, so a record from its Picture names the master and no more.
+type Source interface {
+	Names(pattern string) ([]string, error)
+	Document(name string, fences []string) (bundle.Document, error)
+	Picture(name string) (bundle.Record, error)
+	File(name string) (bundle.Record, error)
+	Converted(converter string, body []byte, args ...string) (bundle.Record, error)
+	Body(bundle.Record) ([]byte, error)
 }
 
 // Blueprint says what a site is made of, and is run in a bake as well as when serving.
@@ -43,7 +54,6 @@ type settings struct {
 	sheets   []assets.File
 	icons    []assets.File
 	fonts    fonts.FontSet
-	bakeSpec model.BakeSpec
 }
 
 type route struct {
@@ -55,10 +65,10 @@ type route struct {
 // Site is blueprints run over one source. It has no server: its routes are a table for one to read.
 type Site struct {
 	settings
-	from       source
+	from       Source
 	blueprints []Blueprint
 	scripts    []assets.File
-	images     map[string]model.Image
+	pictures   map[string]model.Picture
 
 	routes      map[string]string
 	handlers    []route
@@ -94,8 +104,8 @@ func configure(id model.Identity, opts ...Option) *settings {
 	return s
 }
 
-func (s *settings) site(from source) *Site {
-	site := &Site{settings: *s, from: from, routes: map[string]string{}, images: map[string]model.Image{}, versions: map[string]string{}}
+func (s *settings) site(from Source) *Site {
+	site := &Site{settings: *s, from: from, routes: map[string]string{}, pictures: map[string]model.Picture{}, versions: map[string]string{}}
 	site.chrome.NavEnd, site.chrome.FooterLinks, site.sheets = slices.Clip(site.chrome.NavEnd), slices.Clip(site.chrome.FooterLinks), slices.Clip(site.sheets)
 	return site
 }
@@ -110,9 +120,13 @@ func (s *Site) addSiteCard() error {
 		c.Palette = s.palette
 	}
 	c.Palette.Check()
-	rec, err := s.from.Card(journal.SiteCard, c)
+	body, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	rec, err := s.from.Converted("card", body, s.fonts.ID)
 	if file, ok := rec.File(); ok {
-		s.chrome.OGImageURL = s.chrome.AbsURL(model.ImageURL(file))
+		s.chrome.OGImageURL = s.chrome.AbsURL(model.BundleURL(file))
 	}
 	return err
 }
@@ -120,6 +134,9 @@ func (s *Site) addSiteCard() error {
 func (s *Site) close() error {
 	s.addAssets()
 	s.addIcons()
+	if f, ok := s.from.(serve.Filer); ok {
+		s.route("GET "+model.BundlePath+"{file}", ownerQuire, serve.Files(f, imageMemory, imageMemoryLimit, s.dev).ServeHTTP)
+	}
 	if _, taken := s.routes["GET "+pagePattern("/")]; !taken {
 		s.AddPage("/", s.late(ui.Home))
 	}
@@ -140,23 +157,45 @@ func (s *Site) close() error {
 	return nil
 }
 
-func (s *Site) build(b Blueprint) error {
+func (s *settings) build(from Source, b Blueprint) (*Site, error) {
+	site := s.site(from)
+	if from == nil {
+		site.from = &bundle.Bundle{}
+	} else if err := site.addSiteCard(); err != nil {
+		return nil, err
+	}
 	if s.dev {
-		if err := s.attach(liveReload{s, rand.Text()}); err != nil {
-			return err
+		if err := site.attach(liveReload{site, rand.Text()}); err != nil {
+			return nil, err
 		}
 	}
-	if err := s.Include(b); err != nil {
-		return err
+	if err := site.Include(b); err != nil {
+		return nil, err
 	}
-	for _, b := range s.blueprints {
+	for _, b := range site.blueprints {
 		if l, ok := b.(interface{ Live(*Live) error }); ok {
-			if err := l.Live(&Live{s}); err != nil {
-				return err
+			if err := l.Live(&Live{site}); err != nil {
+				return nil, err
 			}
 		}
 	}
-	return s.close()
+	return site, site.close()
+}
+
+// Collect runs a blueprint over a baker, so the site asks for all it needs: what Declare reads, and the share card.
+// It calls no Live and serves nothing. The baker's Finish then writes the bundle.
+func Collect(id model.Identity, baker Source, b Blueprint, opts ...Option) error {
+	site := configure(id, opts...).site(baker)
+	if err := site.Include(b); err != nil {
+		return err
+	}
+	return site.addSiteCard()
+}
+
+// Build runs a blueprint over a source and returns the site: what it declares, then what its Live adds.
+// A nil source is an empty one, for a site with nothing baked.
+func Build(id model.Identity, from Source, b Blueprint, opts ...Option) (*Site, error) {
+	return configure(id, opts...).build(from, b)
 }
 
 func (f BlueprintFunc) Declare(s *Site) error { return f(s) }

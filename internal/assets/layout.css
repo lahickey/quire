@@ -364,7 +364,7 @@ li.tag {
 }
 
 .figure,
-.card-image,
+.card-picture,
 .entry-thumb {
   margin: 0;
   border: 1px solid var(--qr-neutral-6);
@@ -376,7 +376,7 @@ li.tag {
 
 .figure img,
 .figure video,
-.card-image img,
+.card-picture img,
 .entry-thumb img {
   display: block;
   width: 100%;
@@ -397,7 +397,7 @@ li.tag {
   font-size: var(--qr-text-xs);
 }
 
-.card-image {
+.card-picture {
   margin: calc(-1 * var(--qr-space-5)) calc(-1 * var(--qr-space-5)) calc(var(--qr-space-5) - var(--qr-space-2));
   border: none;
   border-radius: var(--qr-radius) var(--qr-radius) 0 0;

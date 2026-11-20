@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
 )
 
 const (
@@ -60,9 +60,9 @@ func (s Scale) top(slot Slot) int {
 		return 3 * s.Thumb()
 	}
 	if slot == SlotBleed {
-		return journal.MasterCap
+		return bundle.MasterCap
 	}
-	return min(2*s.inner(s.cols(slot)), journal.MasterCap)
+	return min(2*s.inner(s.cols(slot)), bundle.MasterCap)
 }
 
 func (s Scale) sizes(slot Slot) string {
@@ -87,7 +87,7 @@ func (s Scale) display(slot Slot) int {
 	case SlotColumn:
 		return s.Col
 	case SlotBleed:
-		return journal.MasterCap / 2
+		return bundle.MasterCap / 2
 	}
 	return s.inner(s.cols(slot))
 }

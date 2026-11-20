@@ -23,11 +23,12 @@ package main
 
 import (
   "github.com/lahickey/quire"
+  "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
 )
 
 func main() {
-  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
+  app.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
       _, err := site.AddCollection(model.Basic{ID: "posts"})
       return err
@@ -49,7 +50,7 @@ Some words.
 `go run .` serves it on http://localhost:8090: home page, post index, post pages, navigation, a light and dark toggle, sitemap and robots.txt, with no templates or CSS of your own.
 
 To ship, `go run . bake`, then `go build -tags quire_nobake -overlay .quire/ship.json` ([how](https://quire.hiddenbridge.io/docs/getting-started#ship-it)).
-The result is one binary that carries the whole site and none of the image or diagram tooling.
+The result is one binary that carries the whole site and none of the picture or diagram tooling.
 
 ## Examples
 
@@ -77,7 +78,7 @@ That site is itself built with Quire; its source is in [`site/`](./site).
 - [Getting started](https://quire.hiddenbridge.io/docs/getting-started)
 - [A blog](https://quire.hiddenbridge.io/docs/blog)
 - [Content](https://quire.hiddenbridge.io/docs/content)
-- [Images](https://quire.hiddenbridge.io/docs/images)
+- [Pictures](https://quire.hiddenbridge.io/docs/pictures)
 - [The look](https://quire.hiddenbridge.io/docs/look)
 - [Wiring](https://quire.hiddenbridge.io/docs/wiring)
 - [Plugins](https://quire.hiddenbridge.io/docs/plugins)

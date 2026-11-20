@@ -51,10 +51,6 @@ func WithStylesheetsAt(w model.Width, fsys fs.FS, names ...string) Option {
 	return func(s *settings) { s.addSheets("site", w, fsys, names) }
 }
 
-func WithBake(spec model.BakeSpec) Option {
-	return func(s *settings) { s.bakeSpec = spec }
-}
-
 func WithTheme(t model.Theme) Option {
 	return func(s *settings) { s.chrome.Theme = t }
 }

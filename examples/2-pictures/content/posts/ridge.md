@@ -2,12 +2,12 @@
 title: The ridge at first light
 date: 2026-02-01
 summary: One line of frontmatter is the whole of it.
-image: ridge.jpg
+picture: ridge.jpg
 ---
 
-The `image:` above is the listing thumbnail and the article hero.
+The `picture:` above is the listing thumbnail and the article hero.
 
-A body image is the same pipeline — the master's name, ladder, figure:
+A picture in the body is the same pipeline — the master's name, ladder, figure:
 
 ![The ridge at first light](ridge.jpg "Dawn on the ridge")
 

@@ -11,7 +11,7 @@ docs:
     - title: Start here
       pages: [getting-started, blog]
     - title: Authoring
-      pages: [content, images, look]
+      pages: [content, pictures, look]
     - title: Building
       pages: [wiring, plugins, packs, bake, deploy]
     - title: Libraries
@@ -25,9 +25,9 @@ docs:
   kicker: Shipping
   title: One binary
   description: Words, pictures and diagrams are baked into the site's own binary. It serves from any directory and carries none of the tooling that made it.
-- href: /docs/images
+- href: /docs/pictures
   kicker: Pictures
-  title: Images, end to end
+  title: Pictures, end to end
   description: Refer to a picture beside a document and get a responsive ladder in WebP, sized for where it is placed.
 - href: /docs/content#diagrams
   kicker: Diagrams
@@ -56,11 +56,12 @@ package main
 
 import (
   "github.com/lahickey/quire"
+  "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
 )
 
 func main() {
-  quire.Run(
+  app.Run(
     model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
       _, err := site.AddCollection(model.Basic{ID: "posts"})

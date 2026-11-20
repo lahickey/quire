@@ -1,0 +1,48 @@
+package ui
+
+import "github.com/lahickey/quire/model"
+
+templ figure(pic model.Picture, slot model.Slot, alt, caption string, priority bool) {
+	if pic.Hash != "" {
+		<figure class={ figureClass(slot) }>
+			<img { pic.Attrs(slot, priority)... } alt={ alt }/>
+			if caption != "" {
+				<figcaption>{ caption }</figcaption>
+			}
+		</figure>
+	}
+}
+
+templ VideoFigure(src string, poster model.Picture, alt, caption string) {
+	<figure class="figure">
+		<video
+			src={ src }
+			poster={ poster.URL(model.SlotPage) }
+			width={ poster.Width }
+			height={ poster.Height }
+			aria-label={ alt }
+			preload="none"
+			controls
+			loop
+			muted
+			playsinline
+		></video>
+		if caption != "" {
+			<figcaption>{ caption }</figcaption>
+		}
+	</figure>
+}
+
+templ Img(pic model.Picture, slot model.Slot, alt string) {
+	if pic.Hash != "" {
+		<img { pic.Attrs(slot, false)... } alt={ alt }/>
+	}
+}
+
+templ LazyFigure(pic model.Picture, alt, caption string) {
+	@figure(pic, model.SlotPage, alt, caption, false)
+}
+
+templ HeroFigure(pic model.Picture, slot model.Slot, alt, caption string) {
+	@figure(pic, slot, alt, caption, true)
+}

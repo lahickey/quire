@@ -9,7 +9,7 @@ import "github.com/lahickey/quire/ui"
 templ home(shell model.Shell, c *model.Collection[Piece]) {
 	@shell(model.PageSpec{Title: "Prints", Path: "/"}) {
 		<article class="page page--wide">
-			@ui.HeroFigure(c.Docs()[0].Image, model.SlotBleed, c.Docs()[0].Meta.Title, "")
+			@ui.HeroFigure(c.Docs()[0].Picture, model.SlotBleed, c.Docs()[0].Meta.Title, "")
 			<header class="page-head">
 				<h1>{ c.Title() }</h1>
 				<p class="page-intro">Printed to order. Add one in this tab and watch the basket count change in another.</p>
@@ -18,7 +18,7 @@ templ home(shell model.Shell, c *model.Collection[Piece]) {
 				for _, d := range c.Docs() {
 					<a class="piece-card" href={ c.Href(d) }>
 						<figure class="art">
-							@ui.Img(d.Image, model.SlotColumn, d.Meta.Title)
+							@ui.Img(d.Picture, model.SlotColumn, d.Meta.Title)
 						</figure>
 						<h2>{ d.Meta.Title }</h2>
 						<p class="piece-medium">{ d.Meta.Medium }</p>
@@ -40,7 +40,7 @@ templ wall(shell model.Shell, c *model.Collection[Piece]) {
 			for _, d := range c.Docs() {
 				<a class="piece-card wall-piece" href={ c.Href(d) }>
 					<figure class="art">
-						@ui.Img(d.Image, model.SlotPageFull, d.Meta.Title)
+						@ui.Img(d.Picture, model.SlotPageFull, d.Meta.Title)
 					</figure>
 					<h2>{ d.Meta.Title }</h2>
 					<p class="piece-medium">{ d.Meta.Medium }</p>
@@ -59,7 +59,7 @@ templ piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece],
 				<h1>{ d.Meta.Title }</h1>
 				<p class="piece-medium">{ d.Meta.Medium }</p>
 			</header>
-			@ui.HeroFigure(d.Image, model.SlotPageWide, d.Meta.Title, "")
+			@ui.HeroFigure(d.Picture, model.SlotPageWide, d.Meta.Title, "")
 			<div class="prose">
 				@templ.Raw(d.HTML)
 			</div>

@@ -35,8 +35,8 @@ Generated `*_templ.go` is committed, so `go run` works without templ.
 
 ## Releasing
 
-`just release-check` names each converter (markdown, diagram, card, picture) whose code or dependencies changed since the table in `internal/bake/versions.go` was last set.
-Bump the version of any whose output changed, which rebuilds exactly those artifacts in every site's next bake, and paste the fingerprints it prints.
+`just release-check` names each converter (markdown, mermaid, card, picture) whose code or dependencies changed since the table in `pack/base/convert/versions_test.go` was last set.
+Bump `Version` in the package of any whose output changed, which rebuilds exactly those artifacts in every site's next bake, and paste the fingerprints it prints.
 
 `just test` runs it, so a stale fingerprint shows before the commit, not at the release.
 

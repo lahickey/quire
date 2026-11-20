@@ -15,13 +15,13 @@ This site is the whole of its Go:
 package main
 
 import (
-  "github.com/lahickey/quire"
+  "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
   "github.com/lahickey/quire/pack/docs"
 )
 
 func main() {
-  quire.Run(model.Identity{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, &docs.Pack{})
+  app.Run(model.Identity{Name: "Quire", BaseURL: "https://quire.hiddenbridge.io"}, &docs.Pack{})
 }
 ```
 
@@ -48,7 +48,7 @@ docs:
     - title: Start here
       pages: [getting-started]
     - title: Authoring
-      pages: [content, images, look]
+      pages: [content, pictures, look]
 ---
 ```
 

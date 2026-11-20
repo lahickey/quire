@@ -1,5 +1,3 @@
-//go:build !quire_nobake
-
 package quire
 
 import (
@@ -21,11 +19,13 @@ import (
 	"testing/fstest"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire/internal/bake/markdown"
-	"github.com/lahickey/quire/internal/bake/picture"
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bake"
+	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/testkit"
 	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/pack/base/convert"
+	"github.com/lahickey/quire/pack/base/convert/markdown"
+	"github.com/lahickey/quire/pack/base/convert/picture"
 	"github.com/lahickey/quire/plugin"
 )
 
@@ -50,6 +50,38 @@ func body(s string) templ.Component {
 	})
 }
 
+func bakeSite(spec model.BakeSpec, id model.Identity, b Blueprint, opts ...Option) error {
+	baker, err := bake.Start(spec, convert.Standard())
+	if err != nil {
+		return err
+	}
+	if err := Collect(id, baker, b, opts...); err != nil {
+		return err
+	}
+	_, err = baker.Finish()
+	return err
+}
+
+func serveOver(files fs.FS, id model.Identity, b Blueprint, opts ...Option) (*Server, error) {
+	baked, err := bundle.Open(files)
+	if err != nil {
+		return nil, err
+	}
+	site, err := Build(id, baked, b, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return NewServer(site)
+}
+
+func bare(id model.Identity, b Blueprint, opts ...Option) (*Server, error) {
+	site, err := Build(id, nil, b, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return NewServer(site)
+}
+
 func served(t *testing.T, files fs.FS, id model.Identity, declare func(*Site) error, opts ...Option) (*Server, error) {
 	t.Helper()
 	content := t.TempDir()
@@ -57,17 +89,17 @@ func served(t *testing.T, files fs.FS, id model.Identity, declare func(*Site) er
 		t.Fatal(err)
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
-	if err := bakeSite(configure(id, append(opts, WithBake(spec))...), BlueprintFunc(declare)); err != nil {
+	if err := bakeSite(spec, id, BlueprintFunc(declare), opts...); err != nil {
 		return nil, err
 	}
-	return configure(id, opts...).serve(os.DirFS(spec.Bundle()), BlueprintFunc(declare))
+	return serveOver(os.DirFS(spec.Bundle()), id, BlueprintFunc(declare), opts...)
 }
 
-func placed(t *testing.T, files fs.FS, name string) model.Image {
+func placed(t *testing.T, files fs.FS, name string) model.Picture {
 	t.Helper()
-	var im model.Image
+	var im model.Picture
 	if _, err := served(t, files, model.Identity{}, func(s *Site) (err error) {
-		im, err = s.addImage(name)
+		im, err = s.picture(name)
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -75,7 +107,7 @@ func placed(t *testing.T, files fs.FS, name string) model.Image {
 	return im
 }
 
-func rungFile(r journal.Record, w int) string {
+func rungFile(r bundle.Record, w int) string {
 	for _, v := range r.Files {
 		if v.W == w {
 			return v.Name
@@ -92,7 +124,7 @@ func posts(s *Site) error {
 func TestShareImages(t *testing.T) {
 	dir := t.TempDir()
 	for name, body := range map[string][]byte{
-		"content/posts/pic.md":    []byte("---\ntitle: Pic\nimage: ridge.png\n---\nA ridge.\n"),
+		"content/posts/pic.md":    []byte("---\ntitle: Pic\npicture: ridge.png\n---\nA ridge.\n"),
 		"content/posts/plain.md":  []byte("---\ntitle: Plain\nsummary: No picture.\n---\nText.\n"),
 		"content/posts/ridge.png": testkit.Photo(t, 1600, 900, false),
 	} {
@@ -105,15 +137,15 @@ func TestShareImages(t *testing.T) {
 	}
 	site := model.Identity{Name: "Example", BaseURL: "https://example.com", Description: "A site."}
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
-	if err := bakeSite(configure(site, WithBake(spec)), BlueprintFunc(posts)); err != nil {
+	if err := bakeSite(spec, site, BlueprintFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".quire/.gitignore")); err != nil {
 		t.Errorf("the bake left .quire without its .gitignore: %v", err)
 	}
-	bundle := os.DirFS(spec.Bundle())
+	files := os.DirFS(spec.Bundle())
 	var col *model.Collection[model.Meta]
-	v, err := configure(site).serve(bundle, BlueprintFunc(func(s *Site) (err error) {
+	v, err := serveOver(files, site, BlueprintFunc(func(s *Site) (err error) {
 		col, err = s.AddCollection(model.Basic{ID: "posts"})
 		return err
 	}))
@@ -122,11 +154,11 @@ func TestShareImages(t *testing.T) {
 	}
 	pic, _ := col.Get("pic")
 	plain, _ := col.Get("plain")
-	if u, want := col.ItemPage(pic).ShareImage, v.site.chrome.AbsURL(model.ImageURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
-		t.Errorf("a document with an image shares %q, want its own 1096 rung %q", u, want)
+	if u, want := col.ItemPage(pic).ShareImage, v.site.chrome.AbsURL(model.BundleURL(rungFile(testkit.ReadJournal(t, spec.Bundle())["posts/ridge.png"], 1096))); u != want {
+		t.Errorf("a document with a picture shares %q, want its own 1096 rung %q", u, want)
 	}
 	if u := col.ItemPage(plain).ShareImage; u != "" {
-		t.Errorf("a document without an image shares %q of its own, want the site card", u)
+		t.Errorf("a document without a picture shares %q of its own, want the site card", u)
 	}
 	card := v.site.chrome.OGImageURL
 	rec := httptest.NewRecorder()
@@ -154,7 +186,7 @@ func TestDraftsShowOnlyWithTheFlag(t *testing.T) {
 }
 
 func TestArticleHead(t *testing.T) {
-	v, err := New(model.Identity{BaseURL: "https://example.com"}, wired{})
+	v, err := bare(model.Identity{BaseURL: "https://example.com"}, wired{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +213,7 @@ func TestArticleHead(t *testing.T) {
 // handed the request, so no URL can make it vary or fill the page cache.
 func TestNotFoundIsPreparedOnce(t *testing.T) {
 	var renders atomic.Int32
-	v, err := New(model.Identity{}, BlueprintFunc(func(s *Site) error {
+	v, err := bare(model.Identity{}, BlueprintFunc(func(s *Site) error {
 		s.SetNotFound(templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 			renders.Add(1)
 			_, err := io.WriteString(w, "<html>"+strings.Repeat("gone ", 400)+"</html>")
@@ -259,7 +291,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 // A custom header replaces Quire's nav, so it must still be handed what the nav
 // draws: the page's path and the controls plugins add.
 func TestCustomHeaderSeesNavAndControls(t *testing.T) {
-	v, err := New(model.Identity{}, wired{
+	v, err := bare(model.Identity{}, wired{
 		func(s *Site) error {
 			s.AddPage("/about", s.Shell(model.PageSpec{Path: "/about"}))
 			return nil
@@ -285,7 +317,7 @@ func TestCustomHeaderSeesNavAndControls(t *testing.T) {
 
 func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	var live, posts atomic.Int32
-	h, err := New(model.Identity{BaseURL: "https://example.com"}, wired{live: func(l *Live) error {
+	h, err := bare(model.Identity{BaseURL: "https://example.com"}, wired{live: func(l *Live) error {
 		l.AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = fmt.Fprintf(w, "<html>%d</html>", live.Add(1))
@@ -340,10 +372,10 @@ func TestAliases(t *testing.T) {
 }
 
 func TestFrontmatterFailsLoad(t *testing.T) {
-	if _, err := load[note]([]journal.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
+	if _, err := load[note]([]bundle.Document{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
 		t.Error("an unknown frontmatter field loaded")
 	}
-	docs := []journal.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
+	docs := []bundle.Document{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
 	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
 		t.Errorf("two documents with one slug loaded: %v", err)
 	}
@@ -371,7 +403,7 @@ func TestPluginScoping(t *testing.T) {
 	ok := func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("x")) }
 
 	use := func(declare func(*Site) error, ps ...plugin.Plugin) (*Server, error) {
-		return New(model.Identity{}, wired{declare, func(l *Live) error { return l.Use(ps...) }})
+		return bare(model.Identity{}, wired{declare, func(l *Live) error { return l.Use(ps...) }})
 	}
 	var prefix string
 	h, err := use(nil, testPlugin{"basket", func(m *plugin.Mount) error {
@@ -477,7 +509,7 @@ func TestBodyMarkdownImages(t *testing.T) {
 	}
 	d, _ := col.Get("hello")
 	if !strings.Contains(d.HTML, `<figure class="figure">`) {
-		t.Fatalf("standalone image is not a figure: %s", d.HTML)
+		t.Fatalf("a picture alone in a paragraph is not a figure: %s", d.HTML)
 	}
 	if !strings.Contains(d.HTML, "<figcaption>Dawn</figcaption>") {
 		t.Fatal("title did not become a caption")
@@ -486,12 +518,12 @@ func TestBodyMarkdownImages(t *testing.T) {
 		t.Fatalf("an untitled figure did not caption itself with its text: %s", d.HTML)
 	}
 	if !strings.Contains(d.HTML, `loading="lazy"`) {
-		t.Fatal("body image is not lazy")
+		t.Fatal("a picture in the body is not lazy")
 	}
 	if strings.Contains(d.HTML, `fetchpriority="high"`) {
-		t.Fatal("body image stole hero priority")
+		t.Fatal("a picture in the body took the hero's priority")
 	}
-	im, ok := v.site.images["images/ridge.png"]
+	im, ok := v.site.pictures["images/ridge.png"]
 	if !ok {
 		t.Fatal("the site missed the body path")
 	}
@@ -499,13 +531,13 @@ func TestBodyMarkdownImages(t *testing.T) {
 		t.Fatal("figure src is not the hero variant")
 	}
 	if strings.Count(d.HTML, `<figure class="figure">`) != 2 {
-		t.Fatalf("inline image became a figure: %s", d.HTML)
+		t.Fatalf("a picture inside a sentence became a figure: %s", d.HTML)
 	}
 	if strings.Contains(d.HTML, `src="images/ridge.png"`) {
-		t.Fatalf("inline image still points at the master: %s", d.HTML)
+		t.Fatalf("a picture inside a sentence still points at the master: %s", d.HTML)
 	}
 	if !strings.Contains(d.HTML, `src="https://example.com/x.jpg"`) {
-		t.Fatalf("remote image was rewritten: %s", d.HTML)
+		t.Fatalf("a remote image was rewritten: %s", d.HTML)
 	}
 }
 
@@ -527,14 +559,14 @@ func TestBodyVideo(t *testing.T) {
 		t.Fatal(err)
 	}
 	d, _ := col.Get("hello")
-	file, _ := v.bundle.Record("posts/clip.webm")
+	file, _ := v.site.from.File("posts/clip.webm")
 	name, _ := file.File()
-	for _, want := range []string{`src="` + model.ImageURL(name) + `"`, `poster="` + v.site.images["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
+	for _, want := range []string{`src="` + model.BundleURL(name) + `"`, `poster="` + v.site.pictures["posts/clip.png"].URL(model.SlotPage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
 		if !strings.Contains(d.HTML, want) {
 			t.Errorf("no %s in %s", want, d.HTML)
 		}
 	}
-	if got, _, err := v.bundle.File("posts/clip.webm"); err != nil || string(got) != string(clip) {
+	if got, err := v.site.from.Body(file); err != nil || string(got) != string(clip) {
 		t.Errorf("the bundle holds %q, %v", got, err)
 	}
 
@@ -553,7 +585,7 @@ func TestMissingBodyImageFailsLoad(t *testing.T) {
 		"posts/hello.md": {Data: []byte("---\ntitle: Hello\ndate: 2026-02-01\n---\n\n![](nope.png)\n")},
 	}
 	if _, err := served(t, fsys, model.Identity{}, posts); err == nil {
-		t.Fatal("a missing body image baked silently")
+		t.Fatal("a missing picture in the body baked silently")
 	}
 }
 
@@ -606,12 +638,12 @@ func TestDiagrams(t *testing.T) {
 	}
 	spec := model.BakeSpec{Content: content, Dir: t.TempDir()}
 	out := spec.Bundle()
-	if err := bakeSite(configure(model.Identity{}, WithBake(spec)), BlueprintFunc(posts)); err != nil {
+	if err := bakeSite(spec, model.Identity{}, BlueprintFunc(posts)); err != nil {
 		t.Fatal(err)
 	}
-	load := func(bundle fs.FS) (string, error) {
+	load := func(files fs.FS) (string, error) {
 		var col *model.Collection[model.Meta]
-		_, err := configure(model.Identity{}).serve(bundle, BlueprintFunc(func(s *Site) (err error) {
+		_, err := serveOver(files, model.Identity{}, BlueprintFunc(func(s *Site) (err error) {
 			col, err = s.AddCollection(model.Basic{ID: "posts"})
 			return err
 		}))
@@ -630,7 +662,7 @@ func TestDiagrams(t *testing.T) {
 		t.Fatalf("diagram not inlined:\n%s", baked)
 	}
 	lacking := fstest.MapFS{}
-	var kept []journal.Record
+	var kept []bundle.Record
 	for name, r := range testkit.ReadJournal(t, out) {
 		if strings.HasPrefix(name, "mermaid/") {
 			continue
@@ -644,14 +676,14 @@ func TestDiagrams(t *testing.T) {
 			lacking[v.Name] = &fstest.MapFile{Data: body}
 		}
 	}
-	lacking[journal.JournalName] = &fstest.MapFile{Data: journal.WriteJournal(kept)}
+	lacking[bundle.JournalName] = &fstest.MapFile{Data: bundle.WriteJournal(kept)}
 	if _, err := load(lacking); err == nil || !strings.Contains(err.Error(), "not baked") {
 		t.Fatalf("a document whose diagram the bundle lacks must fail the load, got %v", err)
 	}
 }
 
 func TestBrokenPageFailsAtBoot(t *testing.T) {
-	_, err := New(model.Identity{}, BlueprintFunc(func(s *Site) error {
+	_, err := bare(model.Identity{}, BlueprintFunc(func(s *Site) error {
 		s.AddPage("/about", templ.ComponentFunc(func(context.Context, io.Writer) error { return fmt.Errorf("boom") }))
 		return nil
 	}))
@@ -662,7 +694,7 @@ func TestBrokenPageFailsAtBoot(t *testing.T) {
 
 func TestBakeIsWhatTheBlueprintAsked(t *testing.T) {
 	dir := t.TempDir()
-	post := "---\ntitle: A\ndate: 2026-02-01\nimage: hero.png\n---\n\n![inline](inline.png)\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
+	post := "---\ntitle: A\ndate: 2026-02-01\npicture: hero.png\n---\n\n![inline](inline.png)\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
 	for name, body := range map[string][]byte{
 		"posts/a.md":       []byte(post),
 		"posts/hero.png":   testkit.Photo(t, 300, 200, false),
@@ -681,7 +713,7 @@ func TestBakeIsWhatTheBlueprintAsked(t *testing.T) {
 	spec := model.BakeSpec{Content: filepath.Join(dir, "content"), Dir: filepath.Join(dir, ".quire")}
 	bakeCounting := func() (decodes, encodes, converts int64) {
 		d0, e0, c0 := picture.Decodes(), picture.Encodes(), markdown.Converts()
-		if err := bakeSite(configure(model.Identity{}, WithBake(spec)), BlueprintFunc(posts)); err != nil {
+		if err := bakeSite(spec, model.Identity{}, BlueprintFunc(posts)); err != nil {
 			t.Fatal(err)
 		}
 		return picture.Decodes() - d0, picture.Encodes() - e0, markdown.Converts() - c0
@@ -711,27 +743,35 @@ func TestBakeIsWhatTheBlueprintAsked(t *testing.T) {
 	if !ok {
 		t.Fatal("the document the blueprint asked for is not in the journal")
 	}
-	bundle := os.DirFS(spec.Bundle())
-	v, err := configure(model.Identity{}).serve(bundle, BlueprintFunc(posts))
+	files := os.DirFS(spec.Bundle())
+	v, err := serveOver(files, model.Identity{}, BlueprintFunc(posts))
 	if err != nil {
 		t.Fatalf("serving from the bake's bundle: %v", err)
 	}
 	rec := httptest.NewRecorder()
-	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, model.ImageURL(doc), nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, model.BundleURL(doc), nil))
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("a document's file is served at %s: %d", model.ImageURL(doc), rec.Code)
+		t.Errorf("a document's file is served at %s: %d", model.BundleURL(doc), rec.Code)
 	}
 }
 
-func TestServingBinaryLinksNoBake(t *testing.T) {
-	out, err := exec.Command("go", "list", "-deps", "-tags", "quire_nobake", ".").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, dep := range strings.Fields(string(out)) {
-		for _, pkg := range []string{"github.com/lahickey/quire/internal/bake/", "github.com/yuin/goldmark", "github.com/lahickey/quire/libs/lexis"} {
-			if strings.HasPrefix(dep, pkg) {
-				t.Errorf("a quire_nobake build links %s", dep)
+func TestServingLinksNoBake(t *testing.T) {
+	const q = "github.com/lahickey/quire/"
+	heavy := []string{q + "bake", q + "pack/base/convert", q + "internal/fonts/measure", "github.com/yuin/goldmark", q + "libs/lexis"}
+	for what, args := range map[string][]string{
+		"quire":                       {"."},
+		"app built with quire_nobake": {"-tags", "quire_nobake", "./app"},
+	} {
+		out, err := exec.Command("go", append([]string{"list", "-deps"}, args...)...).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, dep := range strings.Fields(string(out)) {
+			if slices.ContainsFunc(heavy, func(pkg string) bool { return strings.HasPrefix(dep, pkg) }) {
+				t.Errorf("%s links %s", what, dep)
+			}
+			if what == "quire" && dep == q+"app" {
+				t.Error("quire imports its helpers")
 			}
 		}
 	}
@@ -744,7 +784,7 @@ func TestLayers(t *testing.T) {
 		t.Fatal(err)
 	}
 	may := map[string]func(string) bool{
-		q + "/model":  func(p string) bool { return p == q+"/internal/journal" || p == q+"/internal/radix" },
+		q + "/model":  func(p string) bool { return p == q+"/bundle" || p == q+"/internal/radix" },
 		q + "/ui":     func(p string) bool { return p == q+"/model" },
 		q + "/plugin": func(p string) bool { return p == q+"/model" || p == q+"/internal/session" },
 	}
@@ -755,7 +795,7 @@ func TestLayers(t *testing.T) {
 			if !strings.HasPrefix(imp, q) {
 				continue
 			}
-			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && !strings.HasPrefix(pkg, q+"/pack/") && pkg != q+"/site" {
+			if imp == q && !strings.HasPrefix(pkg, q+"/examples/") && !strings.HasPrefix(pkg, q+"/cmd/") && !strings.HasPrefix(pkg, q+"/pack/") && pkg != q+"/site" && pkg != q+"/app" {
 				t.Errorf("%s imports quire", pkg)
 			}
 			if strings.HasPrefix(pkg, q+"/libs/") && !strings.HasPrefix(imp, q+"/libs/") {

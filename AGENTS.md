@@ -11,11 +11,14 @@ Rules for coding agents working on Quire.
 
 | Path | Holds |
 |-|-|
-| `*.go` at the root | The site, the server and `Run` |
+| `*.go` at the root | The site and the server |
+| `app/` | The helpers: `Run` |
 | `model/`, `ui/`, `plugin/` | Data, components, the plugin API |
+| `bundle/` | What a bake leaves, and its reader |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
 | `libs/` | Packages for use outside Quire, such as `libs/lexis` |
-| `internal/bake/` | The converters: markdown, picture, diagram, card |
+| `bake/` | The baker: cache, keys, journal |
+| `pack/base/convert/` | The converters: markdown, mermaid, card, picture |
 | `examples/` | Complete sites, and what `quire new` copies |
 | `site/` | The documentation site, built with `pack/docs` |
 
@@ -27,7 +30,7 @@ A package under `libs/` imports nothing else of Quire's.
 - **It is documented and demonstrated.** A feature a site can use gets a section on its page in `site/content/docs/`, and that section shows the feature working on the page, not only its source: the rendered callout beside the markdown for it, the picture beside the line that places it. What this site cannot draw is shown as a screenshot of an example, retaken by `site/shots.sh`.
 - A new page is listed in `docs.sections` in `site/content/index.md`, or the site will not load.
 - A feature of the default look is in an example, with a check in `examples/examples_test.go`.
-- A converter whose output changed has its version bumped in `internal/bake/versions.go`; `just release-check` says which.
+- A converter whose output changed has `Version` bumped in its package under `pack/base/convert/`; `just release-check` says which.
 
 ## Code and docs
 

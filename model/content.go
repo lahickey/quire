@@ -1,4 +1,4 @@
-// Package model is the data a Quire site is made of: the site, collections, documents, images and the look.
+// Package model is the data a Quire site is made of: the site, collections, documents, pictures and the look.
 package model
 
 import (
@@ -32,7 +32,7 @@ type Meta struct {
 	Date     Date     `yaml:"date"`
 	Updated  Date     `yaml:"updated"`
 	Summary  string   `yaml:"summary"`
-	Image    string   `yaml:"image"`
+	Picture  string   `yaml:"picture"`
 	Tags     []string `yaml:"tag"`
 	Aliases  []string `yaml:"aliases"`
 }
@@ -53,7 +53,7 @@ type Document[T any] struct {
 	Words    int
 	Headings []Heading
 
-	Image Image
+	Picture Picture
 }
 
 type Collection[T Metadata] struct {
@@ -188,7 +188,7 @@ func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
 			Draft:     m.Draft,
 		},
 	}
-	if u := d.Image.shareURL(); u != "" {
+	if u := d.Picture.shareURL(); u != "" {
 		p.ShareImage = c.site.AbsURL(u)
 	}
 	return p

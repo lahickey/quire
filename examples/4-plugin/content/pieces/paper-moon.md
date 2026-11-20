@@ -2,7 +2,7 @@
 title: Paper Moon
 date: 2026-08-21
 summary: Two discs, one of them the absence of the other, over a horizon that will not settle.
-image: paper-moon.jpg
+picture: paper-moon.jpg
 medium: Screenprint on Somerset, 50 × 62 cm
 ---
 

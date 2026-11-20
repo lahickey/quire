@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/bundle"
 )
 
 func encode(t *testing.T, img image.Image) []byte {
@@ -56,9 +56,9 @@ func Flat(t *testing.T, w, h int, alpha bool) []byte {
 	return encode(t, img)
 }
 
-func ReadJournal(t *testing.T, dir string) map[string]journal.Record {
+func ReadJournal(t *testing.T, dir string) map[string]bundle.Record {
 	t.Helper()
-	recs, err := journal.LoadJournal(os.DirFS(dir))
+	recs, err := bundle.LoadJournal(os.DirFS(dir))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 type CardData struct {
 	Href, Kicker, Title, Description, CTA string
 	Draft, Featured                       bool
-	Image                                 model.Image
+	Picture                               model.Picture
 	Badges                                []model.Marker
 	Tags                                  []model.Marker
 	Extra                                 int
@@ -49,7 +49,7 @@ func DocCard[T model.Metadata](c *model.Collection[T], d model.Document[T]) Card
 		Description: d.Meta.Base().Summary,
 		Draft:       d.Meta.Base().Draft,
 		Featured:    d.Meta.Base().Featured,
-		Image:       d.Image,
+		Picture:     d.Picture,
 		Badges:      d.Meta.Badges(),
 		Tags:        c.Tags(d),
 	}
@@ -148,9 +148,9 @@ templ CardGrid(cards []CardData) {
 
 templ Card(c CardData) {
 	<a href={ c.Href } class="card">
-		if c.Image.Hash != "" {
-			<div class="card-image">
-				@Img(c.Image, model.SlotColumn, c.Title)
+		if c.Picture.Hash != "" {
+			<div class="card-picture">
+				@Img(c.Picture, model.SlotColumn, c.Title)
 			</div>
 		}
 		if c.Draft || c.Featured || len(c.Badges) > 0 {

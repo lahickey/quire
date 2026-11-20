@@ -48,7 +48,7 @@ func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = ui.HeroFigure(c.Docs()[0].Image, model.SlotBleed, c.Docs()[0].Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.HeroFigure(c.Docs()[0].Picture, model.SlotBleed, c.Docs()[0].Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -87,7 +87,7 @@ func home(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = ui.Img(d.Image, model.SlotColumn, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ui.Img(d.Picture, model.SlotColumn, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -202,7 +202,7 @@ func wall(shell model.Shell, c *model.Collection[Piece]) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = ui.Img(d.Image, model.SlotPageFull, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ui.Img(d.Picture, model.SlotPageFull, d.Meta.Title).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -312,7 +312,7 @@ func piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece], 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = ui.HeroFigure(d.Image, model.SlotPageWide, d.Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.HeroFigure(d.Picture, model.SlotPageWide, d.Meta.Title, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
