@@ -2,13 +2,12 @@ package quire
 
 import (
 	"io/fs"
-	"maps"
 
-	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
 	"github.com/lahickey/quire/model"
 )
 
+// Option is what has to be known before a blueprint runs. Everything else a site says, it says in its blueprint.
 type Option func(*settings)
 
 func WithDev(on bool) Option {
@@ -17,6 +16,11 @@ func WithDev(on bool) Option {
 
 func WithDrafts(on bool) Option {
 	return func(s *settings) { s.drafts = on }
+}
+
+// WithPacks declares packs beneath the site's blueprint, in order, so what they set is in place before it runs.
+func WithPacks(packs ...Blueprint) Option {
+	return func(s *settings) { s.packs = append(s.packs, packs...) }
 }
 
 func WithPalette(p model.Palette) Option {
@@ -33,7 +37,7 @@ func WithPalettePicker(ps ...model.Palette) Option {
 }
 
 func WithScale(scale model.Scale) Option {
-	return func(s *settings) { s.scale = scale }
+	return func(s *settings) { s.chrome.Scale = scale }
 }
 
 func WithIcons(fsys fs.FS, names ...string) Option {
@@ -44,45 +48,12 @@ func WithIcons(fsys fs.FS, names ...string) Option {
 	}
 }
 
-func WithStylesheets(fsys fs.FS, names ...string) Option {
-	return func(s *settings) { s.addSheets("site", 0, fsys, names) }
-}
-
-func WithStylesheetsAt(w model.Width, fsys fs.FS, names ...string) Option {
-	return func(s *settings) { s.addSheets("site", w, fsys, names) }
-}
-
 func WithTheme(t model.Theme) Option {
 	return func(s *settings) { s.chrome.Theme = t }
 }
 
-func WithHeader(h func(model.Chrome, model.PageSpec) templ.Component) Option {
-	return func(s *settings) { s.chrome.Header = h }
-}
-
 func WithBrand(name string) Option {
 	return func(s *settings) { s.chrome.Brand = name }
-}
-
-func WithFooter(f func(model.Chrome, model.PageSpec) templ.Component) Option {
-	return func(s *settings) { s.chrome.Footer = f }
-}
-
-func WithFooterText(text string) Option {
-	return func(s *settings) { s.chrome.FooterText = text }
-}
-
-func WithFooterLinks(links ...model.Link) Option {
-	return func(s *settings) { s.chrome.FooterLinks = append(s.chrome.FooterLinks, links...) }
-}
-
-func WithNavEnd(cs ...templ.Component) Option {
-	return func(s *settings) { s.chrome.NavEnd = append(s.chrome.NavEnd, cs...) }
-}
-
-// WithWidgets fills every fence of each name, in any document of the site.
-func WithWidgets(ws map[string]model.Widget) Option {
-	return func(s *settings) { maps.Copy(s.widgets, ws) }
 }
 
 func WithSiteCard(c model.ShareCard) Option {

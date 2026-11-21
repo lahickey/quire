@@ -3,15 +3,15 @@ package convert
 
 import (
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/internal/fonts/measure"
 	"github.com/lahickey/quire/pack/base/convert/card"
+	"github.com/lahickey/quire/pack/base/convert/faces"
 	"github.com/lahickey/quire/pack/base/convert/markdown"
 	"github.com/lahickey/quire/pack/base/convert/mermaid"
 	"github.com/lahickey/quire/pack/base/convert/picture"
 )
 
 func Standard() bake.Tools {
-	faces := measure.Default()
+	faces := faces.Default()
 	return bake.Tools{
 		Documents:  map[string]bake.Converter{".md": markdown.Converter{}},
 		Converters: []bake.Converter{mermaid.New(faces), card.New(faces)},

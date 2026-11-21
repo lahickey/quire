@@ -120,59 +120,57 @@ quire.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk)
 - A palette in the picker needs a `Name`.
 - The stylesheet carries only the palettes offered, about 1 KB compressed for each.
 - Share cards are drawn at bake time, so they stay in the site's own palette.
-- A header of your own, from `WithHeader`, draws the control itself with `ui.PalettePicker(c.Palettes)`, as it does `ui.ThemeToggle()`.
+- A header of your own draws the control itself with `ui.PalettePicker(c.Palettes)`, as it does `ui.ThemeToggle()`.
 
 The `themed` example offers its own palette and two built-in ones.
 
 ## Add your own CSS
 
-Embed a stylesheet and hand it to the site:
+Embed a stylesheet and add it in the blueprint:
 
 ```go
 //go:embed *.css
 var static embed.FS
 
-app.Run(identity, blueprint,
-  quire.WithStylesheets(static, "site.css"),
-  quire.WithStylesheetsAt(model.WidthNarrow, static, "site-narrow.css"),
-)
+site.AddStylesheets(static, "site.css")
+site.AddStylesheetsAt(model.WidthNarrow, static, "site-narrow.css")
 ```
 
-Site CSS is composited last, so it overrides Quire's.
-`WithStylesheetsAt` is CSS for one step of the page grid, `WidthNarrow`, `WidthWide` or `WidthFull`. Quire writes the media query, so a sheet never states a pixel width.
+The site's CSS is composited last, so it overrides Quire's and any pack's.
+`AddStylesheetsAt` is CSS for one step of the page grid, `WidthNarrow`, `WidthWide` or `WidthFull`. Quire writes the media query, so a sheet never states a pixel width.
 
 Most changes are an override of a custom property rather than a new rule. The properties are listed under [Tokens](#tokens).
 
 ## Replace a page or a component
 
-The default pages are `Home`, `Listing`, `Article`, `NotFound` and `Footer`, in package `ui`.
+The default pages are `Home`, `Listing`, `Article`, `NotFound` and `Footer`, in package `ui`, which is `pack/base/ui`.
 
-- `AddPage("/", …)` replaces `Home`.
+- A page added at `/` replaces `Home`.
 - `SetNotFound` replaces `NotFound`.
-- `WithFooter` replaces `Footer`, and `WithHeader` the header.
-- `Spec.Index` and `Spec.Item` replace `Listing` and `Article` for one collection. Each is handed the shell, so a template with the same signature as the default is named directly: `Index: projectsPage`.
+- `SetFrame(ui.FrameWith(header, footer))` replaces the header, the footer or both, and `SetFrame` with a frame of your own replaces everything round the content.
+- `base.Pages` adds `Listing` and `Article` for a collection. Add pages of your own in their place with `AddPage` and `AddDocumentPages`.
 
-A page of your own wraps its body in the shell, which supplies the document, navigation and footer:
+A page of your own is a body. The site supplies the document, navigation and footer:
 
 ```templ
-templ projectsPage(shell model.Shell, c *model.Collection[model.Meta]) {
-  @shell(c.IndexPage()) {
-    <article class="page page--wide">
-      <h1>{ c.Title() }</h1>
-      <div class="card-grid">
-        for _, d := range c.Docs() {
-          @ui.Card(ui.DocCard(c, d))
-        }
-      </div>
-    </article>
-  }
+templ projectsPage(c *model.Collection[model.Meta]) {
+  <article class="page page--wide">
+    <h1>{ c.Title() }</h1>
+    <div class="card-grid">
+      for _, d := range c.Docs() {
+        @ui.Card(ui.DocCard(ctx, c, d))
+      }
+    </div>
+  </article>
 }
 ```
+
+It is added with its head data: `site.AddPage(projects.Page(), projectsPage(projects))`.
 
 The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle` `PalettePicker`.
 `Code(text)` is a code block with the copy button a fenced block gets; the install line on this site's home page is one.
 `Pager(c, d)` links to the documents before and after `d` in its collection. `Nav(c, p)` is the header's links: the site's name as the link home (see `WithBrand`), then each section.
-`DocCard(c, d)` fills a `Card` from a document: its link, the collection's kicker, title, summary, draft and featured flags, picture, badges and tags. A site changes the fields it wants different.
+`DocCard(ctx, c, d)` fills a `Card` from a document: its link, its month and year as the kicker, title, summary, draft and featured flags, picture, badges and tags. A site changes the fields it wants different.
 
 ### Links
 
@@ -194,7 +192,7 @@ A store that requires its own badge is the one case a label and a mark do not co
 The "Built with Quire" at the foot of this page is it:
 
 ```go
-quire.WithFooterLinks(model.BuiltWithQuire)
+site.AddFooterLinks(model.BuiltWithQuire)
 ```
 
 ## Reference
@@ -311,12 +309,12 @@ A class Quire ships works in a template of your own and in raw HTML in a documen
 
 ### The document
 
-`site.Shell(PageSpec)` is the document: head, navigation, the page body, footer.
+The site draws the document, a correct head and the body. `ui.Frame` is what goes round a page's content inside it: the navigation and the footer.
 An active nav link matches `/` only as itself, and any other path as its subtree on a boundary, so `/project` does not light `/projects`.
 The table of contents lists H2 and H3 only.
 
 ## In depth
 
-The stylesheet is one file in four cascade layers, `@layer quire, plugin, pack, site`. That fixes precedence: a site can restyle anything, and neither a plugin nor a pack can overrule the site it is a guest in. See [Plugins](./plugins.md#css).
+The stylesheet is one file in four cascade layers, `@layer base, plugin, pack, site`. That fixes precedence: a site can restyle anything, and neither a plugin nor a pack can overrule the site it is a guest in. See [Plugins](./plugins.md#css).
 
 Why the column is 336, why the text measure is in `ch`, and why the scales are Radix are on the [Design](./architecture.md) page.

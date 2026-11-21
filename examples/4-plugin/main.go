@@ -12,7 +12,6 @@ import (
 	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/examples/4-plugin/basket"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/plugin"
 )
 
 //go:embed site.css
@@ -25,44 +24,33 @@ type Piece struct {
 	Medium     string `yaml:"medium"`
 }
 
-// shop is the site. Its two methods are the two stages Quire runs.
-type shop struct {
-	pieces *model.Collection[Piece]
-	basket *basket.Plugin
-}
-
-// Declare says what the site holds: its content and pages. It runs in a bake
-// and when serving, so it only declares.
-func (s *shop) Declare(site *quire.Site) error {
-	var err error
-	s.pieces, err = site.AddCollection(model.Spec[Piece]{
-		ID:    "pieces",
-		Title: "Pieces",
-		Index: wall,
-		// The basket is made in Live. A template only runs when a page
-		// renders, by which time it is set.
-		Item: func(shell model.Shell, c *model.Collection[Piece], d model.Document[Piece]) templ.Component {
-			return piecePage(shell, s.basket, c, d)
-		},
-	})
+// declare says what the site holds: its content, its pages and its plugin.
+// It runs in a bake and when serving, so it only declares.
+func declare(site *quire.Site) error {
+	site.AddStylesheets(css, "site.css")
+	pieces, err := site.Collection(model.Spec[Piece]{ID: "pieces", Title: "Pieces"})
 	if err != nil {
 		return err
 	}
-	site.AddPage("/", home(site.Shell, s.pieces))
-	return nil
-}
-
-// Live adds what only a served site has: plugins and routes. A bake never
-// calls it.
-func (s *shop) Live(l *quire.Live) error {
 	var items []basket.Item
-	for _, d := range s.pieces.Docs() {
+	for _, d := range pieces.Docs() {
 		items = append(items, basket.Item{ID: d.Slug, Title: d.Meta.Title})
 	}
-	s.basket = basket.New(items...)
-	// Use attaches the plugin: its routes, page, stylesheets and nav link.
-	// A plugin's pages live under /_basket unless the site moves them, as here.
-	return l.Use(plugin.At("/basket", s.basket))
+	// Use says the site has the plugin: its endpoints, stylesheets and nav
+	// link. It is attached only when the site serves, never in a bake.
+	b := basket.New("/basket", items...)
+	site.AddPlugins(b)
+	// A plugin owns its endpoints and no pages. Its page is one the site adds,
+	// drawn for each request.
+	site.AddLivePage("/basket", b.Page)
+
+	// A collection is its documents and nothing more; these are its pages.
+	site.AddPage(pieces.Page(), wall(pieces))
+	site.AddDocumentPages(pieces, func(d model.Document[Piece]) (model.PageSpec, templ.Component) {
+		return model.DocumentPage(pieces, d), piecePage(b, pieces, d)
+	})
+	site.AddPage(model.PageSpec{Title: "Prints", Path: "/"}, home(pieces))
+	return nil
 }
 
 func main() {
@@ -70,8 +58,7 @@ func main() {
 		Name:        "Prints",
 		BaseURL:     "https://example.com",
 		Description: "Screenprints, and a basket that keeps up across tabs.",
-	}, &shop{},
+	}, quire.BlueprintFunc(declare),
 		quire.WithPalette(model.PaletteDusk),
-		quire.WithStylesheets(css, "site.css"),
 	)
 }

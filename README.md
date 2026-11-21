@@ -25,13 +25,18 @@ import (
   "github.com/lahickey/quire"
   "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
+  "github.com/lahickey/quire/pack/base"
 )
 
 func main() {
   app.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
-      _, err := site.AddCollection(model.Basic{ID: "posts"})
-      return err
+      posts, err := site.Collection(model.Basic{ID: "posts"})
+      if err != nil {
+        return err
+      }
+      base.Pages(site, posts)
+      return nil
     }))
 }
 ```
@@ -69,6 +74,7 @@ The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves t
 3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
 4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates.
 5. [`5-docs`](./examples/5-docs) — a documentation site from the docs pack: a landing page, a sidebar and search, with no templates or CSS.
+6. [`6-naked`](./examples/6-naked) — no pack beneath it: Quire's machinery and nothing of its look.
 
 ## Documentation
 

@@ -2,68 +2,8 @@ package ui
 
 import (
 	"cmp"
-	"fmt"
 	"github.com/lahickey/quire/model"
 )
-
-templ styles(c model.Chrome) {
-	for _, u := range c.FontPreload {
-		<link rel="preload" href={ u } as="font" type="font/woff2" crossorigin/>
-	}
-	for _, h := range c.StyleURLs {
-		<link rel="stylesheet" href={ h }/>
-	}
-}
-
-templ head(c model.Chrome, p model.PageSpec) {
-	<meta charset="utf-8"/>
-	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<meta name="color-scheme" content={ c.Theme.String() }/>
-	@scripts(c)
-	@styles(c)
-	<title>{ p.Title }</title>
-	<meta name="description" content={ p.MetaDescription(c) }/>
-	if c.Author != "" {
-		<meta name="author" content={ c.Author }/>
-	}
-	if c := p.Canonical(c); c != "" {
-		<link rel="canonical" href={ c }/>
-	} else {
-		<meta name="robots" content="noindex"/>
-	}
-	if p.Article != nil && p.Article.Published != "" {
-		<meta property="og:type" content="article"/>
-		<meta property="article:published_time" content={ p.Article.Published }/>
-		if p.Article.Modified != "" {
-			<meta property="article:modified_time" content={ p.Article.Modified }/>
-		}
-	} else {
-		<meta property="og:type" content="website"/>
-	}
-	if c := p.Canonical(c); c != "" {
-		<meta property="og:url" content={ c }/>
-	}
-	<meta property="og:title" content={ p.Title }/>
-	<meta property="og:description" content={ p.MetaDescription(c) }/>
-	<meta property="og:image" content={ p.OGImage(c) }/>
-	<meta property="og:site_name" content={ c.Name }/>
-	<meta name="twitter:card" content="summary_large_image"/>
-	<meta name="twitter:title" content={ p.Title }/>
-	<meta name="twitter:description" content={ p.MetaDescription(c) }/>
-	<meta name="twitter:image" content={ p.OGImage(c) }/>
-	for _, i := range c.Icons {
-		<link { i.Attrs()... }/>
-	}
-}
-
-templ scripts(c model.Chrome) {
-	if c.ScriptURL != "" {
-		<script src={ c.ScriptURL }></script>
-	}
-	for _, m := range c.ModuleURLs {
-		<script type="module" src={ m }></script>
-	}
-}
 
 templ ThemeToggle() {
 	<button type="button" class="theme-toggle" data-on:click__viewtransition={ toggleTheme } aria-label="Toggle theme" title="Toggle theme">
@@ -100,17 +40,6 @@ templ PalettePicker(ps []model.Palette) {
 			}
 		</div>
 	</details>
-}
-
-templ snippet(c model.Chrome) {
-	if r := c.LiveReload; r.On {
-		<div
-			style="display:none"
-			data-signals={ fmt.Sprintf("{quire: {boot: %q}}", r.BootID) }
-			data-effect={ fmt.Sprintf("$quire.boot !== %q && window.location.reload()", r.BootID) }
-			data-init={ r.Init }
-		></div>
-	}
 }
 
 templ Nav(c model.Chrome, p model.PageSpec) {
@@ -158,19 +87,17 @@ templ Footer(c model.Chrome, p model.PageSpec) {
 	</footer>
 }
 
-templ Shell(c model.Chrome, p model.PageSpec) {
-	<!DOCTYPE html>
-	<html lang="en" data-theme={ c.Theme.String() }>
-		<head>
-			@head(c, p)
-		</head>
-		<body>
-			@snippet(c)
-			@c.Header(c, p)
-			<main>
-				{ children... }
-			</main>
-			@c.Footer(c, p)
-		</body>
-	</html>
+templ frame(c model.Chrome, p model.PageSpec, header, footer func(model.Chrome, model.PageSpec) templ.Component) {
+	@header(c, p)
+	<main>
+		{ children... }
+	</main>
+	@footer(c, p)
+}
+
+// Frame is the default look round a page's content: the header with its nav, and the footer.
+templ Frame(c model.Chrome, p model.PageSpec) {
+	@frame(c, p, Header, Footer) {
+		{ children... }
+	}
 }

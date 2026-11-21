@@ -10,17 +10,27 @@ import (
 
 const slotMark = "\x00"
 
-// Slot is a place in a baked document that something goes: a picture or video beside the text, or a named fence.
-// The bake fills a fence it can, with HTML, and leaves the rest with their Body for the site to fill.
-type Slot struct {
-	Picture string `json:"picture,omitempty"`
+// PictureSlot is a picture or a video beside the text. Figure says it stood in a paragraph of its own.
+type PictureSlot struct {
+	Name    string `json:"name"`
 	Alt     string `json:"alt,omitempty"`
 	Caption string `json:"caption,omitempty"`
 	Figure  bool   `json:"figure,omitzero"`
-	Fence   string `json:"fence,omitempty"`
-	Info    string `json:"info,omitempty"`
-	Body    string `json:"body,omitempty"`
-	HTML    string `json:"html,omitempty"`
+}
+
+// FenceSlot is a named fence. HTML is the code block it is when nothing claims it.
+// One with a Body as well may be drawn by a widget of its name; one without is in a language the bake highlighted, and is final.
+type FenceSlot struct {
+	Name string `json:"name"`
+	Info string `json:"info,omitempty"`
+	Body string `json:"body,omitempty"`
+	HTML string `json:"html,omitempty"`
+}
+
+// Slot is a place in a baked document that something goes: a picture, or a fence.
+type Slot struct {
+	Picture PictureSlot `json:"picture,omitzero"`
+	Fence   FenceSlot   `json:"fence,omitzero"`
 }
 
 // BakedDocument is a document as a converter leaves it: its raw frontmatter, and HTML with a mark where each slot goes.

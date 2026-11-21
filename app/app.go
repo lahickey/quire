@@ -15,6 +15,7 @@ import (
 	"github.com/lahickey/quire"
 	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/pack/base"
 )
 
 var shipped fs.FS
@@ -28,9 +29,14 @@ func Ship(files fs.FS, dir string) {
 	shipped = b
 }
 
-// Run bakes ./content into ./.quire with base's converters, builds the site over that bundle and serves it.
+// Run bakes ./content into ./.quire with base's converters, builds the site over that bundle with base beneath it, and serves it.
 // A binary handed a bundle by Ship, or built with quire_nobake, serves without baking.
 func Run(id model.Identity, b quire.Blueprint, extra ...quire.Option) {
+	RunBare(id, b, append([]quire.Option{quire.WithPacks(base.Pack{})}, extra...)...)
+}
+
+// RunBare is Run with no pack beneath the site: Quire's machinery and nothing of its look.
+func RunBare(id model.Identity, b quire.Blueprint, extra ...quire.Option) {
 	dev := flag.Bool("dev", false, "live reload")
 	drafts := flag.Bool("drafts", false, "include draft documents")
 	addr := flag.String("addr", ":8090", "listen address")
@@ -40,8 +46,9 @@ func Run(id model.Identity, b quire.Blueprint, extra ...quire.Option) {
 		log.Fatalf("usage: %s [flags] [bake]", os.Args[0])
 	}
 	opts := append([]quire.Option{quire.WithDev(*dev), quire.WithDrafts(*drafts)}, extra...)
+	d := quire.Describe(id, b, opts...)
 	if baking || (shipped == nil && canBake) {
-		if err := bakeSite(id, b, opts); err != nil {
+		if err := bakeSite(d); err != nil {
 			log.Fatal(err)
 		}
 		if baking {
@@ -56,7 +63,7 @@ func Run(id model.Identity, b quire.Blueprint, extra ...quire.Option) {
 	if err != nil {
 		log.Fatalf("bundle: %v; run the site's bake", err)
 	}
-	site, err := quire.Build(id, baked, b, opts...)
+	site, err := d.Build(baked)
 	if err != nil {
 		log.Fatal(err)
 	}

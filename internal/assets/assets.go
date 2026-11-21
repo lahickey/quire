@@ -1,3 +1,4 @@
+// Package assets assembles a site's stylesheet and script from what its packs, plugins and the site itself add.
 package assets
 
 import (
@@ -9,43 +10,48 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const layerOrder = "@layer quire, plugin, pack, site;\n"
+const layerOrder = "@layer base, plugin, pack, site;\n"
 
-//go:embed *.css *.js
+//go:embed datastar.js
 var files embed.FS
 
-var ownSheets = []string{"base.css", "toggle.css", "nav.css", "layout.css", "prose.css", "highlight.css"}
-
+// File is one sheet or script: read from FS by Name, or Body when it was made and not read.
 type File struct {
 	FS    fs.FS
 	Name  string
+	Body  []byte
 	Layer string
 	At    model.Width
 }
 
 type Parts struct {
-	Scale    model.Scale
-	Palette  model.Palette
-	Palettes []model.Palette
-	Fonts    []byte
-	Sheets   []File
-	Scripts  []File
-}
-
-func own(name string) []byte {
-	body, err := files.ReadFile(name)
-	if err != nil {
-		panic("quire: asset " + name + ": " + err.Error())
-	}
-	return body
+	Scale   model.Scale
+	Fonts   []byte
+	Sheets  []File
+	Scripts []File
 }
 
 func read(f File) []byte {
+	if f.FS == nil {
+		return f.Body
+	}
 	body, err := fs.ReadFile(f.FS, f.Name)
 	if err != nil {
 		panic("quire: " + f.Name + ": " + err.Error())
 	}
 	return body
+}
+
+func media(s model.Scale, w model.Width) string {
+	switch w {
+	case model.WidthNarrow:
+		return fmt.Sprintf("@media (width < %dpx)", s.Measure())
+	case model.WidthWide:
+		return fmt.Sprintf("@media (width >= %dpx)", s.Wide())
+	case model.WidthFull:
+		return fmt.Sprintf("@media (width >= %dpx)", s.Full())
+	}
+	return ""
 }
 
 func appendCSS(b *strings.Builder, layer, name, query string, body []byte) {
@@ -81,21 +87,18 @@ func appendJS(b *strings.Builder, name string, body []byte) {
 	b.WriteString("})();\n")
 }
 
+// Stylesheet is one sheet in four layers: the look at the bottom, then plugins, packs and the site, each at its width.
 func Stylesheet(p Parts) []byte {
 	var b strings.Builder
-	appendCSS(&b, "quire", "scale", "", scaleCSS(p.Scale))
-	appendCSS(&b, "quire", "fonts", "", p.Fonts)
-	appendCSS(&b, "quire", "palette", "", paletteCSS(p.Palette, p.Palettes))
-	for _, name := range ownSheets {
-		appendCSS(&b, "quire", name, "", own(name))
+	if len(p.Fonts) > 0 {
+		appendCSS(&b, "base", "fonts", "", p.Fonts)
 	}
-	appendCSS(&b, "quire", "breakpoint", "", breakpointCSS(p.Scale))
 	for _, w := range append([]model.Width{0}, model.Widths...) {
 		q := ""
 		if w != 0 {
 			q = media(p.Scale, w)
 		}
-		for _, layer := range []string{"plugin", "pack", "site"} {
+		for _, layer := range []string{"base", "plugin", "pack", "site"} {
 			for _, f := range p.Sheets {
 				if f.At == w && f.Layer == layer {
 					appendCSS(&b, layer, f.Name, q, read(f))
@@ -108,13 +111,16 @@ func Stylesheet(p Parts) []byte {
 
 func Script(p Parts) []byte {
 	var b strings.Builder
-	appendJS(&b, "theme.js", own("theme.js"))
-	appendJS(&b, "nav.js", own("nav.js"))
-	appendJS(&b, "video.js", own("video.js"))
 	for _, f := range p.Scripts {
 		appendJS(&b, f.Name, read(f))
 	}
 	return []byte(b.String())
 }
 
-func Datastar() []byte { return own("datastar.js") }
+func Datastar() []byte {
+	body, err := files.ReadFile("datastar.js")
+	if err != nil {
+		panic("quire: datastar: " + err.Error())
+	}
+	return body
+}

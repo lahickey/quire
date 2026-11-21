@@ -42,20 +42,13 @@ type Attached struct {
 }
 
 type Mount struct {
-	got   Attached
-	shell model.Shell
-	pages string
-	err   error
+	got Attached
+	err error
 }
 
 type Plugin interface {
 	Name() string
 	Attach(*Mount) error
-}
-
-type moved struct {
-	Plugin
-	at string
 }
 
 func (m *Mount) namespaced(fsys fs.FS, names []string) {
@@ -75,19 +68,12 @@ func (m *Mount) namespaced(fsys fs.FS, names []string) {
 	}
 }
 
-func (p moved) Attach(m *Mount) error {
-	m.pages = p.at
-	return p.Plugin.Attach(m)
-}
-
-func At(path string, p Plugin) Plugin { return moved{p, path} }
-
-func Attach(p Plugin, shell model.Shell) (Attached, error) {
+func Attach(p Plugin) (Attached, error) {
 	name := p.Name()
 	if name == "" || strings.ContainsAny(name, "/_") {
 		return Attached{}, fmt.Errorf("plugin name %q: one word, no slash or underscore", name)
 	}
-	m := &Mount{got: Attached{Name: name}, shell: shell}
+	m := &Mount{got: Attached{Name: name}}
 	if err := cmp.Or(p.Attach(m), m.err); err != nil {
 		return Attached{}, fmt.Errorf("plugin %s: %w", name, err)
 	}
@@ -102,18 +88,6 @@ func (m *Mount) URL(path string) string {
 
 func (m *Mount) Route(method, path string, h http.HandlerFunc) {
 	m.got.Routes = append(m.got.Routes, Route{method, m.URL(path), h})
-}
-
-func (m *Mount) PageURL(path string) string {
-	base := cmp.Or(m.pages, "/_"+m.got.Name)
-	if path = strings.Trim(path, "/"); path == "" {
-		return base
-	}
-	return strings.TrimSuffix(base, "/") + "/" + path
-}
-
-func (m *Mount) Page(method, path string, h http.HandlerFunc) {
-	m.got.Routes = append(m.got.Routes, Route{method, m.PageURL(path), h})
 }
 
 func (m *Mount) AddStylesheets(fsys fs.FS, names ...string) { m.AddStylesheetsAt(0, fsys, names...) }
@@ -140,5 +114,3 @@ func (m *Mount) AddNavEnd(c templ.Component) {
 }
 
 func (m *Mount) UseSessions() { m.got.Sessions = true }
-
-func (m *Mount) Shell(p model.PageSpec) templ.Component { return m.shell(p) }

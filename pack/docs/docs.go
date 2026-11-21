@@ -10,9 +10,9 @@ import (
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/plugin"
+	"github.com/lahickey/quire/pack/base/searchui"
+	"github.com/lahickey/quire/pack/base/ui"
 	"github.com/lahickey/quire/plugin/search"
-	"github.com/lahickey/quire/ui"
 )
 
 //go:embed *.css
@@ -44,13 +44,17 @@ type Landing struct {
 	} `yaml:"docs"`
 }
 
+// Book is the documents, and the section index.md puts each in.
+type Book struct {
+	*Collection
+	sections map[string]string
+}
+
 // Pack's fields each replace one page; nil is the default of the same name.
 type Pack struct {
-	Home  func(model.Shell, model.Identity, model.Document[Landing], *Collection) templ.Component
-	Index func(model.Shell, *Collection) templ.Component
-	Item  func(model.Shell, *Collection, Document) templ.Component
-
-	docs *Collection
+	Home  func(model.Identity, model.Document[Landing], *Book) templ.Component
+	Index func(*Book) templ.Component
+	Item  func(*Book, Document) templ.Component
 }
 
 type group struct {
@@ -58,15 +62,12 @@ type group struct {
 	Docs  []Document
 }
 
-type place struct {
-	order   int
-	section string
-}
+func (b *Book) Section(d Document) string { return b.sections[d.Slug] }
 
-func groups(c *Collection) []group {
+func groups(b *Book) []group {
 	var out []group
-	for _, d := range c.Docs() {
-		if title := c.Kicker(d); len(out) == 0 || out[len(out)-1].Title != title {
+	for _, d := range b.Docs() {
+		if title := b.Section(d); len(out) == 0 || out[len(out)-1].Title != title {
 			out = append(out, group{Title: title})
 		}
 		out[len(out)-1].Docs = append(out[len(out)-1].Docs, d)
@@ -80,13 +81,13 @@ func (p *Pack) Declare(site *quire.Site) error {
 		return err
 	}
 	l := landing.Meta
-	places := map[string]place{}
+	order, sections := map[string]int{}, map[string]string{}
 	for _, s := range l.Docs.Sections {
 		for _, slug := range s.Pages {
-			if _, twice := places[slug]; twice {
+			if _, twice := order[slug]; twice {
 				return fmt.Errorf("index.md lists %q twice", slug)
 			}
-			places[slug] = place{len(places), s.Title}
+			order[slug], sections[slug] = len(order), s.Title
 		}
 	}
 	home, index, item := p.Home, p.Index, p.Item
@@ -99,24 +100,21 @@ func (p *Pack) Declare(site *quire.Site) error {
 	if item == nil {
 		item = Item
 	}
-	c, err := site.AddCollection(model.Basic{
+	c, err := site.Collection(model.Basic{
 		ID:          "docs",
 		Title:       cmp.Or(l.Docs.Title, "Documentation"),
 		Description: l.Docs.Summary,
-		Kicker:      func(d Document) string { return places[d.Slug].section },
-		Sort:        func(a, b Document) int { return cmp.Compare(places[a.Slug].order, places[b.Slug].order) },
-		Index:       index,
-		Item:        item,
+		Sort:        func(a, b Document) int { return cmp.Compare(order[a.Slug], order[b.Slug]) },
 	})
 	if err != nil {
 		return err
 	}
 	for _, d := range c.Docs() {
-		if _, listed := places[d.Slug]; !listed {
+		if _, listed := order[d.Slug]; !listed {
 			return fmt.Errorf("%s is not in a section of index.md", d.Path)
 		}
 	}
-	for slug := range places {
+	for slug := range order {
 		if _, ok := c.Get(slug); !ok {
 			return fmt.Errorf("index.md lists %q, which is not a document in docs", slug)
 		}
@@ -130,13 +128,15 @@ func (p *Pack) Declare(site *quire.Site) error {
 	if l.Footer != "" {
 		site.SetFooterText(l.Footer)
 	}
-	site.AddPage("/", home(site.Shell, site.Identity(), landing, c))
-	p.docs = c
+	book := &Book{c, sections}
+	site.AddPage(c.Page(), index(book))
+	site.AddDocumentPages(c, func(d Document) (model.PageSpec, templ.Component) {
+		return model.DocumentPage(c, d), item(book, d)
+	})
+	site.AddPage(model.PageSpec{Title: site.Identity().Name, Path: "/"}, home(site.Identity(), landing, book))
+	found := search.New("/search", searchui.Look())
+	found.Add(c)
+	site.AddPlugins(found)
+	site.AddLivePage("/search", found.Page)
 	return nil
-}
-
-func (p *Pack) Live(l *quire.Live) error {
-	s := search.New()
-	s.Add(p.docs)
-	return l.Use(plugin.At("/search", s))
 }

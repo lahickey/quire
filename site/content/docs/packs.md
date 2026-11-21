@@ -4,7 +4,7 @@ summary: A whole kind of site, ready made. The docs pack is this one.
 ---
 
 A pack is a site's Go somebody else wrote: collections, pages, styles and plugins for one kind of site.
-It has the same two methods a site of your own can have, `Declare` for content and pages and [`Live`](./wiring.md#live) for plugins, so a site hands it to `Run` and writes content.
+It is a blueprint, as a site's own is, so a site hands it to `Run` or includes it in its own, and writes content.
 
 ## The docs pack
 
@@ -81,10 +81,11 @@ A document that no section lists fails the load, and so does a name with no docu
 ```
 
 `Home`, `Index` and `Item` are the pages, and `docs.Sidebar` is there for one that still wants it.
+Each draws a body, and is handed a `*docs.Book`: the collection of documents, with `Section(d)` for the section `index.md` puts a document in.
 
 ### Widgets and CSS
 
-The documents take the site's [widgets](./content.md#widgets), set with `quire.WithWidgets` as for any site.
+The documents take the site's [widgets](./content.md#widgets), added with `site.SetWidget` as for any site, before the pack is included.
 
 The pack's CSS is in the `pack` layer, so the site's own sheets win over it.
 The page beside the sidebar is a [region](./wiring.md#scripts), so the sidebar is not redrawn when a link in it is followed. A page of your own keeps that by putting `data-region="docs"` on its content, as the defaults do.

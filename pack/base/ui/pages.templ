@@ -1,0 +1,100 @@
+package ui
+
+import "github.com/lahickey/quire/model"
+
+templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]) {
+	<div class="entries-list">
+		for _, d := range docs {
+			<a href={ c.Href(d) } class="entry-item">
+				if d.Picture.Hash != "" {
+					<span class="entry-thumb">
+						@Img(d.Picture, model.SizeThumb, d.Meta.Base().Title)
+					</span>
+				}
+				<span class="entry-body">
+					if k := MonthYear(ctx, d.Meta.Base().Date); k != "" || d.Meta.Base().Draft {
+						<span class="entry-kicker">
+							if d.Meta.Base().Draft {
+								<span class="entry-kicker--draft">Draft</span>
+								if k != "" {
+									{ " · " }
+								}
+							}
+							{ k }
+						</span>
+					}
+					<h3 class="entry-title">{ d.Meta.Base().Title }</h3>
+					if s := d.Meta.Base().Summary; s != "" {
+						<p class="entry-context">{ s }</p>
+					}
+				</span>
+			</a>
+		}
+	</div>
+}
+
+// Listing is the body of a collection's index: its title and a row for each document.
+templ Listing[T model.Metadata](c *model.Collection[T]) {
+	<article class="page">
+		<header class="page-head">
+			<h1>{ c.Title() }</h1>
+			if d := c.Description(); d != "" {
+				<p class="page-intro">{ d }</p>
+			}
+		</header>
+		@Entries(c, c.Docs())
+	</article>
+}
+
+// Article is the body of a document's own page.
+templ Article[T model.Metadata](c *model.Collection[T], d model.Document[T]) {
+	<article class="page">
+		<header class="page-head">
+			if d.Meta.Base().Draft {
+				<div class="header-badges">
+					@DraftBadge()
+				</div>
+			}
+			<h1>{ d.Meta.Base().Title }</h1>
+			if date := d.Meta.Base().Date; !date.IsZero() {
+				<p class="page-meta">{ LongDate(ctx, date) }</p>
+			}
+			@Tags(c.Tags(d))
+		</header>
+		@HeroFigure(d.Picture, model.SizePage, d.Meta.Base().Title, "")
+		@Contents(d.Headings)
+		<div class="prose">
+			@templ.Raw(d.HTML)
+		</div>
+		@BackLink(c.Path(), c.Title())
+	</article>
+}
+
+// Home is the body of the home page a site gets when it adds none: its name, its description and its sections.
+templ Home() {
+	{{ c, _ := model.ChromeOf(ctx) }}
+	<article class="page">
+		<header class="page-head">
+			<h1>{ c.Name }</h1>
+		</header>
+		if c.Description != "" {
+			<p class="home-lede">{ c.Description }</p>
+		}
+		if items := c.Sections(); len(items) > 0 {
+			<div class="home-sections">
+				for _, it := range items {
+					<a href={ it.Href } class="home-section">{ it.Label }</a>
+				}
+			</div>
+		}
+	</article>
+}
+
+templ NotFound() {
+	<article class="page">
+		<header class="page-head">
+			<h1>Not found</h1>
+			<p class="page-intro">Nothing at this URL.</p>
+		</header>
+	</article>
+}

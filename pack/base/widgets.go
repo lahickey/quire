@@ -1,7 +1,6 @@
-package quire
+package base
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -11,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/a-h/templ"
+	"github.com/lahickey/quire"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/ui"
+	"github.com/lahickey/quire/pack/base/ui"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -96,47 +96,24 @@ func palette(name, body string) (string, error) {
 	return b.String(), nil
 }
 
-func (s *Site) mermaid(_, body string) (string, error) {
-	file, err := s.from.Converted("mermaid", []byte(strings.TrimSpace(body)), s.fonts.ID)
-	if err != nil {
-		return "", err
+func mermaid(site *quire.Site) model.Widget {
+	return func(_, body string) (string, error) {
+		file, err := site.Converted("mermaid", []byte(strings.TrimSpace(body)), site.FontSetID())
+		if err != nil {
+			return "", err
+		}
+		svg, err := site.Body(file)
+		return `<figure class="diagram">` + string(svg) + "</figure>", err
 	}
-	svg, err := s.from.Body(file)
-	return `<figure class="diagram">` + string(svg) + "</figure>", err
 }
 
-func (s *Site) fill(sl model.Slot) (string, error) {
-	if sl.Fence == "" {
-		if journal.VideoType(sl.Picture) == "" {
-			return s.placePicture(sl.Picture, sl.Alt, sl.Caption, sl.Figure)
-		}
-		if !sl.Figure {
-			return "", fmt.Errorf("%s: a video goes in a paragraph of its own", sl.Picture)
-		}
-		return s.placeVideo(sl.Picture, sl.Alt, sl.Caption)
+func picture(pic model.Picture, sl model.PictureSlot) templ.Component {
+	if sl.Figure {
+		return ui.LazyFigure(pic, sl.Alt, sl.Caption)
 	}
-	w := s.widgets[sl.Fence]
-	switch {
-	case w == nil && sl.HTML != "":
-		return sl.HTML, nil
-	case w == nil:
-		return model.CodeBlock(html.EscapeString(sl.Body)), nil
-	case sl.HTML != "":
-		return "", fmt.Errorf("widget %q has the name of a language, so the bake highlighted its fence as code: rename the widget and its fences", sl.Fence)
-	}
-	out, err := w(sl.Info, sl.Body)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", sl.Fence, err)
-	}
-	return out, nil
+	return ui.Img(pic, model.SizePage, sl.Alt)
 }
 
-// AddWidget fills every fence of that name, in any document of the site. A later one of the same name replaces an earlier.
-func (s *Site) AddWidget(name string, w model.Widget) {
-	mustBeOpen(s.built, "a widget")
-	if s.read {
-		s.err = cmp.Or(s.err, fmt.Errorf("widget %s: added after content was read, so documents already loaded lack it; add widgets first", name))
-		return
-	}
-	s.widgets[name] = w
+func video(src string, poster model.Picture, sl model.PictureSlot) templ.Component {
+	return ui.VideoFigure(src, poster, sl.Alt, sl.Caption)
 }

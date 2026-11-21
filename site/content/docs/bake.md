@@ -52,7 +52,9 @@ It never encodes: a variant it was not given is a 404.
 ## Controls
 
 `Run` bakes `content` into `.quire`, both relative to where it runs.
-A site that keeps them elsewhere, or bakes with other converters, writes [a bake of its own](./wiring.md#a-bake-of-your-own) and says where:
+`app.Converters(sets…)` adds to what `Run`'s bake can convert, for a pack that brings a converter of its own. Only a binary that can bake has it, so the call goes in a file with the build constraint `!quire_nobake`.
+
+A site that keeps its content elsewhere writes [a bake of its own](./wiring.md#a-bake-of-your-own) and says where:
 
 ```go
 bake.Start(model.BakeSpec{

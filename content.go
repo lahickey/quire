@@ -2,19 +2,16 @@ package quire
 
 import (
 	"cmp"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/ui"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -36,49 +33,6 @@ func load[T any](baked []model.BakedDocument) ([]model.Document[T], error) {
 		out = append(out, model.Document[T]{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: b.Headings})
 	}
 	return out, nil
-}
-
-func (s *Site) picture(name string) (model.Picture, error) {
-	name = path.Clean(filepath.ToSlash(name))
-	if pic, ok := s.pictures[name]; ok {
-		return pic, nil
-	}
-	pic, err := s.from.Picture(name)
-	if err != nil {
-		return pic, err
-	}
-	base := path.Base(name)
-	pic.Name, pic.Scale = strings.TrimSuffix(base, path.Ext(base)), s.scale
-	s.pictures[name] = pic
-	return pic, nil
-}
-
-func (s *Site) placePicture(name, alt, caption string, figure bool) (string, error) {
-	pic, err := s.picture(name)
-	if err != nil {
-		return "", err
-	}
-	c := ui.Img(pic, model.SizePage, alt)
-	if figure {
-		c = ui.LazyFigure(pic, alt, caption)
-	}
-	var b strings.Builder
-	err = c.Render(context.Background(), &b)
-	return b.String(), err
-}
-
-func (s *Site) placeVideo(name, alt, caption string) (string, error) {
-	file, err := s.from.File(name)
-	if err != nil {
-		return "", err
-	}
-	poster, err := s.picture(strings.TrimSuffix(name, path.Ext(name)) + ".png")
-	if err != nil {
-		return "", fmt.Errorf("%s needs a still of the same name as its poster: %w", name, err)
-	}
-	var b strings.Builder
-	err = ui.VideoFigure(model.BundleURL(file), poster, alt, caption).Render(context.Background(), &b)
-	return b.String(), err
 }
 
 func (s *Site) documents(pattern string) ([]model.BakedDocument, error) {
@@ -119,7 +73,7 @@ func (s *Site) Markdown(name string) (templ.Component, error) {
 	return templ.Raw(d.HTML), err
 }
 
-func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
+func (s *Site) Collection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
 	baked, err := s.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"))
 	if err != nil {
 		return nil, err
@@ -133,55 +87,43 @@ func (s *Site) AddCollection[T model.Metadata](spec model.Spec[T]) (*model.Colle
 		if name == "" {
 			continue
 		}
-		if docs[i].Picture, err = s.picture(model.Resolve(d.Path, name)); err != nil {
+		if docs[i].Picture, err = s.Picture(model.Resolve(d.Path, name)); err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
 		}
 	}
-	col, err := model.Collect(spec, docs, s.chrome.Identity, s.drafts)
+	col, err := model.Collect(spec, docs, s.drafts)
 	if err != nil {
 		return nil, err
 	}
-	docs = col.Docs()
-	if len(docs) == 0 {
-		return col, nil
-	}
-	s.addNavItem(spec.ID)
+	return col, nil
+}
 
-	index, item := spec.Index, spec.Item
-	if index == nil {
-		index = ui.Listing[T]
-	}
-	if item == nil {
-		item = ui.Article[T]
-	}
-	s.preparePage("/"+spec.ID, index(s.Shell, col))
-
-	s.sitemap = append(s.sitemap, serve.Loc{Path: "/" + spec.ID})
-	s.route("GET /"+spec.ID+"/{slug}", ownerSite, func(w http.ResponseWriter, r *http.Request) {
+// AddDocumentPages gives each of a collection's documents a page at its address, with its aliases leading there and its place in the sitemap.
+// A page is drawn on its first request and kept.
+func (s *Site) AddDocumentPages[T model.Metadata](col *model.Collection[T], page func(model.Document[T]) (model.PageSpec, templ.Component)) {
+	s.route("GET "+col.Path()+"/{slug}", ownerSite, func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
 			s.notFound404.ServeHTTP(w, r)
 			return
 		}
-		ui.Render(item(s.Shell, col, doc))(w, r)
+		render(s.Page(page(doc)))(w, r)
 	})
 	s.handlers[len(s.handlers)-1].cached = true
-	for _, d := range docs {
+	for _, d := range col.Docs() {
 		href := col.Href(d)
-		if err := s.reserve("GET "+href, ownerSite); err != nil {
-			return nil, err
-		}
+		s.err = cmp.Or(s.err, s.reserve("GET "+href, ownerSite))
 		for _, alias := range d.Meta.Base().Aliases {
 			if !strings.HasPrefix(alias, "/") {
-				return nil, fmt.Errorf("%s/%s: alias %q must start with /", spec.ID, d.Slug, alias)
+				s.err = cmp.Or(s.err, fmt.Errorf("%s: alias %q must start with /", d.Path, alias))
+				continue
 			}
 			if err := s.claim("GET "+alias, ownerSite, http.RedirectHandler(href, http.StatusMovedPermanently).ServeHTTP); err != nil {
-				return nil, fmt.Errorf("%s/%s: alias %w", spec.ID, d.Slug, err)
+				s.err = cmp.Or(s.err, fmt.Errorf("%s: alias %w", d.Path, err))
 			}
 		}
 		if !d.Meta.Base().Draft {
-			s.sitemap = append(s.sitemap, serve.Loc{Path: col.Href(d), LastMod: d.Meta.Base().LastMod().ISO()})
+			s.sitemap = append(s.sitemap, serve.Loc{Path: href, LastMod: d.Meta.Base().LastMod().ISO()})
 		}
 	}
-	return col, nil
 }

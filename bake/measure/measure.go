@@ -2,21 +2,17 @@
 package measure
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 
-	"github.com/lahickey/quire/internal/fonts"
+	"github.com/lahickey/quire/model"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
 )
 
-//go:embed fonts
-var defaults embed.FS
-
 type Faces struct {
-	Set        fonts.FontSet
+	Set        model.FontSet
 	text, mono map[int]*sfnt.Font
 }
 
@@ -39,7 +35,7 @@ func parse(ttf fs.FS, files map[int]string) (map[int]*sfnt.Font, error) {
 	return out, nil
 }
 
-func Read(set fonts.FontSet, ttf fs.FS) (*Faces, error) {
+func Read(set model.FontSet, ttf fs.FS) (*Faces, error) {
 	f := &Faces{Set: set}
 	var err error
 	if f.text, err = parse(ttf, set.Text.Measure); err != nil {
@@ -49,22 +45,6 @@ func Read(set fonts.FontSet, ttf fs.FS) (*Faces, error) {
 		return nil, fmt.Errorf("%s: %w", set.Mono.Name, err)
 	}
 	return f, nil
-}
-
-func Default() *Faces {
-	set, err := fonts.ReadFontSet(fonts.Default())
-	if err != nil {
-		panic("quire: default fonts: " + err.Error())
-	}
-	ttf, err := fs.Sub(defaults, "fonts")
-	if err != nil {
-		panic(err)
-	}
-	f, err := Read(set, ttf)
-	if err != nil {
-		panic("quire: default fonts: " + err.Error())
-	}
-	return f
 }
 
 func (f *Faces) Face(mono bool, weight int) *sfnt.Font {

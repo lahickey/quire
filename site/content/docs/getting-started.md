@@ -29,13 +29,18 @@ import (
   "github.com/lahickey/quire"
   "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
+  "github.com/lahickey/quire/pack/base"
 )
 
 func main() {
   app.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
-      _, err := site.AddCollection(model.Basic{ID: "posts"})
-      return err
+      posts, err := site.Collection(model.Basic{ID: "posts"})
+      if err != nil {
+        return err
+      }
+      base.Pages(site, posts)
+      return nil
     }))
 }
 ```
@@ -154,6 +159,7 @@ The repository's `examples/` are complete sites, each adding to the one before:
 - `3-themed` has a look of its own.
 - `4-plugin` is a shop with a basket plugin.
 - `5-docs` is a documentation site, made by the [docs pack](./packs.md).
+- `6-naked` has no pack beneath it: Quire's machinery, and a look that is yours to bring.
 
 `quire new` copies one into a new directory as a site of its own:
 

@@ -1,6 +1,7 @@
 package quire
 
 import (
+	"cmp"
 	"fmt"
 	"net/http"
 
@@ -9,17 +10,13 @@ import (
 	"github.com/lahickey/quire/plugin"
 )
 
-// Live is what only a served site has. It is handed to a blueprint's Live.
-type Live struct{ s *Site }
-
 type liveReload struct {
 	s    *Site
 	boot string
 }
 
 func (s *Site) attach(p plugin.Plugin) error {
-	mustBeOpen(s.built, "plugin "+p.Name())
-	a, err := plugin.Attach(p, s.Shell)
+	a, err := plugin.Attach(p)
 	if err != nil {
 		return err
 	}
@@ -52,18 +49,14 @@ func (l liveReload) Attach(m *plugin.Mount) error {
 	return nil
 }
 
-func (l *Live) Use(plugins ...plugin.Plugin) error {
+// AddPlugins says the site has these plugins. They are attached when the site is built to serve, after everything is declared, and never in a bake.
+func (s *Site) AddPlugins(plugins ...plugin.Plugin) {
+	mustBeOpen(s.built, "a plugin")
 	for _, p := range plugins {
 		if p.Name() == ownerQuire || p.Name() == ownerSite {
-			return fmt.Errorf("plugin name %q is reserved", p.Name())
+			s.err = cmp.Or(s.err, fmt.Errorf("plugin name %q is reserved", p.Name()))
+			continue
 		}
-		if err := l.s.attach(p); err != nil {
-			return err
-		}
+		s.plugins = append(s.plugins, p)
 	}
-	return nil
-}
-
-func (l *Live) AddRoute(method, path string, h http.HandlerFunc) {
-	l.s.route(method+" "+path, ownerSite, h)
 }

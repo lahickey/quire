@@ -56,7 +56,7 @@ and adds the collection as `model.Spec[Piece]` instead of `model.Basic`.
 ### Dates
 
 Dates are parsed once at load into `Date`. Anything that is not ISO fails the build, so a bad date never reaches a page.
-`Identity.Dates` is the layouts dates render in, day first by default, and a collection's `LongDate`, `ShortDate` and `ShortMonthYear` format a `Date` to it.
+`Identity.Dates` is the layouts dates render in, day first by default, and `ui.LongDate`, `ui.ShortDate` and `ui.MonthYear` format a `Date` to it for the site a page belongs to.
 `Date.ISO()` is the machine form. The sitemap and the dates in a page's head always use it.
 A custom formatter takes a parsed `Date`, so it only formats.
 
@@ -257,16 +257,14 @@ Raw HTML in the body is rendered as it is, because the markdown is the site's ow
 ## Widgets
 
 A widget turns a named fence into HTML of the site's choosing.
-`quire.WithWidgets` maps a fence's name to a `Widget`, which is handed the rest of the fence's first line and its body.
+`site.SetWidget` gives a fence's name a `Widget`, which is handed the rest of the fence's first line and its body.
 
 ```go
-var widgets = map[string]model.Widget{
-  "swatch": func(_, body string) (string, error) {
-    return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
-  },
+func swatch(_, body string) (string, error) {
+  return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
 }
 
-app.Run(identity, blueprint, quire.WithWidgets(widgets))
+site.SetWidget("swatch", swatch)
 ```
 
 A fence named `swatch` in any of the site's documents now renders as the chip.
@@ -294,39 +292,57 @@ accent spot tone1 tone2 ok warn error
 accent spot tone1 tone2 ok warn error
 ```
 
-- `mermaid`, `cards` and `palette` are Quire's own widgets, and a site's widget of one of those names replaces it. `palette` draws each role it names from the page's own custom properties: a range (`neutral`, `accent`) as a row of its twelve steps, and the rest side by side with a row for each of their four. The word `all` is every role.
+- `mermaid`, `cards` and `palette` are widgets the base pack brings, and a site's widget of one of those names replaces it. `palette` draws each role it names from the page's own custom properties: a range (`neutral`, `accent`) as a row of its twelve steps, and the rest side by side with a row for each of their four. The word `all` is every role.
 - A name after `palette` draws that palette whatever the visitor has picked, if it is one the site's [picker](./look.md#let-the-visitor-choose) offers: `palette moss`.
 - A fence shown inside a longer fence stays code, so a page can show a widget's syntax without running it.
 - A widget runs when the page is composed, not in the bake, so changing or adding one needs no rebake. The bake records where each named fence sits and what was in it.
 - A widget cannot take the name of a language Quire highlights, such as `go`. The bake has already made that fence code, so the site fails to load and says which fence. Rename the widget.
 - A fence whose name is neither a language nor a widget is shown as plain code.
-- A pack adds a widget with `site.AddWidget(name, widget)` in its `Declare`, before it reads any content. One added after a document was read fails the load.
+- A widget is added before any content is read. One added after a document was read fails the load.
+- A pack adds a widget the same way, and the site's own wins over a pack's of the same name, whichever came first.
 - A widget that returns an error fails the load, the same as bad frontmatter.
 
 ## Collections
 
-`AddCollection` loads the documents matching a glob and adds their pages.
+`Collection` loads the documents matching a glob. A collection is its documents and nothing else: it has no pages until something draws them.
 
 ```go
-notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
+notes, err := site.Collection(model.Basic{ID: "writing", Title: "Writing"})
+if err != nil {
+  return err
+}
+base.Pages(site, notes)
 ```
 
-That reads `content/writing/*.md`, serves an index at `/writing` and each document at `/writing/{slug}`, adds the collection to the navigation, and records its pages in the sitemap.
+The first call reads `content/writing/*.md`.
+`base.Pages`, from `pack/base`, gives the collection the default look's two pages: a listing at `/writing`, which goes in the navigation, and an article at `/writing/{slug}` for each document, with every page in the sitemap.
+
+Pages of your own are two calls on the site:
+
+```go
+site.AddPage(notes.Page(), index(notes))
+site.AddDocumentPages(notes, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
+  return model.DocumentPage(notes, d), article(notes, d)
+})
+```
+
+`AddPage` is the index, like any other fixed page. `AddDocumentPages` gives each document a page at its address, drawn on its first request and kept, with its aliases leading there.
+Each page is its head data and its body: `notes.Page()` and `model.DocumentPage` are the head data, and `index` and `article` draw bodies.
+A collection with neither is still worth having, for a home page to draw from.
 
 The fields of a `Spec`:
 
 - `ID` names the folder and the URL.
 - `Title` and `Description` are shown on the index.
 - `Markdown` is the glob, when it is not `{id}/*.md`.
-- `Index` and `Item` replace the index and document pages. Nil renders `Listing` and `Article`, which show the title, date, tags, hero, contents and body, and link back to the index. Each is handed `model.Shell` as well as the collection, so it needs no closure over the site.
 - `Sort` orders the documents: a comparison, as `slices.SortFunc` takes. Without it they are newest first. Documentation has no dates, so this site keeps one list of its pages in order and sorts on a document's place in it.
-- `Kicker` labels each document in `Entries` rows and cards. Nil uses `ShortMonthYear`. `Entries(c, docs)` renders the same rows anywhere.
-- `Widgets` and `Tags` are covered on this page.
+- `Tags` is covered on this page.
 
 Other things to know:
 
 - `model.Basic` is `Spec[Meta]`, the spec for stock frontmatter.
-- Drafts are dropped unless `WithDrafts`. A collection that is empty after that is not added.
+- `ui.Listing` and `ui.Article` are the pages `base.Pages` adds. They show the title, date, tags, hero, contents and body, and link back to the index. `ui.Entries(c, docs)` renders the listing's rows anywhere, each labelled with its month and year.
+- Drafts are dropped unless `WithDrafts`. `base.Pages` gives a collection that is empty after that no pages.
 - A missing slug is the site's 404. Two documents with one slug fail the load.
 - `Featured()` selects from a collection, and `Docs()` is all of it, in order.
 - `Neighbours(d)` is the documents before and after `d` in that order; either is nil at an end. `ui.Pager` renders them as previous and next links.
@@ -363,4 +379,4 @@ The [docs pack](./packs.md) reads this site's landing page that way.
 ## In depth
 
 Markdown is converted by the bake, not by the serving binary. A shipped binary holds the HTML and not the markdown, and links no markdown library.
-The bake leaves a slot in that HTML for each picture and each named fence. It fills the fences it can, which are the ones in a language it highlights, and serving fills the rest: a picture at its size, a widget by running it. That is why a change to a widget, to the scale or to a component needs no rebake.
+The bake leaves a slot in that HTML for each picture and each named fence. Each fence's slot holds the code block it is when nothing claims it, highlighted when its name is a language, and serving decides: a widget of that name draws it, and otherwise the code block stands. A picture is placed at its size. That is why a change to a widget, to the scale or to a component needs no rebake.

@@ -126,7 +126,8 @@ A pack provides any number of converters, widgets, plugins, services, components
 Changes to the base colour system are a pack's to make too.
 A pack with a blueprint is a whole kind of site, as `pack/docs` is.
 
-What Quire ships is one pack, **base**, which holds every default: markdown, the WebP codec, mermaid, the share card, the default look and its components, the default fonts and palettes, search, sessions and the store in memory.
+What Quire ships is one pack, **base**, which holds every default: markdown, the WebP codec, mermaid, the share card, the default look and its components, and the default font files and palettes.
+Search, sessions and a store are mechanisms, not look: each stays outside base, and base brings only how search is drawn.
 Each is a package of its own inside it.
 Without base Quire is naked: it serves what a program declares and converts nothing.
 
@@ -134,7 +135,7 @@ Base is written against the interfaces any other pack uses, and a test holds it 
 Turning something off is not registering it, never a flag: what is not imported is not linked.
 A helper gives a site the standard set, so the smallest site stays as small as it is.
 
-What base weighs in a binary is mostly its fonts, 212KB, then Datastar at 36KB, which is linked on every page today whether or not anything on it is live.
+What base weighs in a binary is mostly its fonts, 212KB, then Datastar at 36KB, which base asks for on every page because its theme toggle and copy buttons are written with it.
 Its stylesheets are 27KB and its templates less.
 
 ### One server, several sites
@@ -162,15 +163,10 @@ Each step leaves everything working and is worth having if nothing after it happ
 1. **Split the engine into site and server.** Done.
 2. **Make the source, the baker and the bundle public.** Done.
 3. **Declare widgets once for a site.** Done.
-4. **Packs provide the parts.**
-   A pack can carry converters, widgets, plugins, components, stylesheets, fonts and palettes.
-   What Quire does as a special case moves into base: the mermaid, cards and palette widgets, the picture and video cases where slots are filled, the share card, and the default home page, index, article and not-found page.
-   The layer test grows a rule: base imports only what an outside pack could.
-   `app.Run` bakes with base's set and nothing else; it is given a way to be handed a pack's converters.
-   `model.Slot` is split into what it is: a picture slot and a fence slot, each with only the fields that mean something on it. It is one flat struct of both today. What a picture slot carries is settled here, once placing a picture is base's.
-   Whether Datastar is linked on a page with nothing live is settled here.
+4. **Packs provide the parts.** Done.
 5. **Services.**
    The interface and its lifecycle, the handle that gives a plugin its services and its logger, and a store with an implementation in memory.
+   Whether search's index is a service, so a site can bring a search engine of its own, is settled here.
    Sessions move out of the server and become one, which needs a way to wrap a request that plugins do not have today.
 6. **Give the server entries.**
    Several of root, bundle and site.
@@ -201,8 +197,23 @@ The Examples page with screenshots in step 10 depends on nothing before it.
 
 ## To decide
 
+- **The footer's text and links.**
+  They are the default frame's, yet the site holds them, because a pack and the site each add links to one footer and only the site can gather them.
+  Either they stay as what any frame may show, as the nav's controls are, or the frame gathers them some other way.
+- **Datastar on a site with nothing live.**
+  Base asks for it on every page, because its theme toggle, palette picker and copy buttons are written with it. In plain script they would not need it, and an ordinary site would be 36KB lighter.
+- **A widget against a language.**
+  A site's widget beats a pack's quietly, but a widget named for a language the bake highlights is an error. The reason is mechanical: the fence's text is gone once it is highlighted.
 - **A name for the helper package.**
   `app` for now.
+- **A name for a site's description.**
+  `quire.Describe` returns a `Description`: the identity, the blueprint and the options, which is collected over a baker and built over a bundle. The name is a placeholder.
+- **The strapline.**
+  "Composable parts for static and live sites in Go" is a placeholder, in the README, the site's description, the home page's kicker and the sample of it on the Packs page.
+  The README's second line and the home page's title and lede still carry the older pitch.
+- **"Diagram" in the docs.**
+  The pages say a `mermaid` fence is a diagram, and the section is `#diagrams`.
+  Either that stays as plain English, or the docs say mermaid and leave the word for charts.
 - **Letting a site choose its font set.**
   The default is wired in today, in the site and in the bake.
   Once step 2 hands the set to both, choosing one is an option like the palette.
@@ -214,10 +225,6 @@ The Examples page with screenshots in step 10 depends on nothing before it.
   It asks its handle for one by type, or the site hands it to the plugin's constructor.
   Either way it is checked by the compiler, not looked up by reflection.
   Decide in step 5.
-- **Where a program's own live pages go.**
-  A page rendered per request is a plugin's or a raw route today, and both were shaped for an addition to a site, not for the body of a tool.
-  Either a plugin is the right home and says so, or a site declares live pages as it declares fixed ones.
-  Decide before step 9.
 - **A name for the plugin's handle.**
   It is `plugin.Mount`, and mount means one thing.
   Decide in step 5.
@@ -231,6 +238,9 @@ These depend on none of the steps.
 
 - **Feeds** — RSS/Atom. `Collection` already holds everything required.
   It would live in base once step 4 lands.
+- **A crash in Go's compiler**, [golang/go#81627](https://github.com/golang/go/issues/81627), open with a fix in review.
+  A generic function from another package, with its type inferred, crashes the compiler as an element of a composite literal: a struct field, or a slice or map element.
+  Writing the type out, `ui.Listing[model.Meta]`, avoids it. Nothing in Quire needs the crashing form now; drop this note when a point release carries the fix.
 - **archr on Quire's Lexis.** archr still carries a copy of the highlighter.
   1. **Tag a release** with Lexis in it, so archr can require it.
   2. **Repoint archr** and delete its copy.

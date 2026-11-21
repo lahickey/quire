@@ -25,10 +25,11 @@ import (
 	"github.com/lahickey/quire/libs/lexis"
 	"github.com/lahickey/quire/libs/lexis/langs"
 	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/pack/base/ui"
 )
 
 const (
-	Version   = 8
+	Version   = 10
 	headerSep = "---"
 )
 
@@ -217,7 +218,7 @@ func renderRawHTML(w util.BufWriter, _ []byte, node ast.Node, entering bool) (as
 
 func (t *imgTransform) mark(img *ast.Image, block bool) string {
 	alt := nodeText(img, t.src)
-	return t.slots.mark(model.Slot{Picture: model.Resolve(t.doc, string(img.Destination)), Alt: alt, Caption: cmp.Or(string(img.Title), alt), Figure: block})
+	return t.slots.mark(model.Slot{Picture: model.PictureSlot{Name: model.Resolve(t.doc, string(img.Destination)), Alt: alt, Caption: cmp.Or(string(img.Title), alt), Figure: block}})
 }
 
 func calloutMarker(p *ast.Paragraph, src []byte) (string, []ast.Node) {
@@ -375,7 +376,8 @@ func (linkTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Contex
 
 func Converts() int64 { return converts.Load() }
 
-// Transform makes every named fence a slot: filled with highlighted HTML when the name is a language, and left with its body when not.
+// Transform makes every named fence a slot, holding the code block it is when nothing claims it.
+// A fence in a language is highlighted and final. Any other keeps its body too, for a widget of its name to draw from.
 func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	var found []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -387,13 +389,13 @@ func (t *fenceTransform) Transform(doc *ast.Document, _ text.Reader, _ parser.Co
 	for _, b := range found {
 		name, info := fenceInfo(b, t.src)
 		body := fenceText(b, t.src)
-		out := model.CodeBlock(html.EscapeString(body))
+		out := ui.CodeBlock(html.EscapeString(body))
 		if name != "" {
-			sl := model.Slot{Fence: name, Info: info, Body: body}
+			f := model.FenceSlot{Name: name, Info: info, Body: body, HTML: out}
 			if next := languages().Named(name, body); next != nil {
-				sl.Body, sl.HTML = "", model.CodeBlock(string(lexis.AppendHTML(nil, next)))
+				f.Body, f.HTML = "", ui.CodeBlock(string(lexis.AppendHTML(nil, next)))
 			}
-			out = t.slots.mark(sl)
+			out = t.slots.mark(model.Slot{Fence: f})
 		}
 		b.Parent().ReplaceChild(b.Parent(), b, &rawBlock{html: out})
 	}

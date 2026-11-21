@@ -16,15 +16,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/model"
 )
 
 const (
 	text         = "Inter:wght@100..900"
 	mono         = "JetBrains Mono:wght@100..800"
-	webDir       = "internal/fonts/web"
-	measureDir   = "internal/fonts/measure/fonts"
+	webDir       = "pack/base/fonts/web"
+	measureDir   = "pack/base/convert/faces/fonts"
 	datastarFile = "internal/assets/datastar.js"
 )
 
@@ -82,9 +82,9 @@ func fetchTo(u, ua, dest string) error {
 	return os.WriteFile(dest, b, 0o644)
 }
 
-func fetchFamily(spec string, subsets []string, webDir, measureDir string) (fonts.Family, []byte, error) {
+func fetchFamily(spec string, subsets []string, webDir, measureDir string) (model.FontFamily, []byte, error) {
 	name, _, _ := strings.Cut(spec, ":")
-	f := fonts.Family{Name: name, Measure: map[int]string{}}
+	f := model.FontFamily{Name: name, Measure: map[int]string{}}
 	css, err := googleCSS(spec, modernUA)
 	if err != nil {
 		return f, nil, err
@@ -98,7 +98,7 @@ func fetchFamily(spec string, subsets []string, webDir, measureDir string) (font
 		if u == nil {
 			return f, nil, fmt.Errorf("%s %s: no src", name, subset)
 		}
-		face := fonts.Face{
+		face := model.FontFace{
 			File:   slug(name) + "-" + subset + ".woff2",
 			Subset: subset,
 			Weight: p["font-weight"],
@@ -157,11 +157,11 @@ func refreshFonts() error {
 		}
 	}
 
-	var set fonts.FontSet
+	var set model.FontSet
 	var measured bytes.Buffer
 	for _, f := range []struct {
 		spec string
-		into *fonts.Family
+		into *model.FontFamily
 	}{{text, &set.Text}, {mono, &set.Mono}} {
 		fam, ttfs, err := fetchFamily(f.spec, subsets, webDir, measureDir)
 		if err != nil {
@@ -184,7 +184,7 @@ func refreshFonts() error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(webDir, fonts.FontsName), append(b, '\n'), 0o644)
+	return os.WriteFile(filepath.Join(webDir, model.FontsFile), append(b, '\n'), 0o644)
 }
 
 func refreshDatastar() error {

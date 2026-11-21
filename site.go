@@ -2,21 +2,17 @@
 package quire
 
 import (
-	"cmp"
 	"crypto/rand"
-	"encoding/json/v2"
-	"fmt"
-	"maps"
+	"io/fs"
 	"net/http"
 	"slices"
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/assets"
-	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/internal/serve"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/ui"
+	"github.com/lahickey/quire/plugin"
 )
 
 const (
@@ -38,25 +34,24 @@ type Source interface {
 	Body(file string) ([]byte, error)
 }
 
-// Blueprint says what a site is made of, and is run in a bake as well as when serving.
-// One that also has Live(*Live) error adds what only a served site has; a bake never calls it.
+// Blueprint says what a site is made of. It is run in a bake as well as when serving, so it only declares.
 type Blueprint interface {
 	Declare(*Site) error
 }
 
 type BlueprintFunc func(*Site) error
 
+// Frame draws what goes round a page's content inside the body: a header, a footer. The content is its children.
+type Frame = func(model.Chrome, model.PageSpec) templ.Component
+
 type settings struct {
 	chrome   model.Chrome
 	dev      bool
 	drafts   bool
 	palette  model.Palette
-	scale    model.Scale
 	siteCard *model.ShareCard
-	widgets  map[string]model.Widget
-	sheets   []assets.File
 	icons    []assets.File
-	fonts    fonts.FontSet
+	packs    []Blueprint
 }
 
 type route struct {
@@ -65,15 +60,42 @@ type route struct {
 	cached  bool
 }
 
-// Site is blueprints run over one source. It has no server: its routes are a table for one to read.
+// said is something a site or a pack may set. What the site itself says is never replaced by a pack, whichever spoke first.
+type said[T any] struct {
+	v   T
+	own bool
+}
+
+// Description is everything that makes a site but its source: who it is, its blueprint and its options.
+// The same one is collected over a baker and built over the bundle that bake leaves.
+type Description struct {
+	settings
+	blueprint Blueprint
+}
+
+// Site is a blueprint run over one source. It has no server: its routes are a table for one to read.
 type Site struct {
 	settings
-	from       Source
-	blueprints []Blueprint
-	scripts    []assets.File
-	pictures   map[string]model.Picture
-	widgets    map[string]model.Widget
-	read       bool
+	from     Source
+	depth    int
+	baked    bool
+	read     bool
+	pictures map[string]model.Picture
+	plugins  []plugin.Plugin
+	sheets   []assets.File
+	scripts  []assets.File
+
+	fonts     model.FontSet
+	fontFiles fs.FS
+	datastar  bool
+
+	widgets      [2]map[string]model.Widget
+	frame        said[Frame]
+	home         said[templ.Component]
+	notFound     said[templ.Component]
+	footerText   said[string]
+	placePicture said[func(model.Picture, model.PictureSlot) templ.Component]
+	placeVideo   said[func(src string, poster model.Picture, sl model.PictureSlot) templ.Component]
 
 	routes      map[string]string
 	handlers    []route
@@ -81,79 +103,53 @@ type Site struct {
 	sessions    bool
 	sitemap     []serve.Loc
 	fixed       []*serve.Prepared
-	notFound    templ.Component
 	notFound404 *serve.Prepared
 	built       bool
 	err         error
 }
 
-func configure(id model.Identity, opts ...Option) *settings {
-	s := &settings{
-		chrome:  model.Chrome{Identity: id.WithDefaults(), Brand: id.Name, Header: ui.Header, Footer: ui.Footer},
-		palette: model.PaletteEmber,
-		scale:   model.DefaultScale(),
-		widgets: map[string]model.Widget{},
+func (x *said[T]) set(v T, own bool) {
+	if own || !x.own {
+		x.v, x.own = v, own
 	}
-	for _, o := range opts {
-		o(s)
+}
+
+func (d *Description) site(from Source) *Site {
+	s := &Site{
+		settings: d.settings, from: from, baked: from != nil, routes: map[string]string{}, pictures: map[string]model.Picture{}, versions: map[string]string{},
+		widgets: [2]map[string]model.Widget{{}, {}},
 	}
-	if s.chrome.Palettes == nil {
-		s.palette.Check()
-	} else {
-		s.chrome.Palettes = model.PickerPalettes(s.palette, s.chrome.Palettes)
+	s.chrome.NavEnd, s.chrome.FooterLinks = slices.Clip(s.chrome.NavEnd), slices.Clip(s.chrome.FooterLinks)
+	s.frame.v, s.notFound.v, s.placePicture.v, s.placeVideo.v = bareFrame, notFoundBody(), s.barePicture, s.bareVideo
+	if from == nil {
+		s.from = &bundle.Bundle{}
 	}
-	set, err := fonts.ReadFontSet(fonts.Default())
-	if err != nil {
-		panic("quire: fonts: " + err.Error())
-	}
-	s.fonts = set
 	return s
 }
 
-func (s *settings) site(from Source) *Site {
-	site := &Site{settings: *s, from: from, routes: map[string]string{}, pictures: map[string]model.Picture{}, versions: map[string]string{}}
-	site.chrome.NavEnd, site.chrome.FooterLinks, site.sheets = slices.Clip(site.chrome.NavEnd), slices.Clip(site.chrome.FooterLinks), slices.Clip(site.sheets)
-	site.widgets = map[string]model.Widget{"mermaid": site.mermaid, "cards": cards, "palette": palette}
-	maps.Copy(site.widgets, s.widgets)
-	return site
-}
-
-func (s *Site) addSiteCard() error {
-	c := model.ShareCard{Title: s.chrome.Name, Lines: []string{s.chrome.Description}}
-	if s.siteCard != nil {
-		c = *s.siteCard
+func (s *Site) declare(b Blueprint, packs []Blueprint) error {
+	for _, p := range packs {
+		if err := s.Include(p); err != nil {
+			return err
+		}
 	}
-	c.Domain = cmp.Or(c.Domain, s.chrome.Host())
-	if c.Palette == (model.Palette{}) {
-		c.Palette = s.palette
-	}
-	c.Palette.Check()
-	body, err := json.Marshal(c)
-	if err != nil {
+	if err := b.Declare(s); err != nil {
 		return err
 	}
-	file, err := s.from.Converted("card", body, s.fonts.ID)
-	if err != nil {
-		return fmt.Errorf("share card: %w", err)
-	}
-	s.chrome.OGImageURL = s.chrome.AbsURL(model.BundleURL(file))
-	return nil
+	return s.err
 }
 
 func (s *Site) close() error {
+	s.chrome.FooterText = s.footerText.v
 	s.addAssets()
 	s.addIcons()
 	if f, ok := s.from.(serve.Filer); ok {
 		s.route("GET "+model.BundlePath+"{file}", ownerQuire, serve.Files(f, imageMemory, imageMemoryLimit, s.dev).ServeHTTP)
 	}
-	if _, taken := s.routes["GET "+pagePattern("/")]; !taken {
-		s.AddPage("/", s.late(ui.Home))
+	if _, taken := s.routes["GET "+pagePattern("/")]; !taken && s.home.v != nil {
+		s.AddPage(model.PageSpec{Title: s.chrome.Name, Path: "/"}, s.home.v)
 	}
-	page := s.notFound
-	if page == nil {
-		page = s.late(ui.NotFound)
-	}
-	s.notFound404 = s.prepare("404", page, http.StatusNotFound)
+	s.notFound404 = s.prepare("404", s.Page(model.PageSpec{Title: "Not found"}, s.notFound.v), http.StatusNotFound)
 	s.built = true
 	if s.err != nil {
 		return s.err
@@ -166,50 +162,55 @@ func (s *Site) close() error {
 	return nil
 }
 
-func (s *settings) build(from Source, b Blueprint) (*Site, error) {
-	site := s.site(from)
-	if from == nil {
-		site.from = &bundle.Bundle{}
-	} else if err := site.addSiteCard(); err != nil {
+// Describe gathers what makes a site. Packs given with WithPacks are declared beneath the blueprint, which is the site's own word.
+func Describe(id model.Identity, b Blueprint, opts ...Option) *Description {
+	d := &Description{blueprint: b, settings: settings{
+		chrome:  model.Chrome{Identity: id.WithDefaults(), Brand: id.Name, Scale: model.DefaultScale()},
+		palette: model.PaletteEmber,
+	}}
+	for _, o := range opts {
+		o(&d.settings)
+	}
+	if d.chrome.Palettes == nil {
+		d.palette.Check()
+	} else {
+		d.chrome.Palettes = model.PickerPalettes(d.palette, d.chrome.Palettes)
+	}
+	return d
+}
+
+// Collect runs the blueprint over a baker, so the site asks for all it needs. It attaches no plugin and serves nothing.
+// The baker's Finish then writes the bundle.
+func (d *Description) Collect(baker Source) error {
+	return d.site(baker).declare(d.blueprint, d.packs)
+}
+
+// Build runs the blueprint over a source, attaches the plugins it uses, and returns the site.
+// A nil source is an empty one, for a site with nothing baked.
+func (d *Description) Build(from Source) (*Site, error) {
+	s := d.site(from)
+	if s.dev {
+		s.plugins = append(s.plugins, liveReload{s, rand.Text()})
+	}
+	if err := s.declare(d.blueprint, d.packs); err != nil {
 		return nil, err
 	}
-	if s.dev {
-		if err := site.attach(liveReload{site, rand.Text()}); err != nil {
+	for _, p := range s.plugins {
+		if err := s.attach(p); err != nil {
 			return nil, err
 		}
 	}
-	if err := site.Include(b); err != nil {
-		return nil, err
-	}
-	for _, b := range site.blueprints {
-		if l, ok := b.(interface{ Live(*Live) error }); ok {
-			if err := l.Live(&Live{site}); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return site, site.close()
-}
-
-// Collect runs a blueprint over a baker, so the site asks for all it needs: what Declare reads, and the share card.
-// It calls no Live and serves nothing. The baker's Finish then writes the bundle.
-func Collect(id model.Identity, baker Source, b Blueprint, opts ...Option) error {
-	site := configure(id, opts...).site(baker)
-	if err := site.Include(b); err != nil {
-		return err
-	}
-	return site.addSiteCard()
-}
-
-// Build runs a blueprint over a source and returns the site: what it declares, then what its Live adds.
-// A nil source is an empty one, for a site with nothing baked.
-func Build(id model.Identity, from Source, b Blueprint, opts ...Option) (*Site, error) {
-	return configure(id, opts...).build(from, b)
+	return s, s.close()
 }
 
 func (f BlueprintFunc) Declare(s *Site) error { return f(s) }
 
+// Include runs a pack's blueprint on the site. What it sets gives way to what the site's own blueprint sets.
 func (s *Site) Include(b Blueprint) error {
-	s.blueprints = append(s.blueprints, b)
-	return cmp.Or(b.Declare(s), s.err)
+	s.depth++
+	defer func() { s.depth-- }()
+	if err := b.Declare(s); err != nil {
+		return err
+	}
+	return s.err
 }

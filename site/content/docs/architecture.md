@@ -21,9 +21,10 @@ Dev may run a step lazily. It may not skip one. A variant is in a journal or it 
 
 A bake reads the source tree. What that run renders is thrown away: source order is the measured bytes, and those exist only after the encode.
 
-A bake has no server. The routes and pages a blueprint declares are written down and never served. Plugins and raw routes are not `Declare`'s to add: they are on the handle given to a blueprint's `Live`, which only serving calls, since neither can add to a bundle. So a route two patterns contend for, or a plugin that fails to attach, is found when the site boots, not when it bakes.
+A bake has no server. The routes and pages a blueprint declares are written down and never served, and the plugins it uses are noted and never attached, since neither can add to a bundle. So a plugin that fails to attach is found when the site boots, not when it bakes.
+A site is described once, and that one description is collected over a baker and built over a bundle, so the two cannot be handed different things.
 
-The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a slot for each picture and each named fence. The bake fills what it can, a fence in a language it highlights, and serving fills the rest: a picture from the journal with the markup `ui` makes today, a widget by running it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one slot.
+The bake converts and serving composes. Markdown, masters and mermaid are converted once, by the bake; a template places what came out. A document reaches the bundle as HTML with a slot for each picture and each named fence. A fence's slot holds the code block it is when nothing claims it, and serving decides what goes there: a widget of that name, or the code block. A picture's is filled from the journal, with whatever markup the site's look gives it. So a change to the scale, to `ui` or to a widget needs no rebake, and one master referred to twice is one slot.
 The bake is never told which fences a site has widgets for. A widget named for a language is found when the site is built, because that fence arrives already filled, and it is an error and not a silent choice between the two.
 
 Everything the bake makes is one kind of thing: a journal record, keyed by what it was made from, naming content-addressed files. A record is what every baked thing has in common: its name, its kind, its key and its files. Whatever one kind needs beyond that is a payload only a reader of that kind understands; a picture's is its master and the width of each file. A document, a mermaid diagram and a share card are each one file; a master is its ladder. One check decides what is remade, one copy decides what ships, and one lookup finds it again.
@@ -61,7 +62,7 @@ flowchart TD
   site --> pack[a pack]
   pack --> quire
   pack --> plugins
-  quire --> ui
+  pack --> ui
   quire --> plugin
   plugins --> ui
   plugins --> plugin
@@ -73,14 +74,14 @@ flowchart TD
 
 `model` is the data, and imports nothing of Quire's but the colour scales. It holds the two structures a converter makes and a site reads: a baked document and a picture.
 `bundle` opens what a bake left, over any `fs.FS`, and is otherwise opaque. The journal and its records are private to it and the baker.
-`ui` and `plugin` import `model` and nothing else of Quire's.
-`quire` is the site and the server, and `bake` is the baker. Neither imports the other.
+`plugin` imports `model` and nothing else of Quire's, and so does `ui`, the default look's components, which is part of the base pack.
+`quire` is the site and the server, and `bake` is the baker. Neither imports the other, and `quire` imports no component: the look reaches a site only through what a pack sets on it.
 `app` is the helpers over both, `Run` among them, and nothing below imports it.
 A site, a command, a pack or `app` is the only importer of `quire`.
 
-A plugin sits beside `ui`, and a site opts in with `Use`, in its `Live`. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
+A site opts in to a plugin with `Use`. It owns its endpoints and no pages: a page that shows what it holds is the site's to add. A plugin Quire ships is a package under `plugin/`, written against the same API as any other.
 
-A pack sits above `quire`: it is a blueprint somebody else wrote, with the same `Declare` and `Live` a site's own has, and a site hands it to `Run`. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
+A pack sits above `quire`: it is a blueprint somebody else wrote, and a site hands it to `Run` or includes it in its own. A site and its packs say things the same way, and what the site says is never overruled by a pack, whichever spoke first. A pack Quire ships is a package under `pack/`, and it calls nothing a site could not.
 
 ## Scale
 
@@ -92,7 +93,7 @@ How wide a picture goes is where it is placed, so one wide page does not make ev
 
 `SizeBleed` measures in `cqw` against `main`. `100vw` counts the scrollbar.
 
-A sheet reads the scale's variables and never writes a width query. `WithStylesheetsAt` attaches CSS to a step.
+A sheet reads the scale's variables and never writes a width query. `AddStylesheetsAt` attaches CSS to a step.
 
 `--qr-measure-text` is `ch`, because a comfortable line belongs to the font. `.prose` is a breakout grid so a figure is not capped with the text.
 
@@ -103,14 +104,28 @@ Every custom property is `--qr-*`. A plugin uses its own prefix. Overriding a `-
 A palette is roles. Sheets read the role, never a hue, and do not mix tints. The scales are Radix, because the light and dark pairs are already tuned. A test holds text contrast.
 
 A browser face is woff2. Measuring text needs TTF, and only a bake measures, so the two files stay apart. Quire writes `--qr-font` and `--qr-font-mono`.
+The font files are the base pack's, and the machinery is `quire`'s: reading a set's description, writing its rules, preloading and serving. A site with no font set draws in the system's.
 
 Mermaid is the diagram format editors already preview. The renderer is heavy, so it lives on the bake side. A diagram is inlined so it can see the page's custom properties. The site asks for it by its source and the font set, so a bake and a site on different fonts fail the load.
 
 ## Layers
 
-Base is `quire` and the default look. `examples/1-minimal` is the proof. A pack is opt-in and is not the base. A site is not a pack.
+The default look is the base pack, and nothing of it is in `quire`: its components, its stylesheets and scripts, its fonts, its frame, its pages and its widgets. `Run` puts it beneath every site, and `examples/1-minimal` is the proof. A site built without it has a correct document and nothing else. A site is not a pack.
 
 Quire ships a class only if it ships the rules for it.
+
+## Pages
+
+A page is its head data and a body, and the site wraps it: the document round the frame round the body.
+A body does not draw the document it sits in. So the same body is a whole page when a visitor asks for it and a patch when a stream sends it, and a site with a look and one without differ by one setting and not by every template.
+
+The document, with a correct head, is the site's. The frame, a header and a footer, is the look's, and a pack sets it.
+What a body needs of the site it reads from its render's context: the scale a picture is shown at, the date layouts, the navigation. Nothing is handed through a template to reach something further in.
+
+The same rule runs through the model: a value holds what it uses.
+A collection is its documents, and holds neither the site's identity nor its pages.
+A picture is a master and its files, and how wide it is shown is the scale's to answer.
+The chrome is data, and holds no function that draws it.
 
 ## Serving
 

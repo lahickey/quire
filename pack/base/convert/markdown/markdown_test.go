@@ -72,38 +72,44 @@ func TestLinksAndHeadingAnchors(t *testing.T) {
 }
 
 func TestNamedFencesAreSlots(t *testing.T) {
-	box := model.Slot{Fence: "box", Info: "Title", Body: "inside\n"}
+	box := model.FenceSlot{Name: "box", Info: "Title", Body: "inside\n"}
 	for _, c := range []struct {
 		name, src string
-		want      []model.Slot
+		want      []model.FenceSlot
 		not       string
 	}{
-		{"one", "Hello\n\n```box Title\ninside\n```\n\nAfter.\n", []model.Slot{box}, "```"},
-		{"adjacent", "```box one\nbody\n```\n```box two\nbody\n```\n", []model.Slot{{Fence: "box", Info: "one", Body: "body\n"}, {Fence: "box", Info: "two", Body: "body\n"}}, "<p>"},
-		{"in a list", "- item\n\n  ```box nested\n  x\n  ```\n", []model.Slot{{Fence: "box", Info: "nested", Body: "x\n"}}, "language-box"},
+		{"one", "Hello\n\n```box Title\ninside\n```\n\nAfter.\n", []model.FenceSlot{box}, "```"},
+		{"adjacent", "```box one\nbody\n```\n```box two\nbody\n```\n", []model.FenceSlot{{Name: "box", Info: "one", Body: "body\n"}, {Name: "box", Info: "two", Body: "body\n"}}, "<p>"},
+		{"in a list", "- item\n\n  ```box nested\n  x\n  ```\n", []model.FenceSlot{{Name: "box", Info: "nested", Body: "x\n"}}, "language-box"},
 		{"shown, not run", "````md\n```box Title\ninside\n```\n````\n", nil, "language-box"},
 	} {
 		html, _, slots, err := render(c.src, "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		boxes := slices.DeleteFunc(slots, func(sl model.Slot) bool { return sl.Fence != "box" })
+		var boxes []model.FenceSlot
+		for _, sl := range slots {
+			if sl.Fence.Name == "box" {
+				sl.Fence.HTML = ""
+				boxes = append(boxes, sl.Fence)
+			}
+		}
 		if !slices.Equal(boxes, c.want) || strings.Contains(html, c.not) {
 			t.Errorf("%s: %+v\n%s", c.name, boxes, html)
 		}
 	}
 }
 
-func TestTheBakeFillsALanguageAndLeavesTheRest(t *testing.T) {
+func TestALanguageIsFinalAndTheRestKeepTheirBody(t *testing.T) {
 	html, _, slots, err := render("```go\nx := 1\n```\n\n```\nplain\n```\n\n```box\ny\n```\n", "")
 	if err != nil || len(slots) != 2 {
 		t.Fatalf("%v %+v", err, slots)
 	}
-	if code := slots[0]; code.Body != "" || !strings.Contains(code.HTML, `class="code-copy"`) || !strings.Contains(code.HTML, "lx-number") {
+	if code := slots[0].Fence; code.Body != "" || !strings.Contains(code.HTML, `class="code-copy"`) || !strings.Contains(code.HTML, "lx-number") {
 		t.Errorf("a fence in a language is not filled with highlighted code: %+v", code)
 	}
-	if box := slots[1]; box.Body != "y\n" || box.HTML != "" {
-		t.Errorf("a fence in no language is not left with its body: %+v", box)
+	if box := slots[1].Fence; box.Body != "y\n" || !strings.Contains(box.HTML, "<pre><code>y\n</code></pre>") {
+		t.Errorf("a fence in no language does not keep its body beside the code block it would be: %+v", box)
 	}
 	if strings.Count(html, `class="code-copy"`) != 1 {
 		t.Errorf("a fence with no name is not a plain code block in place:\n%s", html)
@@ -140,10 +146,11 @@ func TestPicturesAndFencesAreSlots(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []model.Slot{
-		{Fence: "mermaid", Body: "flowchart LR\n"},
-		{Picture: "posts/p.png", Alt: "x", Caption: "x", Figure: true},
-		{Picture: "posts/p.png", Alt: "x", Caption: "x"},
+		{Fence: model.FenceSlot{Name: "mermaid", Body: "flowchart LR\n"}},
+		{Picture: model.PictureSlot{Name: "posts/p.png", Alt: "x", Caption: "x", Figure: true}},
+		{Picture: model.PictureSlot{Name: "posts/p.png", Alt: "x", Caption: "x"}},
 	}
+	d.Slots[0].Fence.HTML = ""
 	if !slices.Equal(d.Slots, want) {
 		t.Fatalf("slots %+v", d.Slots)
 	}

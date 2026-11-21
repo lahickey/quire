@@ -58,14 +58,19 @@ import (
   "github.com/lahickey/quire"
   "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
+  "github.com/lahickey/quire/pack/base"
 )
 
 func main() {
   app.Run(
     model.Identity{Name: "Example", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
-      _, err := site.AddCollection(model.Basic{ID: "posts"})
-      return err
+      posts, err := site.Collection(model.Basic{ID: "posts"})
+      if err != nil {
+        return err
+      }
+      base.Pages(site, posts)
+      return nil
     }))
 }
 ```

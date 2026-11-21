@@ -11,9 +11,9 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/a-h/templ"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
-	"github.com/lahickey/quire/ui"
 )
 
 //go:embed basket.css basket-narrow.css
@@ -24,6 +24,7 @@ type Item struct{ ID, Title string }
 
 type Plugin struct {
 	mount   *plugin.Mount
+	at      string
 	streams *plugin.Streams
 	items   []Item
 
@@ -104,21 +105,23 @@ func (p *Plugin) events(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// show renders the basket page. It differs per visitor, so it must not be cached.
-func (p *Plugin) show(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	ui.Render(p.page(p.cart(plugin.Session(r))))(w, r)
+// Page is the basket page, for the site to add as a live page at the address
+// New was given. It differs per visitor, so it is drawn for each request.
+func (p *Plugin) Page(r *http.Request) (model.PageSpec, templ.Component) {
+	return model.PageSpec{Title: "Basket", Path: p.at, NoIndex: true}, p.page(p.cart(plugin.Session(r)))
 }
 
-func New(items ...Item) *Plugin { return &Plugin{items: items, carts: map[string]map[string]int{}} }
+// New is a basket of these items, whose page the site puts at the address given.
+func New(at string, items ...Item) *Plugin {
+	return &Plugin{at: at, items: items, carts: map[string]map[string]int{}}
+}
 
 // Name is where the plugin lives: its routes are under /_basket/.
 func (p *Plugin) Name() string { return "basket" }
 
-// Attach is called by Use, in the site's Live. UseSessions gives each visitor a session cookie,
-// NewStreams the event streams publish sends to. Routes are endpoints under
-// /_basket/; Page is the basket page visitors see, at /_basket unless the site
-// moves it with plugin.At.
+// Attach is called when the site is built to serve, never in a bake.
+// UseSessions gives each visitor a session cookie, NewStreams the event
+// streams publish sends to, and the routes are endpoints under /_basket/.
 func (p *Plugin) Attach(m *plugin.Mount) error {
 	p.mount = m
 	p.streams = m.NewStreams()
@@ -129,6 +132,5 @@ func (p *Plugin) Attach(m *plugin.Mount) error {
 	m.Route("GET", "events", p.events)
 	m.Route("POST", "add", p.add)
 	m.Route("POST", "dec", p.dec)
-	m.Page("GET", "", p.show)
 	return nil
 }

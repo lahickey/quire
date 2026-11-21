@@ -1,16 +1,16 @@
-package search
+package searchui
 
-import "github.com/lahickey/quire/model"
+import "github.com/lahickey/quire/plugin/search"
 
 // The nav control. Typing fetches the results, which replace #search-live;
 // without JavaScript, submitting the form loads the results page instead.
-templ (p *Plugin) box() {
+templ box(action, live string) {
 	<form
 		class="search-box"
 		role="search"
 		method="get"
-		action={ p.mount.PageURL("") }
-		data-on:input__debounce.150ms={ "@get('" + p.mount.URL("live") + "', {contentType: 'form'})" }
+		action={ action }
+		data-on:input__debounce.150ms={ "@get('" + live + "', {contentType: 'form'})" }
 	>
 		<input
 			class="search-input"
@@ -21,11 +21,11 @@ templ (p *Plugin) box() {
 			autocomplete="off"
 			data-on:keydown__window="evt.key === '/' && !evt.target.closest('input, textarea, select') && (evt.preventDefault(), el.focus())"
 		/>
-		@p.results("", nil)
+		@results("", nil)
 	</form>
 }
 
-templ hits(hs []Hit) {
+templ hits(hs []search.Hit) {
 	<ul class="search-hits">
 		for _, h := range hs {
 			<li>
@@ -43,7 +43,7 @@ templ hits(hs []Hit) {
 	</ul>
 }
 
-templ answer(q string, hs []Hit) {
+templ answer(q string, hs []search.Hit) {
 	if len(hs) > 0 {
 		@hits(hs)
 	} else if q != "" {
@@ -51,24 +51,22 @@ templ answer(q string, hs []Hit) {
 	}
 }
 
-templ (p *Plugin) results(q string, hs []Hit) {
+templ results(q string, hs []search.Hit) {
 	<div id="search-live" class="search-live">
 		@answer(q, hs)
 	</div>
 }
 
-templ (p *Plugin) page(q string, hs []Hit) {
-	@p.mount.Shell(model.PageSpec{Title: "Search", Path: p.mount.PageURL(""), NoIndex: true}) {
-		<article class="page">
-			<header class="page-head">
-				<h1>Search</h1>
-				if q != "" {
-					<p class="page-intro">Results for “{ q }”.</p>
-				}
-			</header>
-			<div class="search-page">
-				@answer(q, hs)
-			</div>
-		</article>
-	}
+templ page(q string, hs []search.Hit) {
+	<article class="page">
+		<header class="page-head">
+			<h1>Search</h1>
+			if q != "" {
+				<p class="page-intro">Results for “{ q }”.</p>
+			}
+		</header>
+		<div class="search-page">
+			@answer(q, hs)
+		</div>
+	</article>
 }

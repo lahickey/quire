@@ -30,7 +30,6 @@ type Picture struct {
 	Height int
 	Alpha  bool
 	Files  map[int]string
-	Scale  Scale
 }
 
 func window(rungs []int, bot, top int) []int {
@@ -83,34 +82,34 @@ func (s Size) String() string {
 
 func BundleURL(file string) string { return BundlePath + file }
 
-func (p Picture) URL(size Size) string {
-	name, ok := p.Files[snap(p.rungs(), 2*p.Scale.display(size))]
+// URL is the file a picture's src names at a size.
+func (s Scale) URL(p Picture, size Size) string {
+	name, ok := p.Files[snap(p.rungs(), 2*s.display(size))]
 	if !ok {
 		return ""
 	}
 	return BundleURL(name)
 }
 
-func (p Picture) SrcSet(size Size) string {
+func (s Scale) SrcSet(p Picture, size Size) string {
 	rungs := p.rungs()
 	if len(rungs) == 0 {
 		return ""
 	}
-	w := 2 * p.Scale.display(size)
+	w := 2 * s.display(size)
 	var parts []string
-	for _, r := range window(rungs, min(p.Scale.bottom(size), w), max(p.Scale.top(size), w)) {
+	for _, r := range window(rungs, min(s.bottom(size), w), max(s.top(size), w)) {
 		parts = append(parts, fmt.Sprintf("%s %dw", BundleURL(p.Files[r]), r))
 	}
 	return strings.Join(parts, ", ")
 }
 
-func (p Picture) Sizes(size Size) string { return p.Scale.sizes(size) }
-
-func (p Picture) Attrs(size Size, priority bool) templ.Attributes {
+// Attrs is what an img needs to show a picture at a size. How wide a picture is shown is the scale's to answer, not the picture's.
+func (s Scale) Attrs(p Picture, size Size, priority bool) templ.Attributes {
 	a := templ.Attributes{
-		"src":      p.URL(size),
-		"srcset":   p.SrcSet(size),
-		"sizes":    p.Sizes(size),
+		"src":      s.URL(p, size),
+		"srcset":   s.SrcSet(p, size),
+		"sizes":    s.sizes(size),
 		"width":    strconv.Itoa(p.Width),
 		"height":   strconv.Itoa(p.Height),
 		"decoding": "async",

@@ -2,12 +2,10 @@ package basket
 
 import "strconv"
 
-import "github.com/lahickey/quire/model"
-
 // The nav link, on every page. data-signals holds the count in the browser,
 // data-init opens the event stream, and data-text shows the count as it changes.
 templ (p *Plugin) nav() {
-	<a class="basket-link" href={ p.mount.PageURL("") } data-signals={ p.mount.Signals(map[string]int{"count": 0}) } data-init={ p.mount.Listen("events") }>
+	<a class="basket-link" href={ p.at } data-signals={ p.mount.Signals(map[string]int{"count": 0}) } data-init={ p.mount.Listen("events") }>
 		Basket
 		<span class="basket-count" data-text="$basket.count">0</span>
 	</a>
@@ -43,14 +41,12 @@ templ (p *Plugin) lines(cart map[string]int) {
 	</div>
 }
 
-// The basket page, in the site's shell. NoIndex keeps it out of search engines.
+// The body of the basket page.
 templ (p *Plugin) page(cart map[string]int) {
-	@p.mount.Shell(model.PageSpec{Title: "Basket", Path: p.mount.PageURL(""), NoIndex: true}) {
-		<article class="page" data-init={ p.mount.Listen("events?view=lines") }>
-			<header class="page-head"><h1>Basket</h1></header>
-			@p.lines(cart)
-		</article>
-	}
+	<article class="page" data-init={ p.mount.Listen("events?view=lines") }>
+		<header class="page-head"><h1>Basket</h1></header>
+		@p.lines(cart)
+	</article>
 }
 
 // Add is the button a site places on an item's page.

@@ -4,12 +4,14 @@ import (
 	"cmp"
 	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/serve"
+	"github.com/lahickey/quire/model"
 )
 
 const (
@@ -47,7 +49,9 @@ func (s *Site) claim(pattern, owner string, h http.HandlerFunc) error {
 	if err := s.reserve(pattern, owner); err != nil {
 		return err
 	}
-	s.handlers = append(s.handlers, route{pattern: pattern, handler: h})
+	s.handlers = append(s.handlers, route{pattern: pattern, handler: func(w http.ResponseWriter, r *http.Request) {
+		h(w, r.WithContext(model.WithChrome(r.Context(), &s.chrome)))
+	}})
 	return nil
 }
 
@@ -71,18 +75,37 @@ func (s *Site) prepare(path string, c templ.Component, code int) *serve.Prepared
 	return p
 }
 
-func (s *Site) preparePage(path string, c templ.Component) {
-	s.route("GET "+pagePattern(path), ownerSite, s.prepare(path, c, http.StatusOK).ServeHTTP)
+func render(c templ.Component) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := c.Render(r.Context(), w); err != nil {
+			log.Printf("render: %v", err)
+		}
+	}
 }
 
-func (s *Site) AddPage(path string, c templ.Component) {
-	if c == nil {
-		s.err = cmp.Or(s.err, fmt.Errorf("page %s: nil component", path))
+// AddPage adds a fixed page at the address its head data names, drawn once and kept, in the navigation and the sitemap.
+func (s *Site) AddPage(p model.PageSpec, body templ.Component) {
+	if body == nil {
+		s.err = cmp.Or(s.err, fmt.Errorf("page %s: no body", p.Path))
 		return
 	}
-	s.preparePage(path, c)
-	s.sitemap = append(s.sitemap, serve.Loc{Path: path})
-	s.addNavItem(path)
+	s.route("GET "+pagePattern(p.Path), ownerSite, s.prepare(p.Path, s.Page(p, body), http.StatusOK).ServeHTTP)
+	s.sitemap = append(s.sitemap, serve.Loc{Path: p.Path})
+	s.addNavItem(p.Path)
+}
+
+// AddLivePage adds a page drawn for each request, and never kept. Its head data may depend on the request.
+func (s *Site) AddLivePage(path string, page func(*http.Request) (model.PageSpec, templ.Component)) {
+	s.route("GET "+pagePattern(path), ownerSite, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		render(s.Page(page(r)))(w, r)
+	})
+}
+
+// AddRoute is the raw mux: nothing added, never kept.
+func (s *Site) AddRoute(method, path string, h http.HandlerFunc) {
+	s.route(method+" "+path, ownerSite, h)
 }
 
 func (s *Site) AddFile(urlPath string, fsys fs.FS, name string) string {
@@ -97,7 +120,14 @@ func (s *Site) AddFile(urlPath string, fsys fs.FS, name string) string {
 	return s.versioned(urlPath, journal.Hash(body))
 }
 
-func (s *Site) SetNotFound(c templ.Component) {
+// SetNotFound is the body of the page for an address nothing answers.
+func (s *Site) SetNotFound(body templ.Component) {
 	mustBeOpen(s.built, "the not-found page")
-	s.notFound = c
+	s.notFound.set(body, s.depth == 0)
+}
+
+// SetDefaultHome is the body of the page at / when the site is built and nothing has taken it.
+func (s *Site) SetDefaultHome(body templ.Component) {
+	mustBeOpen(s.built, "the default home page")
+	s.home.set(body, s.depth == 0)
 }

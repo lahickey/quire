@@ -13,12 +13,13 @@ func TestAddSplitsADocumentAtItsHeadings(t *testing.T) {
 		Slug: "look",
 		Meta: model.Meta{Title: "The look", Summary: "Palette and fonts."},
 		HTML: `<p>Intro &amp; more.</p><figure><svg><text>drawn</text></svg></figure><h2 id="palette">Palette</h2><pre><code><span>quire</span><span>.</span><span>Run</span></code></pre><h3 id="fonts">Fonts</h3><p>Inter.</p><details data-nosearch><summary>All</summary><h3 id="all">Every font</h3><p>hidden</p></details>`,
-	}}, model.Identity{}, false)
+	}}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := New()
+	p := New("/search", Look{})
 	p.Add(c)
+	p.find("")
 	want := []section{
 		{"The look", "", "/docs/look", "Palette and fonts. Intro & more."},
 		{"The look", "Palette", "/docs/look#palette", "quire.Run"},

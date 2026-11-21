@@ -2,69 +2,63 @@ package main
 
 import "github.com/lahickey/quire/examples/4-plugin/basket"
 import "github.com/lahickey/quire/model"
-import "github.com/lahickey/quire/ui"
+import "github.com/lahickey/quire/pack/base/ui"
 
 // The home page: the newest piece edge to edge, then every piece as a card.
 // SizeBleed is the full width of the window; SizeColumn is one column of the grid.
-templ home(shell model.Shell, c *model.Collection[Piece]) {
-	@shell(model.PageSpec{Title: "Prints", Path: "/"}) {
-		<article class="page page--wide">
-			@ui.HeroFigure(c.Docs()[0].Picture, model.SizeBleed, c.Docs()[0].Meta.Title, "")
-			<header class="page-head">
-				<h1>{ c.Title() }</h1>
-				<p class="page-intro">Printed to order. Add one in this tab and watch the basket count change in another.</p>
-			</header>
-			<div class="pieces">
-				for _, d := range c.Docs() {
-					<a class="piece-card" href={ c.Href(d) }>
-						<figure class="art">
-							@ui.Img(d.Picture, model.SizeColumn, d.Meta.Title)
-						</figure>
-						<h2>{ d.Meta.Title }</h2>
-						<p class="piece-medium">{ d.Meta.Medium }</p>
-					</a>
-				}
-			</div>
-		</article>
-	}
-}
-
-// The /pieces index: a wall, one piece across the widest page the site builds.
-// .page--full is four columns, and SizePageFull is the picture that fills it.
-templ wall(shell model.Shell, c *model.Collection[Piece]) {
-	@shell(c.IndexPage()) {
-		<article class="page page--full">
-			<header class="page-head">
-				<h1>{ c.Title() }</h1>
-			</header>
+templ home(c *model.Collection[Piece]) {
+	<article class="page page--wide">
+		@ui.HeroFigure(c.Docs()[0].Picture, model.SizeBleed, c.Docs()[0].Meta.Title, "")
+		<header class="page-head">
+			<h1>{ c.Title() }</h1>
+			<p class="page-intro">Printed to order. Add one in this tab and watch the basket count change in another.</p>
+		</header>
+		<div class="pieces">
 			for _, d := range c.Docs() {
-				<a class="piece-card wall-piece" href={ c.Href(d) }>
+				<a class="piece-card" href={ c.Href(d) }>
 					<figure class="art">
-						@ui.Img(d.Picture, model.SizePageFull, d.Meta.Title)
+						@ui.Img(d.Picture, model.SizeColumn, d.Meta.Title)
 					</figure>
 					<h2>{ d.Meta.Title }</h2>
 					<p class="piece-medium">{ d.Meta.Medium }</p>
 				</a>
 			}
-		</article>
-	}
+		</div>
+	</article>
+}
+
+// The /pieces index: a wall, one piece across the widest page the site builds.
+// .page--full is four columns, and SizePageFull is the picture that fills it.
+templ wall(c *model.Collection[Piece]) {
+	<article class="page page--full">
+		<header class="page-head">
+			<h1>{ c.Title() }</h1>
+		</header>
+		for _, d := range c.Docs() {
+			<a class="piece-card wall-piece" href={ c.Href(d) }>
+				<figure class="art">
+					@ui.Img(d.Picture, model.SizePageFull, d.Meta.Title)
+				</figure>
+				<h2>{ d.Meta.Title }</h2>
+				<p class="piece-medium">{ d.Meta.Medium }</p>
+			</a>
+		}
+	</article>
 }
 
 // A piece's own page: the default article's parts, plus its medium and the
 // basket's button, on a three-column page with a picture to match.
-templ piecePage(shell model.Shell, b *basket.Plugin, c *model.Collection[Piece], d model.Document[Piece]) {
-	@shell(c.ItemPage(d)) {
-		<article class="page page--wide">
-			<header class="page-head">
-				<h1>{ d.Meta.Title }</h1>
-				<p class="piece-medium">{ d.Meta.Medium }</p>
-			</header>
-			@ui.HeroFigure(d.Picture, model.SizePageWide, d.Meta.Title, "")
-			<div class="prose">
-				@templ.Raw(d.HTML)
-			</div>
-			@b.Add(d.Slug)
-			@ui.BackLink(c.IndexPage().Path, c.Title())
-		</article>
-	}
+templ piecePage(b *basket.Plugin, c *model.Collection[Piece], d model.Document[Piece]) {
+	<article class="page page--wide">
+		<header class="page-head">
+			<h1>{ d.Meta.Title }</h1>
+			<p class="piece-medium">{ d.Meta.Medium }</p>
+		</header>
+		@ui.HeroFigure(d.Picture, model.SizePageWide, d.Meta.Title, "")
+		<div class="prose">
+			@templ.Raw(d.HTML)
+		</div>
+		@b.Add(d.Slug)
+		@ui.BackLink(c.Path(), c.Title())
+	</article>
 }

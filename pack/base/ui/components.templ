@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"github.com/lahickey/quire/model"
 	"net/url"
 	"strconv"
@@ -41,10 +42,10 @@ templ tag(t model.Marker) {
 	<span class={ "tag", templ.KV("tag-"+t.Kind, t.Kind != "") }>{ t.Text }</span>
 }
 
-func DocCard[T model.Metadata](c *model.Collection[T], d model.Document[T]) CardData {
+func DocCard[T model.Metadata](ctx context.Context, c *model.Collection[T], d model.Document[T]) CardData {
 	return CardData{
 		Href:        c.Href(d),
-		Kicker:      c.Kicker(d),
+		Kicker:      MonthYear(ctx, d.Meta.Base().Date),
 		Title:       d.Meta.Base().Title,
 		Description: d.Meta.Base().Summary,
 		Draft:       d.Meta.Base().Draft,

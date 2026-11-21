@@ -11,8 +11,8 @@ import (
 
 func TestOwnSheetsLeaveTheScaleToScale(t *testing.T) {
 	sc := model.DefaultScale()
-	for _, name := range ownSheets {
-		body, err := files.ReadFile(name)
+	for _, name := range Sheets {
+		body, err := Files.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}

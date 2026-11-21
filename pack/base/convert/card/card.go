@@ -19,9 +19,9 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/internal/fonts/measure"
-	"github.com/lahickey/quire/internal/radix"
+	"github.com/lahickey/quire/bake/measure"
 	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/model/radix"
 )
 
 const (

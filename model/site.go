@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/url"
 	"slices"
 	"strings"
@@ -56,8 +57,6 @@ type Chrome struct {
 	Brand       string
 	Theme       Theme
 	Palettes    []Palette
-	Header      func(Chrome, PageSpec) templ.Component
-	Footer      func(Chrome, PageSpec) templ.Component
 	FooterText  string
 	FooterLinks []Link
 	ScriptURL   string
@@ -69,9 +68,10 @@ type Chrome struct {
 	OGImageURL  string
 	Nav         []NavItem
 	Icons       []Icon
+	Scale       Scale
 }
 
-type Shell = func(PageSpec) templ.Component
+type chromeKey struct{}
 
 type PageSpec struct {
 	Title       string
@@ -143,9 +143,23 @@ func (p PageSpec) MetaDescription(c Chrome) string {
 
 func (p PageSpec) OGImage(c Chrome) string {
 	if p.ShareImage != "" {
-		return p.ShareImage
+		return c.AbsURL(p.ShareImage)
 	}
 	return c.OGImageURL
+}
+
+// WithChrome gives a render the site it belongs to. A site does this for everything it draws.
+func WithChrome(ctx context.Context, c *Chrome) context.Context {
+	return context.WithValue(ctx, chromeKey{}, c)
+}
+
+// ChromeOf is the site a render belongs to: its identity, navigation, scale and the rest. It is false for a render no site began.
+func ChromeOf(ctx context.Context) (Chrome, bool) {
+	c, ok := ctx.Value(chromeKey{}).(*Chrome)
+	if !ok {
+		return Chrome{}, false
+	}
+	return *c, true
 }
 
 func (s Identity) Host() string { return hostOf(s.BaseURL) }

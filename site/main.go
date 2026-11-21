@@ -14,10 +14,15 @@ import (
 //go:embed site.css
 var css embed.FS
 
-var widgets = map[string]model.Widget{
-	"swatch": func(_, body string) (string, error) {
-		return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
-	},
+func swatch(_, body string) (string, error) {
+	return `<p class="swatch">` + strings.TrimSpace(body) + `</p>`, nil
+}
+
+func declare(site *quire.Site) error {
+	site.SetWidget("swatch", swatch)
+	site.AddStylesheets(css, "site.css")
+	site.AddFooterLinks(model.BuiltWithQuire, model.Link{Label: "A Hidden Bridge project", URL: "https://hiddenbridge.io"})
+	return site.Include(&docs.Pack{})
 }
 
 func main() {
@@ -25,11 +30,8 @@ func main() {
 		Name:        "Quire",
 		BaseURL:     "https://quire.hiddenbridge.io",
 		Description: "Composable parts for static and live sites in Go.",
-	}, &docs.Pack{},
-		quire.WithWidgets(widgets),
-		quire.WithStylesheets(css, "site.css"),
+	}, quire.BlueprintFunc(declare),
 		quire.WithPalettePicker(),
-		quire.WithFooterLinks(model.BuiltWithQuire, model.Link{Label: "A Hidden Bridge project", URL: "https://hiddenbridge.io"}),
 		quire.WithPalette(model.PaletteInk),
 	)
 }

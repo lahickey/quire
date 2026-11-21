@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/internal/cache"
 )
 
 func outStem(name string) (string, error) {
@@ -33,7 +32,7 @@ func Ingest(dir, name string, src []byte) (bake.MasterInfo, string, error) {
 		return bake.MasterInfo{}, "", err
 	}
 	master := stem + "." + ext
-	if err := cache.Dir(dir).Write(master, body); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, master), body, 0o644); err != nil {
 		return bake.MasterInfo{}, "", err
 	}
 	return m, master, nil

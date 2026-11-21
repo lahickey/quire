@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lahickey/quire/internal/radix"
+	"github.com/lahickey/quire/model/radix"
 )
 
 var (

@@ -1,16 +1,26 @@
+// Package assets is the default look's stylesheets and scripts, and the CSS made from a site's scale and palette.
 package assets
 
 import (
+	"embed"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/lahickey/quire/internal/radix"
 	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/model/radix"
 )
 
-var bright = []string{"sky", "mint", "lime", "yellow", "amber"}
+//go:embed *.css *.js
+var Files embed.FS
+
+var (
+	Sheets  = []string{"base.css", "toggle.css", "nav.css", "layout.css", "prose.css", "highlight.css"}
+	Scripts = []string{"theme.js", "nav.js", "video.js"}
+
+	bright = []string{"sky", "mint", "lime", "yellow", "amber"}
+)
 
 type cssVar struct{ name, val string }
 
@@ -24,19 +34,8 @@ func rootVars(tokens []cssVar) []byte {
 	return []byte(b.String())
 }
 
-func media(s model.Scale, w model.Width) string {
-	switch w {
-	case model.WidthNarrow:
-		return fmt.Sprintf("@media (width < %dpx)", s.Measure())
-	case model.WidthWide:
-		return fmt.Sprintf("@media (width >= %dpx)", s.Wide())
-	case model.WidthFull:
-		return fmt.Sprintf("@media (width >= %dpx)", s.Full())
-	}
-	return ""
-}
-
-func scaleCSS(s model.Scale) []byte {
+// ScaleCSS is the custom properties every sheet reads its widths from.
+func ScaleCSS(s model.Scale) []byte {
 	return rootVars([]cssVar{
 		{"--qr-text-root", strconv.Itoa(s.Root) + "px"},
 		{"--qr-col", s.Rem(s.Col)},
@@ -53,7 +52,8 @@ func scaleCSS(s model.Scale) []byte {
 	})
 }
 
-func breakpointCSS(s model.Scale) []byte {
+// BreakpointCSS is what changes on a narrow screen. It goes after the sheets it overrides.
+func BreakpointCSS(s model.Scale) []byte {
 	inner := rootVars([]cssVar{
 		{"--qr-text-xl", "2rem"},
 		{"--qr-text-lg", "1.5rem"},
@@ -62,7 +62,7 @@ func breakpointCSS(s model.Scale) []byte {
 		{"--qr-nav-end-column", "2"},
 		{"--qr-nav-justify", "flex-start"},
 	})
-	return fmt.Appendf(nil, "%s {\n%s}\n", media(s, model.WidthNarrow), inner)
+	return fmt.Appendf(nil, "@media (width < %dpx) {\n%s}\n", s.Measure(), inner)
 }
 
 func contrast(hue string) string {
@@ -96,7 +96,8 @@ func paletteBlock(b *strings.Builder, sel string, p model.Palette, light bool) {
 	b.WriteString("}\n")
 }
 
-func paletteCSS(site model.Palette, offered []model.Palette) []byte {
+// PaletteCSS is the role properties for the site's palette, and for each the picker offers.
+func PaletteCSS(site model.Palette, offered []model.Palette) []byte {
 	var b strings.Builder
 	const light = `[data-theme="light"]`
 	named := func(p model.Palette) string { return fmt.Sprintf("[data-palette=%q]", p.ID()) }

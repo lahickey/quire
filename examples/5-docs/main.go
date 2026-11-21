@@ -13,7 +13,10 @@ func main() {
 		Name:        "Example",
 		BaseURL:     "https://example.com",
 		Description: "What the project is, in a sentence.",
-	}, &docs.Pack{},
+	}, quire.BlueprintFunc(func(site *quire.Site) error {
 		// Optional: a footer link back to Quire.
-		quire.WithFooterLinks(model.BuiltWithQuire))
+		site.AddFooterLinks(model.BuiltWithQuire)
+		// The docs pack is the whole site; a pack is included like this.
+		return site.Include(&docs.Pack{})
+	}))
 }

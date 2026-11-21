@@ -10,8 +10,12 @@ A blog is the site Quire makes with nothing added: one collection of dated docum
 func main() {
   app.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"},
     quire.BlueprintFunc(func(site *quire.Site) error {
-      _, err := site.AddCollection(model.Basic{ID: "posts"})
-      return err
+      posts, err := site.Collection(model.Basic{ID: "posts"})
+      if err != nil {
+        return err
+      }
+      base.Pages(site, posts)
+      return nil
     }))
 }
 ```

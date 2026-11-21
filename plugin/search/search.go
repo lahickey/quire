@@ -1,20 +1,20 @@
-// Package search is a Quire plugin: a search box in the nav whose results arrive
-// as the visitor types, and a results page for a plain form submission.
-// The index is every section of every collection it is given, held in memory.
+// Package search is a Quire plugin that finds things in a site's documents: results as the visitor types, and a
+// results page for a plain form submission. The index is every section of every collection it is given, held in memory.
+// It finds and does not draw: how its box and its results look is a Look, which the site's look supplies.
 package search
 
 import (
 	"cmp"
-	"embed"
 	"html"
+	"io/fs"
 	"net/http"
 	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/a-h/templ"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/plugin"
-	"github.com/lahickey/quire/ui"
 )
 
 const (
@@ -22,9 +22,6 @@ const (
 	lead  = 50
 	tail  = 110
 )
-
-//go:embed search.css search.js
-var files embed.FS
 
 var (
 	heading = regexp.MustCompile(`(?s)<h[23] id="([^"]*)"[^>]*>(.*?)</h[23]>`)
@@ -38,8 +35,21 @@ type section struct{ page, heading, url, text string }
 // Hit is one matching section; Match is the part of its text to mark.
 type Hit struct{ Page, Heading, URL, Before, Match, After string }
 
+// Look is how a search is drawn. Box is the control in the nav, a form that fetches live as the visitor types and
+// submits to action without JavaScript. Results is what replaces the box's results, and Page the body of the results page.
+type Look struct {
+	Box     func(action, live string) templ.Component
+	Results func(q string, hits []Hit) templ.Component
+	Page    func(q string, hits []Hit) templ.Component
+	Files   fs.FS
+	Sheets  []string
+	Scripts []string
+}
+
 type Plugin struct {
-	mount    *plugin.Mount
+	at       string
+	look     Look
+	pending  []func()
 	sections []section
 }
 
@@ -98,6 +108,10 @@ func (s section) hit(term *regexp.Regexp) Hit {
 }
 
 func (p *Plugin) find(q string) []Hit {
+	for _, index := range p.pending {
+		index()
+	}
+	p.pending = nil
 	terms := terms(q)
 	if len(terms) == 0 {
 		return nil
@@ -122,13 +136,14 @@ func (p *Plugin) find(q string) []Hit {
 
 func (p *Plugin) live(w http.ResponseWriter, r *http.Request) {
 	q := r.FormValue("q")
-	ui.Render(p.results(q, p.find(q)))(w, r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = p.look.Results(q, p.find(q)).Render(r.Context(), w)
 }
 
-func (p *Plugin) show(w http.ResponseWriter, r *http.Request) {
+// Page is the results page, for a site to add as a live page at the address New was given.
+func (p *Plugin) Page(r *http.Request) (model.PageSpec, templ.Component) {
 	q := r.FormValue("q")
-	w.Header().Set("Cache-Control", "no-store")
-	ui.Render(p.page(q, p.find(q)))(w, r)
+	return model.PageSpec{Title: "Search", Path: p.at, NoIndex: true}, p.look.Page(q, p.find(q))
 }
 
 // listed is s without its elements marked data-nosearch, and all in them.
@@ -146,11 +161,16 @@ func listed(s string) string {
 	}
 }
 
-func New() *Plugin { return &Plugin{} }
+// New is a search drawn by look, whose results page the site puts at the address given.
+func New(at string, look Look) *Plugin { return &Plugin{at: at, look: look} }
 
-// Add indexes a collection: one section for each document's opening, and one for each H2 and H3.
-// An element marked data-nosearch is left out.
+// Add gives the search a collection to find things in: one section for each document's opening, and one for each H2 and H3.
+// An element marked data-nosearch is left out. The indexing waits until the site serves, so a bake does none of it.
 func (p *Plugin) Add[T model.Metadata](c *model.Collection[T]) {
+	p.pending = append(p.pending, func() { index(p, c) })
+}
+
+func index[T model.Metadata](p *Plugin, c *model.Collection[T]) {
 	for _, d := range c.Docs() {
 		m := d.Meta.Base()
 		body, at := m.Summary+"\n"+listed(d.HTML), 0
@@ -169,11 +189,10 @@ func (p *Plugin) Add[T model.Metadata](c *model.Collection[T]) {
 func (p *Plugin) Name() string { return "search" }
 
 func (p *Plugin) Attach(m *plugin.Mount) error {
-	p.mount = m
-	m.AddStylesheets(files, "search.css")
-	m.AddScripts(files, "search.js")
-	m.AddNavEnd(p.box())
+	m.AddStylesheets(p.look.Files, p.look.Sheets...)
+	m.AddScripts(p.look.Files, p.look.Scripts...)
+	m.AddNavEnd(p.look.Box(p.at, m.URL("live")))
 	m.Route("GET", "live", p.live)
-	m.Page("GET", "", p.show)
+	p.find("")
 	return nil
 }

@@ -13,9 +13,10 @@ Rules for coding agents working on Quire.
 |-|-|
 | `*.go` at the root | The site and the server |
 | `app/` | The helpers: `Run` |
-| `model/`, `ui/`, `plugin/` | Data, components, the plugin API |
+| `model/`, `plugin/` | Data, the plugin API |
 | `bundle/` | Opens what a bake left |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
+| `pack/base/` | The default kind of site: `ui`, stylesheets, fonts, widgets |
 | `libs/` | Packages for use outside Quire, such as `libs/lexis` |
 | `bake/` | The baker: cache, keys, journal |
 | `pack/base/convert/` | The converters: markdown, mermaid, card, picture |

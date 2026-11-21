@@ -1,0 +1,18 @@
+package main
+
+import "github.com/lahickey/quire/model"
+
+templ index(posts *model.Collection[model.Meta]) {
+	<h1>Naked</h1>
+	<ul>
+		for _, d := range posts.Docs() {
+			<li><a href={ posts.Href(d) }>{ d.Meta.Title }</a></li>
+		}
+	</ul>
+}
+
+templ post(d model.Document[model.Meta]) {
+	<h1>{ d.Meta.Title }</h1>
+	@templ.Raw(d.HTML)
+	<p><a href="/">Back</a></p>
+}

@@ -1,0 +1,100 @@
+package quire
+
+import (
+	"fmt"
+	"github.com/lahickey/quire/model"
+)
+
+templ head(c model.Chrome, p model.PageSpec) {
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<meta name="color-scheme" content={ c.Theme.String() }/>
+	if c.ScriptURL != "" {
+		<script src={ c.ScriptURL }></script>
+	}
+	for _, m := range c.ModuleURLs {
+		<script type="module" src={ m }></script>
+	}
+	for _, u := range c.FontPreload {
+		<link rel="preload" href={ u } as="font" type="font/woff2" crossorigin/>
+	}
+	for _, h := range c.StyleURLs {
+		<link rel="stylesheet" href={ h }/>
+	}
+	<title>{ p.Title }</title>
+	<meta name="description" content={ p.MetaDescription(c) }/>
+	if c.Author != "" {
+		<meta name="author" content={ c.Author }/>
+	}
+	if u := p.Canonical(c); u != "" {
+		<link rel="canonical" href={ u }/>
+	} else {
+		<meta name="robots" content="noindex"/>
+	}
+	if p.Article != nil && p.Article.Published != "" {
+		<meta property="og:type" content="article"/>
+		<meta property="article:published_time" content={ p.Article.Published }/>
+		if p.Article.Modified != "" {
+			<meta property="article:modified_time" content={ p.Article.Modified }/>
+		}
+	} else {
+		<meta property="og:type" content="website"/>
+	}
+	if u := p.Canonical(c); u != "" {
+		<meta property="og:url" content={ u }/>
+	}
+	<meta property="og:title" content={ p.Title }/>
+	<meta property="og:description" content={ p.MetaDescription(c) }/>
+	<meta property="og:image" content={ p.OGImage(c) }/>
+	<meta property="og:site_name" content={ c.Name }/>
+	<meta name="twitter:card" content="summary_large_image"/>
+	<meta name="twitter:title" content={ p.Title }/>
+	<meta name="twitter:description" content={ p.MetaDescription(c) }/>
+	<meta name="twitter:image" content={ p.OGImage(c) }/>
+	for _, i := range c.Icons {
+		<link { i.Attrs()... }/>
+	}
+}
+
+templ reload(r model.LiveReload) {
+	if r.On {
+		<div
+			style="display:none"
+			data-signals={ fmt.Sprintf("{quire: {boot: %q}}", r.BootID) }
+			data-effect={ fmt.Sprintf("$quire.boot !== %q && window.location.reload()", r.BootID) }
+			data-init={ r.Init }
+		></div>
+	}
+}
+
+templ bareFrame(_ model.Chrome, _ model.PageSpec) {
+	{ children... }
+}
+
+templ notFoundBody() {
+	<h1>Not found</h1>
+}
+
+// The document is the site's: a correct head and the body. What goes round a page's content inside the body is the frame's.
+templ document(c model.Chrome, p model.PageSpec, frame Frame) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme={ c.Theme.String() }>
+		<head>
+			@head(c, p)
+		</head>
+		<body>
+			@reload(c.LiveReload)
+			@frame(c, p) {
+				{ children... }
+			}
+		</body>
+	</html>
+}
+
+templ bareImg(a templ.Attributes, alt string) {
+	<img { a... } alt={ alt }/>
+}
+
+templ bareVid(src, posterURL string, poster model.Picture) {
+	<video controls src={ src } poster={ posterURL } width={ poster.Width } height={ poster.Height }></video>
+}

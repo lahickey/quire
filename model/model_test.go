@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/lahickey/quire/internal/radix"
+	"github.com/lahickey/quire/model/radix"
 )
 
 func apca(t *testing.T, text, bg string) float64 {
@@ -79,14 +79,14 @@ func TestPalettes(t *testing.T) {
 func TestTags(t *testing.T) {
 	tags := Tags{"lang": {"go", "c"}, "gfx": {" Vulkan "}}
 	doc := func(tags ...string) []Document[Meta] { return []Document[Meta]{{Slug: "a", Meta: Meta{Tags: tags}}} }
-	col, err := Collect(Basic{ID: "x", Tags: tags}, doc("Go", "vulkan"), Identity{}, false)
+	col, err := Collect(Basic{ID: "x", Tags: tags}, doc("Go", "vulkan"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := col.Tags(col.Docs()[0]); got[0].Kind != "lang" || got[1].Kind != "gfx" {
 		t.Errorf("kinds %v", got)
 	}
-	if _, err := Collect(Basic{ID: "x", Tags: tags}, doc("golang"), Identity{}, false); err == nil {
+	if _, err := Collect(Basic{ID: "x", Tags: tags}, doc("golang"), false); err == nil {
 		t.Error("a tag outside the vocabulary loaded")
 	}
 }

@@ -5,7 +5,7 @@ import "github.com/lahickey/quire/model"
 templ figure(pic model.Picture, size model.Size, alt, caption string, priority bool) {
 	if pic.Hash != "" {
 		<figure class={ figureClass(size) }>
-			<img { pic.Attrs(size, priority)... } alt={ alt }/>
+			<img { scale(ctx).Attrs(pic, size, priority)... } alt={ alt }/>
 			if caption != "" {
 				<figcaption>{ caption }</figcaption>
 			}
@@ -17,7 +17,7 @@ templ VideoFigure(src string, poster model.Picture, alt, caption string) {
 	<figure class="figure">
 		<video
 			src={ src }
-			poster={ poster.URL(model.SizePage) }
+			poster={ scale(ctx).URL(poster, model.SizePage) }
 			width={ poster.Width }
 			height={ poster.Height }
 			aria-label={ alt }
@@ -35,7 +35,7 @@ templ VideoFigure(src string, poster model.Picture, alt, caption string) {
 
 templ Img(pic model.Picture, size model.Size, alt string) {
 	if pic.Hash != "" {
-		<img { pic.Attrs(size, false)... } alt={ alt }/>
+		<img { scale(ctx).Attrs(pic, size, false)... } alt={ alt }/>
 	}
 }
 

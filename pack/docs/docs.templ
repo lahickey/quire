@@ -4,51 +4,49 @@ import (
 	"cmp"
 
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/ui"
+	"github.com/lahickey/quire/pack/base/ui"
 )
 
 func source(repo string) model.Link {
 	return model.Link{Label: "Source", URL: repo}
 }
 
-templ Home(shell model.Shell, site model.Identity, landing model.Document[Landing], c *Collection) {
+templ Home(site model.Identity, landing model.Document[Landing], c *Book) {
 	{{ l := landing.Meta }}
-	@shell(model.PageSpec{Title: site.Name, Path: "/"}) {
-		<div class="page page--wide">
-			<header class="home-hero">
-				if l.Kicker != "" {
-					<p class="kicker">{ l.Kicker }</p>
-				}
-				<h1>{ cmp.Or(l.Title, site.Name) }</h1>
-				if l.Lede != "" {
-					<p class="home-lede">{ l.Lede }</p>
-				}
-				if c.Len() > 0 {
-					<div class="btn-row">
-						<a class="btn-primary" href={ c.Href(c.Docs()[0]) }>Get started</a>
-						<a class="btn-secondary" href={ c.IndexPage().Path }>{ c.Title() }</a>
-						if l.Repo != "" {
-							@ui.Link(source(l.Repo), "btn-secondary")
-						}
-					</div>
-				}
-				if l.Install != "" {
-					<div class="home-install">
-						@ui.Code(l.Install)
-					</div>
-				}
-			</header>
-			if landing.HTML != "" {
-				<section class="home-body prose">
-					@templ.Raw(landing.HTML)
-				</section>
+	<div class="page page--wide">
+		<header class="home-hero">
+			if l.Kicker != "" {
+				<p class="kicker">{ l.Kicker }</p>
 			}
-		</div>
-	}
+			<h1>{ cmp.Or(l.Title, site.Name) }</h1>
+			if l.Lede != "" {
+				<p class="home-lede">{ l.Lede }</p>
+			}
+			if c.Len() > 0 {
+				<div class="btn-row">
+					<a class="btn-primary" href={ c.Href(c.Docs()[0]) }>Get started</a>
+					<a class="btn-secondary" href={ c.Path() }>{ c.Title() }</a>
+					if l.Repo != "" {
+						@ui.Link(source(l.Repo), "btn-secondary")
+					}
+				</div>
+			}
+			if l.Install != "" {
+				<div class="home-install">
+					@ui.Code(l.Install)
+				</div>
+			}
+		</header>
+		if landing.HTML != "" {
+			<section class="home-body prose">
+				@templ.Raw(landing.HTML)
+			</section>
+		}
+	</div>
 }
 
 // The sidebar is behind a button until the page is wide enough to show it.
-templ Sidebar(c *Collection, current string) {
+templ Sidebar(c *Book, current string) {
 	<aside class="docs-side" data-signals="{site: {menu: false}}" data-class="{'docs-side--open': $site.menu}" data-on:quirenavigate__window="$site.menu = false">
 		<button type="button" class="docs-menu" data-on:click="$site.menu = !$site.menu">Menu</button>
 		<nav class="docs-nav" aria-label={ c.Title() }>
@@ -74,47 +72,45 @@ templ Sidebar(c *Collection, current string) {
 	</aside>
 }
 
-templ Index(shell model.Shell, c *Collection) {
-	@shell(c.IndexPage()) {
-		<div class="page page--wide docs">
-			@Sidebar(c, "")
-			<div class="docs-main" data-region="docs">
-				<header class="page-head">
-					<h1>{ c.Title() }</h1>
-					if c.Description() != "" {
-						<p class="page-intro">{ c.Description() }</p>
-					}
-				</header>
-				<div class="card-grid">
-					for _, d := range c.Docs() {
-						@ui.Card(ui.DocCard(c, d))
-					}
-				</div>
+templ Index(c *Book) {
+	<div class="page page--wide docs">
+		@Sidebar(c, "")
+		<div class="docs-main" data-region="docs">
+			<header class="page-head">
+				<h1>{ c.Title() }</h1>
+				if c.Description() != "" {
+					<p class="page-intro">{ c.Description() }</p>
+				}
+			</header>
+			<div class="card-grid">
+				for _, d := range c.Docs() {
+					{{ card := ui.DocCard(ctx, c.Collection, d) }}
+					{{ card.Kicker = c.Section(d) }}
+					@ui.Card(card)
+				}
 			</div>
 		</div>
-	}
+	</div>
 }
 
-templ Item(shell model.Shell, c *Collection, d Document) {
-	@shell(c.ItemPage(d)) {
-		<div class="page page--wide docs">
-			@Sidebar(c, d.Slug)
-			<article class="docs-main" data-region="docs">
-				<header class="page-head">
-					if k := c.Kicker(d); k != "" {
-						<p class="kicker">{ k }</p>
-					}
-					<h1>{ d.Meta.Title }</h1>
-					if d.Meta.Summary != "" {
-						<p class="page-intro">{ d.Meta.Summary }</p>
-					}
-				</header>
-				@ui.Contents(d.Headings)
-				<div class="prose">
-					@templ.Raw(d.HTML)
-				</div>
-				@ui.Pager(c, d)
-			</article>
-		</div>
-	}
+templ Item(c *Book, d Document) {
+	<div class="page page--wide docs">
+		@Sidebar(c, d.Slug)
+		<article class="docs-main" data-region="docs">
+			<header class="page-head">
+				if k := c.Section(d); k != "" {
+					<p class="kicker">{ k }</p>
+				}
+				<h1>{ d.Meta.Title }</h1>
+				if d.Meta.Summary != "" {
+					<p class="page-intro">{ d.Meta.Summary }</p>
+				}
+			</header>
+			@ui.Contents(d.Headings)
+			<div class="prose">
+				@templ.Raw(d.HTML)
+			</div>
+			@ui.Pager(c.Collection, d)
+		</article>
+	</div>
 }

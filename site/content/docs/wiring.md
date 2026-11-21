@@ -1,6 +1,6 @@
 ---
 title: Wiring
-summary: How a site is put together in Go - its identity, its options, the blueprint and its routes.
+summary: How a site is put together in Go - its identity, its blueprint, its options and its routes.
 ---
 
 A Quire site is one call:
@@ -10,8 +10,8 @@ app.Run(identity, blueprint, options...)
 ```
 
 - The **identity** is data: what the site is.
-- The **blueprint** says what the site holds. It is your own Go or a [pack](./packs.md), and has up to two steps: [Declare](#the-blueprint) and [Live](#live).
-- The **options** change how Quire behaves and looks.
+- The **blueprint** says what the site holds and how it looks. It is your own Go, a [pack](./packs.md), or both.
+- The **options** are the few things that have to be known before the blueprint runs.
 
 `Run` is in package `app`, the helpers. Everything else on this page is package `quire`.
 
@@ -25,43 +25,22 @@ app.Run(identity, blueprint, options...)
 - `BaseURL` is the production address. Setting it enables `/robots.txt` and `/sitemap.xml`.
 - `Dates` is the layouts dates render in.
 
-How the site looks is options, not `Identity`.
-
-## Options
-
-An `Option` changes how Quire behaves.
-
-- `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none. The default is `ThemeLight`, and the visitor's own choice always wins.
-- `WithPalette` and `WithScale` set the colours and the page grid. See [The look](./look.md).
-- `WithStylesheets` and `WithStylesheetsAt` add the site's CSS.
-- `WithBrand(name)` is the name the header shows as the link home, in place of `Identity.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
-- `WithFooterText(text)` replaces the footer's line, which is otherwise the year and `Identity.Author`, or `Identity.Name` when there is no author.
-- `WithFooterLinks(links…)` adds links to the footer, each drawn as its mark alone when it has one. See [Links](./look.md#links). `model.BuiltWithQuire` is one ready made.
-- `WithFooter(component)` replaces the whole footer.
-- `WithNavEnd(components…)` adds controls to the end of Quire's nav, before any a plugin adds.
-- `WithHeader(func(Chrome, PageSpec) templ.Component)` replaces the whole header, nav included. It is handed the Chrome and the page, so it can still draw `ui.Nav` (active against `PageSpec.Path`), the controls in `NavEnd`, `ui.PalettePicker` and `ui.ThemeToggle`.
-- `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
-- `WithWidgets` gives the site its [widgets](./content.md#widgets).
-- `WithSiteCard` changes the share card the bake draws.
-- `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
-
-Datastar is always linked.
-`Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.
-
 ## The blueprint
 
-A blueprint's `Declare` is handed the site and says what it holds. It runs at bake and at boot, so it only declares: work belongs in [Live](#live).
-
-A site with nothing but that writes it as a function, and `quire.BlueprintFunc` makes it a blueprint:
+A blueprint's `Declare` is handed the site and says what it holds. It runs at bake and at boot, so it only declares.
+A site writes it as a function, and `quire.BlueprintFunc` makes it a blueprint:
 
 ```go
 func declare(site *quire.Site) error {
-  notes, err := site.AddCollection(model.Basic{ID: "writing", Title: "Writing"})
+  site.AddStylesheets(static, "site.css")
+  notes, err := site.Collection(model.Basic{ID: "writing", Title: "Writing"})
   if err != nil {
     return err
   }
-  site.AddPage("/", homePage(site.Shell, notes))
-  site.SetNotFound(notFoundPage(site.Shell))
+  base.Pages(site, notes)
+  site.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes))
+  site.SetNotFound(notFoundPage())
+  site.AddPlugins(basket.New("/basket"))
   return nil
 }
 
@@ -70,62 +49,83 @@ func main() {
 }
 ```
 
-What it can add:
+### Content and pages
 
-- `AddCollection(spec)` loads documents and adds their index and pages. See [Content](./content.md#collections).
-- `AddPage(path, component)` adds a fixed page, rendered once and held. `AddPage("/", …)` replaces the default home. A nil component fails the build.
-- `SetNotFound(component)` replaces the default not-found page. Like any fixed page it is rendered once at boot and never handed the request, so every missing URL gets the same bytes and none of them reaches the page cache.
+- `Collection(spec)` loads documents. A collection is its documents and nothing else. See [Content](./content.md#collections).
+- `AddPage(head, body)` adds a fixed page at `head.Path`, drawn once and kept, in the navigation and the sitemap. The page at `/` is the home page.
+- `AddDocumentPages(collection, page)` gives each of a collection's documents a page, drawn on its first request and kept.
+- `AddLivePage(path, page)` adds a page drawn for each request and never kept. It is handed the request and answers with the head data and the body.
+- `AddRoute(method, path, handler)` is the raw mux: nothing added, never kept.
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
 - `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
-- `AddStylesheets` and `AddStylesheetsAt` add CSS in the `pack` layer, beneath the site's own sheets.
-- `AddWidget(name, widget)` adds a [widget](./content.md#widgets), and has to come before any content is read.
-- `SetFooter(component)`, `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` do what the options of those names do.
-- `Identity()` is the identity the site was made with.
-- `Include(blueprint)` runs another blueprint on the same site, its `Live` too, so a site can add a pack to pages of its own.
+- `Picture(name)` is a picture of the site's content, for a page of your own to place.
+- `AddPlugins(plugins…)` says the site has these [plugins](./plugins.md). They are attached when the site is built to serve, and never in a bake.
 
-A `quire.Blueprint` is anything with a `Declare` method of that signature, so a type of your own is one too, and so is a pack: `app.Run(identity, &docs.Pack{})`.
+### A page is head data and a body
 
-## Live
+A page does not draw the document it sits in. It is two things, handed over together:
 
-A blueprint that also has a `Live` method adds what only a served site has. A bake never calls it, so this is where a plugin is attached and where anything slow or outside the content belongs: an index, a query, a connection.
-A function cannot have a second method, so a site with a live step is a type:
+- `model.PageSpec`, its head data: the title, the address and what it shares. See [The head](#the-head).
+- a body, which is any templ component.
 
-```go
-type blog struct{ notes *model.Collection[model.Meta] }
+The site puts the body in the frame and the frame in the document. So a body can be drawn alone, which is what a Datastar patch needs, and no template is handed the site.
+`site.Page(head, body)` is that wrapping as a component, for a raw route that wants a whole page.
 
-func (b *blog) Declare(site *quire.Site) error {
-  var err error
-  b.notes, err = site.AddCollection(model.Basic{ID: "writing"})
-  return err
-}
+`model.DocumentPage(collection, document)` is the head data for a document's own page, and `collection.Page()` for its listing.
 
-func (b *blog) Live(l *quire.Live) error {
-  l.AddRoute("POST", "/subscribe", subscribe)
-  s := search.New()
-  s.Add(b.notes)
-  return l.Use(s)
-}
+### The look
 
-func main() {
-  app.Run(identity, &blog{})
-}
-```
+- `AddStylesheets` and `AddStylesheetsAt` add CSS, and `AddScripts` adds JavaScript to the site's one script. See [The look](./look.md#add-your-own-css).
+- `SetFrame(frame)` draws what goes round every page's content: a header and a footer. The base pack's is `ui.Frame`, and `ui.FrameWith(header, footer)` is that frame with either of your own. Without a frame a page is its content and nothing else.
+- `SetNotFound(body)` is the body of the page for an address nothing answers. Like any fixed page it is drawn once at boot and never handed the request.
+- `SetDefaultHome(body)` is the body of the page at `/` when nothing else takes it.
+- `SetFooterText(text)`, `AddFooterLinks(links…)` and `AddNavEnd(components…)` fill in the frame's footer line, footer links and the end of its nav. See [Links](./look.md#links).
+- `SetWidget(name, widget)` adds a [widget](./content.md#widgets), and `SetPicturePlacer` and `SetVideoPlacer` draw the pictures and videos in a document's body. Each has to come before any content is read.
 
-`Live` runs after `Declare` on the same value, so what `Declare` loaded is there to use.
+### Packs, and who wins
 
-- `Use(plugins…)` attaches plugins. See [Plugins](./plugins.md).
-- `AddRoute(method, path, handler)` is the raw mux: nothing added, never cached.
+`Include(blueprint)` runs a pack's blueprint on the site: `site.Include(&docs.Pack{})`.
 
-Nothing can be added once the site is built: a call after that panics.
-A blueprint is a value, so one can be shipped as a package. That is a [pack](./packs.md).
+A site and its packs call the same methods, and the site's word always wins, whichever spoke first. A pack's frame, not-found page, footer text or widget gives way to the site's own of the same kind, and the site's CSS is laid over a pack's.
+So a pack can be included before or after the site says its piece. Only one thing depends on order: a widget or a placer has to be set before the content it applies to is read.
 
-## Site, Chrome and Shell
+### What a pack asks of the site
 
-Three names come up in every template.
+- `Identity()` is the identity the site was made with, `Chrome()` the site as a page sees it, with its scale and the palettes on offer, and `Palette()` its own palette.
+- `AddBaseCSS(name, css)` adds to the bottom layer of the stylesheet, beneath every plugin, pack and the site: the look everything else is laid over. It takes the CSS itself, since some of it is made and not read, such as what a palette becomes.
+- `SetFonts(fsys)` is the font set the site draws in: a `fonts.json` and the faces it names. `SetDatastar(true)` links Datastar on every page.
+- `Converted(converter, body, args…)` is a converter's output for that input, as the bundle file to link to, and `Body(file)` reads one to inline it. `FontSetID()` is the font set a converter that measures text is to use.
+- `ShareCard()` is what the site's share card says, and `SetShareImage(file)` is the bundle file pages share. `Baked()` says there is a source to ask: a site built over nothing has no card.
 
-- The `Site` is what a blueprint declares on: what the site holds (collections, pages, files). Routes and plugins are added on `Live`. A page template does not need it.
-- `Chrome` is the frame's data: the identity, nav, plugin controls, assets, icons and theme. It is complete only once the site is built. The frame reads it: the document, a custom header, the default home and not-found pages.
-- `Shell` (`site.Shell`, `model.Shell`) wraps a page body in the document, reading Chrome when the page renders rather than when it is declared. It is all a page template needs of the site; everything else it shows is handed to it as data.
+The methods take three forms. A plain noun asks for something: `Collection`, `Picture`, `Document`. `Add` is one more of many. `Set` is the one of its kind, where the site's word beats a pack's.
+
+A `quire.Blueprint` is anything with a `Declare` method, so a type of your own is one too, and so is a pack. Nothing can be added once the site is built: a call after that panics.
+
+## Options
+
+An `Option` is something that has to be known before the blueprint runs.
+
+- `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none. The default is `ThemeLight`, and the visitor's own choice always wins.
+- `WithPalette`, `WithPalettePicker` and `WithScale` set the colours and the page grid. See [The look](./look.md).
+- `WithBrand(name)` is the name the header shows as the link home, in place of `Identity.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
+- `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
+- `WithSiteCard` changes the share card the bake draws.
+- `WithPacks(blueprints…)` declares packs beneath the site's blueprint, before it runs. `Run` puts the base pack there.
+- `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
+
+Datastar is linked when the site uses a plugin, or a pack asks for it, as the base pack does for its theme toggle and copy buttons.
+`Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.
+
+### Without the base pack
+
+`app.RunBare` is `Run` with no pack beneath the site: it bakes and serves, and adds nothing.
+The site has a correct document and whatever its blueprint says, with no stylesheet, script, frame or default page.
+`examples/6-naked` is one, and `quire new --from naked mysite` copies it.
+
+## Site and Chrome
+
+- The `Site` is what a blueprint declares on. A page's body does not need it.
+- `Chrome` is the site as a page sees it: the identity, the navigation, plugin controls, assets, icons, theme and scale. It is data only. The frame is handed it, and anything drawn inside a page can read it with `model.ChromeOf(ctx)`, which is how the default home page lists the site's sections and how a picture knows the scale it is shown at.
 
 ## The head
 
@@ -144,7 +144,7 @@ A page hands the shell a `model.PageSpec`, and the shell writes the head from it
 - **Articles.** `Article` marks a page as one: `og:type` is `article` and its published and modified dates are written in ISO form.
 - **Author.** `Identity.Author` becomes `<meta name="author">`.
 
-`Collection.IndexPage()` and `Collection.ItemPage(d)` fill a `PageSpec` for a collection's pages, so a template of your own rarely builds one by hand.
+`Collection.Page()` and `model.DocumentPage(collection, document)` fill a `PageSpec` for a collection's pages, so a page of your own rarely builds one by hand.
 The sitemap lists every fixed page and every published document, with a document's `updated` or `date` as its last change.
 
 ## Dev mode
@@ -160,7 +160,7 @@ Drafts are a separate flag, `--drafts`, so a draft can be checked with productio
 ## Reserved paths
 
 A leading `_` segment is a namespace with one owner: `/_quire/` is Quire's, `/_<name>/` is a plugin's and `/_site/` is the site's own.
-Every route is checked the same way, whoever adds it. `AddPage`, `AddRoute` and `AddFile` fail the build on a path in another owner's namespace or on one already taken, and a plugin's `Use` returns the same error.
+Every route is checked the same way, whoever adds it. `AddPage`, `AddRoute`, `AddFile` and a plugin's routes fail the build on a path in another owner's namespace or on one already taken.
 Everything Quire serves for itself is under `/_quire/`: `health`, `reload`, `style.css`, `quire.js`, `datastar.js`, `fonts/`, `img/`.
 Datastar signals follow the same split: `$quire` is Quire's, and a plugin's stream patches only `$<name>`.
 Only the files that have to be findable at a known location stay at the root: `robots.txt` and `sitemap.xml`.
@@ -173,13 +173,13 @@ A site has no server in it: its routes are a table.
 The server makes a mux from that table and adds what claims the whole address space: the not-found page for every other path, `robots.txt`, the sitemap, the health check, the `www` redirect and the session cookie.
 
 Building the site renders every fixed page, so a template error stops the binary at boot.
-A site with routes of its own adds them in [Live](#live) with `AddRoute`, or as a plugin. Both go through the site's route claims, so a clash is an error at boot.
+A site with routes of its own adds them with `AddRoute`, or as a plugin. Both go through the site's route claims, so a clash is an error at boot.
 
-A test of a blueprint or a plugin needs no bundle: `quire.Build(identity, nil, blueprint)` and `quire.NewServer` give its handler.
+A test of a blueprint or a plugin needs no bundle: `quire.Describe(identity, blueprint).Build(nil)` and `quire.NewServer` give its handler.
 
 ### Without Run
 
-Serving is three calls, and a program that wants a `main` of its own makes them itself:
+A site is described once, and the same description is baked and served. Serving is three calls on it, and a program that wants a `main` of its own makes them itself:
 
 ```go
 //go:embed all:.quire/bundle
@@ -194,7 +194,7 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
-  site, err := quire.Build(identity, baked, blueprint)
+  site, err := quire.Describe(identity, blueprint, quire.WithPacks(base.Pack{})).Build(baked)
   if err != nil {
     log.Fatal(err)
   }
@@ -207,10 +207,12 @@ func main() {
 ```
 
 - `bundle.Open` reads a bundle from any `fs.FS`: one embedded by hand, as here, or a folder through `os.DirFS`.
-- `quire.Build` runs the blueprint over it, `Live` included, and returns the site. It takes options as `Run` does.
+- `quire.Describe` gathers what makes a site but its source: the identity, the blueprint and the options, as `Run` takes them.
+- `Build` runs the blueprint over the bundle, attaches the plugins it uses, and returns the site.
+- `base.Pack{}`, from `pack/base`, is what `Run` puts beneath every site: what a document's fences and pictures become, the share card, and the home and not-found pages. Without it a `mermaid` fence is plain code, a picture is a bare `<img>`, no page has a share image but a document's own, and there is no page at `/` until the site adds one.
 - `quire.NewServer` returns the server, which is an `http.Handler`.
 
-`quire.Build(identity, nil, blueprint)` builds a site with nothing baked. Its pages are all Go, it needs no bundle, and its stylesheet, scripts and fonts are served as for any other site.
+`Build(nil)` builds a site with nothing baked. Its pages are all Go, it needs no bundle, and its stylesheet, scripts and fonts are served as for any other site.
 What a site asks of a bundle is `quire.Source`, and anything with those six methods can stand in for one.
 
 ### A bake of your own
@@ -223,7 +225,7 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
-  if err := quire.Collect(identity, baker, blueprint); err != nil {
+  if err := quire.Describe(identity, blueprint, quire.WithPacks(base.Pack{})).Collect(baker); err != nil {
     log.Fatal(err)
   }
   if _, err := baker.Finish(); err != nil {
@@ -233,7 +235,7 @@ func main() {
 ```
 
 - `bake.Start` is told where the content and the output live, and handed what it can convert. `convert.Standard()`, from `pack/base/convert`, is the default set: markdown, mermaid, the share card and WebP pictures. Several sets are combined, and two converters of one name are refused.
-- `quire.Collect` runs the blueprint over the baker, so the site asks for everything it needs. It calls no `Live`.
+- `Collect` runs the blueprint over the baker, so the site asks for everything it needs. It attaches no plugin. It is the same description `Build` is called on, so the bake and the site cannot ask for different things.
 - `Finish` encodes the pictures, writes the bundle to `.quire/bundle`, and returns it.
 
 A baker asked for a picture has not made it yet, because pictures are encoded together in `Finish`. Until then its answer is the master's name and nothing more, and the record is in the bundle `Finish` returns.

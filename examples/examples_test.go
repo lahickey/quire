@@ -68,6 +68,13 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, "basket-narrow.css"},
 		{"GET", "/missing", 404, ""},
 	},
+	"6-naked": {
+		{"GET", "/", 200, `<li><a href="/posts/hello">Hello</a></li>`},
+		{"GET", "/posts/hello", 200, "Some words"},
+		{"GET", "/posts/hello", 200, "lx-number"},
+		{"GET", "/_quire/style.css", 404, ""},
+		{"GET", "/missing", 404, "Not found"},
+	},
 	"5-docs": {
 		{"GET", "/", 200, "home-hero"},
 		{"GET", "/", 200, "code-copy"},

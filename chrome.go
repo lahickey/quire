@@ -1,7 +1,9 @@
 package quire
 
 import (
+	"cmp"
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"mime"
@@ -11,9 +13,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/internal/assets"
-	"github.com/lahickey/quire/internal/fonts"
 	"github.com/lahickey/quire/model"
-	"github.com/lahickey/quire/ui"
 )
 
 const (
@@ -23,20 +23,28 @@ const (
 	css        = "text/css; charset=utf-8"
 )
 
-func (s *settings) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
+func (s *Site) addSheets(layer string, at model.Width, fsys fs.FS, names []string) {
 	for _, n := range names {
 		s.sheets = append(s.sheets, assets.File{FS: fsys, Name: n, Layer: layer, At: at})
 	}
 }
 
 func (s *Site) addAssets() {
-	p := assets.Parts{Scale: s.scale, Palette: s.palette, Palettes: s.chrome.Palettes, Sheets: s.sheets, Scripts: s.scripts}
-	p.Fonts, s.chrome.FontPreload = fonts.Faces(s.fonts, fonts.Default(), func(file string, body []byte) string {
-		return s.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
-	})
-	s.chrome.StyleURLs = []string{s.addBytes(stylePath, css, assets.Stylesheet(p))}
-	s.chrome.ScriptURL = s.addBytes(scriptPath, javascript, assets.Script(p))
-	s.chrome.ModuleURLs = []string{s.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+	p := assets.Parts{Scale: s.chrome.Scale, Sheets: s.sheets, Scripts: s.scripts}
+	if s.fontFiles != nil {
+		p.Fonts, s.chrome.FontPreload = fontCSS(s.fonts, s.fontFiles, func(file string, body []byte) string {
+			return s.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
+		})
+	}
+	if sheet := assets.Stylesheet(p); len(sheet) > 0 {
+		s.chrome.StyleURLs = []string{s.addBytes(stylePath, css, sheet)}
+	}
+	if script := assets.Script(p); len(script) > 0 {
+		s.chrome.ScriptURL = s.addBytes(scriptPath, javascript, script)
+	}
+	if s.datastar || len(s.plugins) > 0 {
+		s.chrome.ModuleURLs = []string{s.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+	}
 }
 
 func (s *Site) addIcons() {
@@ -66,19 +74,51 @@ func (s *Site) addNavItem(id string) {
 	}
 }
 
-func (s *Site) late(page func(model.Chrome) templ.Component) templ.Component {
+// Page is a body as a whole page: the site's document round the frame round the body, with the chrome in reach of everything inside.
+func (s *Site) Page(p model.PageSpec, body templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return page(s.chrome).Render(ctx, w)
+		return document(s.chrome, p, s.frame.v).Render(templ.WithChildren(model.WithChrome(ctx, &s.chrome), body), w)
 	})
 }
 
 func (s *Site) Identity() model.Identity { return s.chrome.Identity }
 
+// Chrome is the site as a page sees it, as it stands now. A pack reads the scale and the palettes on offer from it.
+func (s *Site) Chrome() model.Chrome { return s.chrome }
+
+// Palette is the site's own palette.
+func (s *Site) Palette() model.Palette { return s.palette }
+
+// ShareCard is what the site's share card says: what WithSiteCard gave, or the site's name and description, on its palette.
+func (s *Site) ShareCard() model.ShareCard {
+	c := model.ShareCard{Title: s.chrome.Name, Lines: []string{s.chrome.Description}}
+	if s.siteCard != nil {
+		c = *s.siteCard
+	}
+	c.Domain = cmp.Or(c.Domain, s.chrome.Host())
+	if c.Palette == (model.Palette{}) {
+		c.Palette = s.palette
+	}
+	c.Palette.Check()
+	return c
+}
+
+// SetShareImage is the bundle file every page without a picture of its own shares.
+func (s *Site) SetShareImage(file string) {
+	mustBeOpen(s.built, "the share image")
+	s.chrome.OGImageURL = s.chrome.AbsURL(model.BundleURL(file))
+}
+
+// AddStylesheets adds CSS. The site's own is laid over a pack's, whichever came first.
 func (s *Site) AddStylesheets(fsys fs.FS, names ...string) { s.AddStylesheetsAt(0, fsys, names...) }
 
 func (s *Site) AddStylesheetsAt(w model.Width, fsys fs.FS, names ...string) {
 	mustBeOpen(s.built, "a stylesheet")
-	s.addSheets("pack", w, fsys, names)
+	layer := "site"
+	if s.depth > 0 {
+		layer = "pack"
+	}
+	s.addSheets(layer, w, fsys, names)
 }
 
 func (s *Site) AddNavEnd(cs ...templ.Component) {
@@ -86,14 +126,9 @@ func (s *Site) AddNavEnd(cs ...templ.Component) {
 	s.chrome.NavEnd = append(s.chrome.NavEnd, cs...)
 }
 
-func (s *Site) SetFooter(f func(model.Chrome, model.PageSpec) templ.Component) {
-	mustBeOpen(s.built, "the footer")
-	s.chrome.Footer = f
-}
-
 func (s *Site) SetFooterText(text string) {
 	mustBeOpen(s.built, "the footer")
-	s.chrome.FooterText = text
+	s.footerText.set(text, s.depth == 0)
 }
 
 func (s *Site) AddFooterLinks(links ...model.Link) {
@@ -101,8 +136,37 @@ func (s *Site) AddFooterLinks(links ...model.Link) {
 	s.chrome.FooterLinks = append(s.chrome.FooterLinks, links...)
 }
 
-func (s *Site) Shell(p model.PageSpec) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return ui.Shell(s.chrome, p).Render(ctx, w)
-	})
+// AddBaseCSS adds CSS to the bottom layer, beneath every plugin, pack and the site: the look everything else is laid over.
+// It takes the CSS itself, since some of it is made and not read, such as what a palette becomes.
+func (s *Site) AddBaseCSS(name string, body []byte) {
+	mustBeOpen(s.built, "a stylesheet")
+	s.sheets = append(s.sheets, assets.File{Name: name, Body: body, Layer: "base"})
+}
+
+// AddScripts adds JavaScript to the site's one script, each file in a scope of its own.
+func (s *Site) AddScripts(fsys fs.FS, names ...string) {
+	mustBeOpen(s.built, "a script")
+	for _, n := range names {
+		s.scripts = append(s.scripts, assets.File{FS: fsys, Name: n})
+	}
+}
+
+// SetFonts is the font set the site draws in: a description, fonts.json, and the faces it names.
+func (s *Site) SetFonts(fsys fs.FS) {
+	mustBeOpen(s.built, "the fonts")
+	set, err := model.ReadFontSet(fsys)
+	if err != nil {
+		s.err = cmp.Or(s.err, fmt.Errorf("fonts: %w", err))
+		return
+	}
+	s.fonts, s.fontFiles = set, fsys
+}
+
+// SetDatastar links Datastar on every page, for a look whose controls need it. A site with a plugin has it anyway.
+func (s *Site) SetDatastar(on bool) { s.datastar = on }
+
+// SetFrame draws what goes round every page's content. Without one a page is its content and nothing else.
+func (s *Site) SetFrame(f Frame) {
+	mustBeOpen(s.built, "the frame")
+	s.frame.set(f, s.depth == 0)
 }

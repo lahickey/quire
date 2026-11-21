@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/internal/fonts/measure"
+	"github.com/lahickey/quire/bake/measure"
 	"tuios.dev/sketch"
 )
 

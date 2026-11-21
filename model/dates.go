@@ -60,3 +60,9 @@ func (d Date) Formatted(layout string) string {
 	}
 	return d.Format(layout)
 }
+
+func (ds Dates) LongDate(d Date) string { return d.Formatted(ds.orDefault().Long) }
+
+func (ds Dates) ShortDate(d Date) string { return d.Formatted(ds.orDefault().Short) }
+
+func (ds Dates) MonthYear(d Date) string { return d.Formatted(ds.orDefault().ShortMonthYear) }

@@ -5,14 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-
-	"github.com/a-h/templ"
-)
-
-// A code block is wrapped in these, which give it its copy button.
-const (
-	codeOpen  = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
-	codeClose = `</div>`
 )
 
 type Marker struct {
@@ -62,8 +54,6 @@ type Collection[T Metadata] struct {
 	desc   string
 	docs   []Document[T]
 	bySlug map[string]Document[T]
-	site   Identity
-	kicker func(Document[T]) string
 	kinds  map[string]string
 }
 
@@ -73,18 +63,10 @@ type Spec[T Metadata] struct {
 	Description string
 	Markdown    string
 	Tags        Tags
-	Kicker      func(Document[T]) string
 	Sort        func(a, b Document[T]) int
-	Index       func(Shell, *Collection[T]) templ.Component
-	Item        func(Shell, *Collection[T], Document[T]) templ.Component
 }
 
 type Basic = Spec[Meta]
-
-// CodeBlock wraps escaped or highlighted code as the block every page shows, with its copy button.
-func CodeBlock(code string) string {
-	return codeOpen + "<pre><code>" + code + "</code></pre>" + codeClose
-}
 
 func published[T Metadata](docs []Document[T], drafts bool) []Document[T] {
 	if drafts {
@@ -139,15 +121,12 @@ func (c *Collection[T]) Neighbours(d Document[T]) (prev, next *Document[T]) {
 	return prev, next
 }
 
-func (c *Collection[T]) Href(d Document[T]) string { return "/" + c.id + "/" + d.Slug }
+func (c *Collection[T]) ID() string { return c.id }
 
-func (c *Collection[T]) LongDate(d Date) string { return d.Formatted(c.site.Dates.Long) }
+// Path is where the collection's pages go when it has any: its listing there, and each document beneath it.
+func (c *Collection[T]) Path() string { return "/" + c.id }
 
-func (c *Collection[T]) ShortDate(d Date) string { return d.Formatted(c.site.Dates.Short) }
-
-func (c *Collection[T]) ShortMonthYear(d Date) string {
-	return d.Formatted(c.site.Dates.ShortMonthYear)
-}
+func (c *Collection[T]) Href(d Document[T]) string { return c.Path() + "/" + d.Slug }
 
 func (c *Collection[T]) Featured() []Document[T] {
 	var out []Document[T]
@@ -176,29 +155,22 @@ func (c *Collection[T]) Title() string {
 
 func (c *Collection[T]) Description() string { return c.desc }
 
-func (c *Collection[T]) IndexPage() PageSpec {
-	return PageSpec{Title: c.Title(), Description: c.desc, Path: "/" + c.id}
+// Page is the head data of a collection's listing.
+func (c *Collection[T]) Page() PageSpec {
+	return PageSpec{Title: c.Title(), Description: c.desc, Path: c.Path()}
 }
 
-func (c *Collection[T]) ItemPage(d Document[T]) PageSpec {
+// DocumentPage is the head data of a document's own page: an article, with its dates and the picture it shares.
+func DocumentPage[T Metadata](c *Collection[T], d Document[T]) PageSpec {
 	m := d.Meta.Base()
-	p := PageSpec{
+	return PageSpec{
 		Title:       m.Title,
 		Description: m.Summary,
 		Path:        c.Href(d),
-		Article: &ArticleSEO{
-			Published: m.Date.ISO(),
-			Modified:  modified(m),
-			Draft:     m.Draft,
-		},
+		ShareImage:  d.Picture.shareURL(),
+		Article:     &ArticleSEO{Published: m.Date.ISO(), Modified: modified(m), Draft: m.Draft},
 	}
-	if u := d.Picture.shareURL(); u != "" {
-		p.ShareImage = c.site.AbsURL(u)
-	}
-	return p
 }
-
-func (c *Collection[T]) Kicker(d Document[T]) string { return c.kicker(d) }
 
 func (c *Collection[T]) Tags(d Document[T]) []Marker {
 	tags := d.Meta.Base().Tags
@@ -209,7 +181,7 @@ func (c *Collection[T]) Tags(d Document[T]) []Marker {
 	return out
 }
 
-func Collect[T Metadata](spec Spec[T], docs []Document[T], site Identity, drafts bool) (*Collection[T], error) {
+func Collect[T Metadata](spec Spec[T], docs []Document[T], drafts bool) (*Collection[T], error) {
 	if spec.ID == "" {
 		return nil, fmt.Errorf("collection: empty ID")
 	}
@@ -235,15 +207,12 @@ func Collect[T Metadata](spec Spec[T], docs []Document[T], site Identity, drafts
 	}
 	slices.SortStableFunc(docs, sort)
 	col := &Collection[T]{
-		id: spec.ID, title: spec.Title, desc: spec.Description, site: site,
+		id: spec.ID, title: spec.Title, desc: spec.Description,
 		docs: docs, bySlug: make(map[string]Document[T], len(docs)),
-		kicker: spec.Kicker, kinds: kinds,
+		kinds: kinds,
 	}
 	for _, d := range docs {
 		col.bySlug[d.Slug] = d
-	}
-	if col.kicker == nil {
-		col.kicker = func(d Document[T]) string { return col.ShortMonthYear(d.Meta.Base().Date) }
 	}
 	return col, nil
 }

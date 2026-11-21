@@ -101,7 +101,7 @@ A size picks which rung `src` lands on and where `srcset` stops, so a 4rem thumb
 ## Share images
 
 A page's title and summary are its `og:title` and `og:description`. Its share image is the frontmatter `picture:` at the widest rung no wider than a share card.
-Every page without a picture of its own shares the site card: one PNG the bake draws, with the site's name and description on the palette's dark ink unless `WithSiteCard` says otherwise.
+Every page without a picture of its own shares the site card: one PNG the base pack asks the bake to draw, with the site's name and description on the palette's dark ink unless `WithSiteCard` says otherwise.
 
 ## In depth
 
