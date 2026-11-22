@@ -75,12 +75,13 @@ func RunBare(id model.Identity, f site.Feature, extra ...site.Option) {
 	dev := flag.Bool("dev", false, "live reload")
 	drafts := flag.Bool("drafts", false, "include draft documents")
 	addr := flag.String("addr", ":8090", "listen address")
+	root := flag.String("root", "", "the path the site is served under, as behind a proxy that hands it one")
 	flag.Parse()
 	baking := flag.Arg(0) == "bake"
 	if flag.NArg() > 1 || (flag.NArg() == 1 && !baking) {
 		log.Fatalf("usage: %s [flags] [bake]", os.Args[0])
 	}
-	opts := append([]site.Option{site.WithDev(*dev), site.WithDrafts(*drafts)}, extra...)
+	opts := append([]site.Option{site.WithDev(*dev), site.WithDrafts(*drafts), site.WithPlace(model.Place{Root: *root, Engine: *root})}, extra...)
 	if *dev {
 		opts = append(opts, site.WithFeatures(reload.New()))
 	}

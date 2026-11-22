@@ -10,7 +10,7 @@ import (
 	"github.com/a-h/templ"
 )
 
-const BundlePath = "/_quire/img/"
+const BundlePath = EnginePath + "img/"
 
 type Size int
 

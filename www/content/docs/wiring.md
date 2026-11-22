@@ -228,6 +228,30 @@ A program with a mux of its own needs no server: it adds each of `built.Routes()
 `Build(nil)` builds a site with nothing baked. Its pages are all Go, it needs no bundle, and its stylesheet, scripts and fonts are served as for any other site.
 What a site asks of a bundle is `site.Source`, and anything with those six methods can stand in for one.
 
+### Placing a site
+
+A site writes its own addresses as if it were at `/`: its pages, its links, its features' endpoints and its groups.
+Where it is served is a separate thing, a `model.Place`, and nothing in the site changes when that does.
+
+```go
+at := model.Place{Root: "/docs", Engine: "/docs"}
+built, err := site.Describe(identity, feature, site.WithPlace(at)).Build(baked)
+```
+
+- `Root` goes in front of the site's pages, its features' `/_<name>/` and its groups: `/docs/install`, `/docs/_search/live`, `/docs/admin/`.
+- `Engine` goes in front of `/_quire/`, where the stylesheet, scripts, fonts and pictures are. Left empty they stay at the top, where every site on a box can share them. It is the same as `Root` where a host owns the rest of the address space.
+
+The place is applied at the two edges, and nowhere between:
+
+- **Coming in.** `Routes()` gives the placed patterns, and a handler is handed the request with the site's own address in it.
+- **Going out.** A page, any markup a handler answers with, and a stream's element patch have their addresses placed, in `href`, `src`, `srcset`, `action`, `poster` and what a Datastar action fetches. So are a redirect, the stylesheet's `url()`s, the canonical and share addresses, the sitemap and the session cookie's path.
+
+An address built in a script, or written into an attribute not listed, is not placed; a link in a page always is.
+The saved theme and palette are kept under the root, so two sites on one host do not share them.
+
+`--root /docs` gives `Run` a place with everything under it, for a site behind a proxy that hands it one path.
+`examples/mounted` is a program with a mux of its own that mounts a site under `/docs`, beside a page of its own drawn with the site's document.
+
 ### A bake of your own
 
 Baking is three calls too:

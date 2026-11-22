@@ -24,10 +24,11 @@ const (
 )
 
 type Stream struct {
-	mu    sync.Mutex
-	w     io.Writer
-	rc    *http.ResponseController
-	scope string
+	mu      sync.Mutex
+	w       io.Writer
+	rc      *http.ResponseController
+	scope   string
+	through func(string) string
 }
 
 // Streams is one feature's: its signals are under scope, and its addresses under base.
@@ -35,6 +36,7 @@ type Streams struct {
 	mu          sync.Mutex
 	subs        map[string]map[*Stream]struct{}
 	scope, base string
+	through     func(string) string
 }
 
 func (s *Stream) write(payload string) error {
@@ -79,14 +81,14 @@ func scoped(scope string, v any) ([]byte, error) {
 	return json.Marshal(map[string]any{scope: v})
 }
 
-func openStream(w http.ResponseWriter, scope string) *Stream {
+func openStream(w http.ResponseWriter, scope string, through func(string) string) *Stream {
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-store")
 	h.Set("Connection", "keep-alive")
 	h.Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	s := &Stream{w: w, rc: http.NewResponseController(w), scope: scope}
+	s := &Stream{w: w, rc: http.NewResponseController(w), scope: scope, through: through}
 	_ = s.rc.Flush()
 	return s
 }
@@ -94,6 +96,9 @@ func openStream(w http.ResponseWriter, scope string) *Stream {
 func New(scope, base string) *Streams {
 	return &Streams{subs: map[string]map[*Stream]struct{}{}, scope: scope, base: base}
 }
+
+// Through passes the markup of every element patch through f before it is sent. A site that is not at / uses it to place addresses.
+func (s *Streams) Through(f func(string) string) { s.through = f }
 
 func (s *Stream) Signals(v any) error {
 	b, err := scoped(s.scope, v)
@@ -108,7 +113,11 @@ func (s *Stream) Elements(ctx context.Context, c templ.Component) error {
 	if err := c.Render(ctx, &buf); err != nil {
 		return err
 	}
-	return s.event("datastar-patch-elements", "elements", strings.TrimRight(buf.String(), "\n"))
+	markup := strings.TrimRight(buf.String(), "\n")
+	if s.through != nil {
+		markup = s.through(markup)
+	}
+	return s.event("datastar-patch-elements", "elements", markup)
 }
 
 func (s *Streams) Publish(topic string, send func(*Stream) error) {
@@ -123,7 +132,7 @@ func (s *Streams) Publish(topic string, send func(*Stream) error) {
 }
 
 func (s *Streams) Subscribe(w http.ResponseWriter, r *http.Request, topic string, send func(*Stream) error) {
-	st := openStream(w, s.scope)
+	st := openStream(w, s.scope, s.through)
 	s.add(topic, st)
 	defer s.remove(topic, st)
 	if err := send(st); err != nil {

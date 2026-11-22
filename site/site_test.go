@@ -20,6 +20,7 @@ import (
 	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/journal"
 	"github.com/lahickey/quire/internal/testkit"
+	"github.com/lahickey/quire/libs/streams"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/convert"
 	"github.com/lahickey/quire/pack/base/convert/markdown"
@@ -609,5 +610,80 @@ func TestGroups(t *testing.T) {
 		if _, err := built(declare); err == nil {
 			t.Errorf("the site built with %s", what)
 		}
+	}
+}
+
+func TestPlace(t *testing.T) {
+	var saw string
+	css := fstest.MapFS{"site.css": {Data: []byte(`.hero { background: url("/art/hero.png") }`)}}
+	declare := func(s *Site) error {
+		s.AddStylesheets(css, "site.css")
+		s.AddPage(model.PageSpec{Path: "/"}, body(`<a href="/about">About</a>`))
+		s.AddPage(model.PageSpec{Path: "/about"}, body(`<a href="/">Home</a> <a href="https://example.org/x">out</a> <img srcset="/a.png 1x, /b.png 2x"> <p>plain /about text</p>`))
+		s.AddLivePage("/live", func(*http.Request) (model.PageSpec, templ.Component) {
+			return model.PageSpec{Path: "/live"}, body(`<a href="/about">About</a>`)
+		})
+		s.AddRoute("GET", "/fragment", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte(`<a href="/about">About</a>`))
+		})
+		s.AddRoute("GET", "/go", func(w http.ResponseWriter, r *http.Request) {
+			saw = r.URL.Path
+			http.Redirect(w, r, "/about?from=go", http.StatusSeeOther)
+		})
+		return s.Include(testFeature{"basket", func(s *Site) error {
+			live := s.Streams()
+			s.AddPage(model.PageSpec{Path: "/basket"}, body(`<i data-init="`+live.Listen("events")+`"></i>`))
+			s.AddRoute("GET", s.URL("events"), func(w http.ResponseWriter, r *http.Request) {
+				saw = r.URL.Path
+				gone, cancel := context.WithCancel(r.Context())
+				cancel()
+				live.Subscribe(w, r.WithContext(gone), "all", func(st *streams.Stream) error {
+					return st.Elements(r.Context(), body(`<a id="x" href="/about">About</a>`))
+				})
+			})
+			return nil
+		}})
+	}
+	at := model.Place{Root: "/shop", Engine: "/static"}
+	s, err := Describe(model.Identity{BaseURL: "https://example.com"}, FeatureFunc(declare), WithPlace(at)).Build(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := get(s, "/about"); rec.Code != http.StatusNotFound {
+		t.Errorf("a placed site still answers at its own address: %d", rec.Code)
+	}
+	about := get(s, "/shop/about").Body.String()
+	for _, want := range []string{
+		`<a href="/shop">Home</a>`, `href="https://example.org/x"`, `srcset="/shop/a.png 1x, /shop/b.png 2x"`, `plain /about text`,
+		`href="/static/_quire/style.css?h=`, `rel="canonical" href="https://example.com/shop/about"`,
+	} {
+		if !strings.Contains(about, want) {
+			t.Errorf("the placed page lacks %s:\n%s", want, about)
+		}
+	}
+	for _, path := range []string{"/shop/live", "/shop/fragment", "/shop/about", "/shop/nothing"} {
+		if got := get(s, path).Body.String(); strings.Contains(got, "/shop/shop") || strings.Contains(got, `href="/about"`) {
+			t.Errorf("%s has an address placed twice or not at all:\n%s", path, got)
+		}
+	}
+	if home := get(s, "/shop").Body.String(); !strings.Contains(home, `<a href="/shop/about">About</a>`) {
+		t.Errorf("the home page is not at the root, or its link is not placed:\n%s", home)
+	}
+	if rec := get(s, "/shop/go"); saw != "/go" || rec.Header().Get("Location") != "/shop/about?from=go" {
+		t.Errorf("a handler saw %q and was redirected to %q", saw, rec.Header().Get("Location"))
+	}
+	if page := get(s, "/shop/basket").Body.String(); !strings.Contains(page, `@get('/shop/_basket/events'`) {
+		t.Errorf("a Datastar action's address is not placed:\n%s", page)
+	}
+	if patch := get(s, "/shop/_basket/events").Body.String(); saw != "/_basket/events" || !strings.Contains(patch, `href="/shop/about"`) {
+		t.Errorf("a feature's handler saw %q and its stream sent:\n%s", saw, patch)
+	}
+	sheet := get(s, "/static/_quire/style.css").Body.String()
+	if !strings.Contains(sheet, `url("/shop/art/hero.png")`) {
+		t.Errorf("the stylesheet's address is not placed:\n%s", sheet)
+	}
+	if _, err := bare(model.Identity{}, nothing, WithPlace(model.Place{Root: "shop/"})); err == nil {
+		t.Error("a site was placed at a path with no leading slash")
 	}
 }

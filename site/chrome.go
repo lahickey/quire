@@ -1,6 +1,7 @@
 package site
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"fmt"
@@ -18,8 +19,8 @@ import (
 )
 
 const (
-	stylePath  = assetPrefix + "style.css"
-	scriptPath = assetPrefix + "quire.js"
+	stylePath  = model.EnginePath + "style.css"
+	scriptPath = model.EnginePath + "quire.js"
 	javascript = "application/javascript; charset=utf-8"
 	css        = "text/css; charset=utf-8"
 )
@@ -56,17 +57,17 @@ func (s *Site) addAssets() {
 	p := assets.Parts{Scale: s.chrome.Scale, Sheets: s.sheets, Scripts: s.scripts}
 	if s.fontFiles != nil {
 		p.Fonts, s.chrome.FontPreload = fontCSS(s.fonts, s.fontFiles, func(file string, body []byte) string {
-			return s.addBytes(assetPrefix+"fonts/"+file, "font/woff2", body)
+			return s.addBytes(model.EnginePath+"fonts/"+file, "font/woff2", body)
 		})
 	}
 	if sheet := assets.Stylesheet(p); len(sheet) > 0 {
-		s.chrome.StyleURLs = []string{s.addBytes(stylePath, css, sheet)}
+		s.chrome.StyleURLs = []string{s.addBytes(stylePath, css, placedCSS(s.chrome.Place, sheet))}
 	}
 	if script := assets.Script(p); len(script) > 0 {
 		s.chrome.ScriptURL = s.addBytes(scriptPath, javascript, script)
 	}
 	if s.datastar {
-		s.chrome.ModuleURLs = []string{s.addBytes(assetPrefix+"datastar.js", javascript, assets.Datastar())}
+		s.chrome.ModuleURLs = []string{s.addBytes(model.EnginePath+"datastar.js", javascript, assets.Datastar())}
 	}
 }
 
@@ -97,10 +98,26 @@ func (s *Site) addNavItem(id string) {
 	}
 }
 
-// Page is a body as a whole page: the site's document round the frame round the body, with the chrome in reach of everything inside.
-func (s *Site) Page(p model.PageSpec, body templ.Component) templ.Component {
+func (s *Site) page(p model.PageSpec, body templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		return document(s.chrome, p, s.frame.v, s.bodyEnd).Render(templ.WithChildren(model.WithChrome(ctx, &s.chrome), body), w)
+	})
+}
+
+// Page is a body as a whole page: the site's document round the frame round the body, with the chrome in reach of everything inside.
+// Its addresses are placed, so it can be drawn anywhere.
+func (s *Site) Page(p model.PageSpec, body templ.Component) templ.Component {
+	page := s.page(p, body)
+	if s.chrome.Place == (model.Place{}) {
+		return page
+	}
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		var markup bytes.Buffer
+		if err := page.Render(ctx, &markup); err != nil {
+			return err
+		}
+		_, err := w.Write(placedHTML(s.chrome.Place, markup.Bytes()))
+		return err
 	})
 }
 

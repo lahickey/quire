@@ -2,6 +2,7 @@ package examples
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"io"
 	"net"
@@ -9,6 +10,8 @@ import (
 	"net/http/cookiejar"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -69,8 +72,17 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, "basket-narrow.css"},
 		{"GET", "/missing", 404, ""},
 	},
+	"mounted": {
+		{"GET", "/", 200, "The host's own page"},
+		{"GET", "/", 200, `href="/docs/_quire/style.css`},
+		{"GET", "/docs", 200, `<a href="/docs/install">installing it</a>`},
+		{"GET", "/docs/install", 200, `<a href="/docs">the docs</a>`},
+		{"GET", "/docs/_quire/style.css", 200, "@layer"},
+		{"GET", "/install", 404, ""},
+		{"GET", "/_quire/style.css", 404, ""},
+	},
 	"6-naked": {
-		{"GET", "/", 200, `<li><a href="/posts/hello">Hello</a></li>`},
+		{"GET", "/", 200, `/posts/hello">Hello</a></li>`},
 		{"GET", "/posts/hello", 200, "Some words"},
 		{"GET", "/posts/hello", 200, "lx-number"},
 		{"GET", "/_quire/style.css", 404, ""},
@@ -91,6 +103,9 @@ var checks = map[string][]check{
 		{"GET", "/missing", 404, ""},
 	},
 }
+
+// address finds what a page fetches or links to: a link, a source or a form's action, a source set, and what a Datastar action fetches.
+var address = regexp.MustCompile(`(?:href|src|action|poster)="([^"]*)"|srcset="([^"]*)"|&#39;(/[^&]*)&#39;`)
 
 type check struct {
 	method, path string
@@ -122,7 +137,20 @@ func freePort(t *testing.T) string {
 	return addr
 }
 
-func (c check) run(t *testing.T, client *http.Client, base string) {
+// escapes is every address in a response that is the site's own and outside the root it was placed at.
+func escapes(body []byte, root string) []string {
+	var out []string
+	for _, m := range address.FindAllSubmatch(body, -1) {
+		for u := range strings.SplitSeq(cmp.Or(string(m[1]), string(m[2]), string(m[3])), ", ") {
+			if strings.HasPrefix(u, "/") && !strings.HasPrefix(u, "//") && u != root && !strings.HasPrefix(u, root+"/") {
+				out = append(out, u)
+			}
+		}
+	}
+	return out
+}
+
+func (c check) run(t *testing.T, client *http.Client, base, root string) {
 	t.Helper()
 	method, accept, wait := c.method, "text/html", 3*time.Second
 	if method == "SSE" {
@@ -130,7 +158,7 @@ func (c check) run(t *testing.T, client *http.Client, base string) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), wait)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, method, base+c.path, nil)
+	req, err := http.NewRequestWithContext(ctx, method, base+strings.TrimSuffix(root+c.path, "/"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,14 +174,20 @@ func (c check) run(t *testing.T, client *http.Client, base string) {
 		t.Errorf("%s %s returned %d, want %d", c.method, c.path, resp.StatusCode, c.status)
 	} else if !bytes.Contains(body, []byte(c.needle)) {
 		t.Errorf("%s %s lacks %s", c.method, c.path, c.needle)
+	} else if out := escapes(body, root); root != "" && len(out) > 0 {
+		t.Errorf("%s %s under %s has addresses outside it: %v", c.method, c.path, root, out)
 	}
 }
 
-func serve(t *testing.T, bin, cwd string, cs []check) {
+func serve(t *testing.T, bin, cwd, root string, cs []check) {
 	t.Helper()
 	addr := freePort(t)
 	var log bytes.Buffer
-	cmd := exec.Command(bin, "--addr", addr)
+	args := []string{"--addr", addr}
+	if root != "" {
+		args = append(args, "--root", root)
+	}
+	cmd := exec.Command(bin, args...)
 	cmd.Dir, cmd.Stdout, cmd.Stderr = cwd, &log, &log
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -169,7 +203,7 @@ func serve(t *testing.T, bin, cwd string, cs []check) {
 	}()
 	base := "http://" + addr
 	for deadline := time.Now().Add(3 * time.Minute); ; time.Sleep(100 * time.Millisecond) {
-		if r, err := http.Get(base + "/_quire/health"); err == nil {
+		if r, err := http.Get(base); err == nil {
 			_ = r.Body.Close()
 			break
 		}
@@ -185,7 +219,7 @@ func serve(t *testing.T, bin, cwd string, cs []check) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	for _, c := range cs {
-		c.run(t, client, base)
+		c.run(t, client, base, root)
 	}
 }
 
@@ -210,15 +244,21 @@ func TestExamples(t *testing.T) {
 			if !ok {
 				t.Fatal("no checks for this example")
 			}
+			if name[0] < '0' || name[0] > '9' {
+				serve(t, build(t, name), name, "", cs)
+				return
+			}
 			dir := filepath.Join(t.TempDir(), name)
 			if out, err := exec.Command(quire, "new", "--from", name, "--replace", root, dir).CombinedOutput(); err != nil {
 				t.Fatalf("quire new: %v\n%s", err, out)
 			}
-			if !t.Run("bakes", func(t *testing.T) { serve(t, build(t, dir), dir, cs) }) {
+			bin := build(t, dir)
+			if !t.Run("bakes", func(t *testing.T) { serve(t, bin, dir, "", cs) }) {
 				return
 			}
+			t.Run("placed", func(t *testing.T) { serve(t, bin, dir, "/nested", cs) })
 			t.Run("ships", func(t *testing.T) {
-				serve(t, build(t, dir, "-tags", "quire_nobake", "-overlay", ".quire/ship.json"), t.TempDir(), cs)
+				serve(t, build(t, dir, "-tags", "quire_nobake", "-overlay", ".quire/ship.json"), t.TempDir(), "", cs)
 			})
 		})
 	}

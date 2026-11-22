@@ -15,6 +15,12 @@ func WithDev(on bool) Option {
 	return func(s *settings) { s.dev = on }
 }
 
+// WithPlace puts the site somewhere other than the top of the address space it is served from.
+// Nothing the site or its features write changes: their addresses are placed coming in and going out.
+func WithPlace(p model.Place) Option {
+	return func(s *settings) { s.chrome.Place = p }
+}
+
 // WithLog is where the site and its services write. The default is slog's own.
 func WithLog(l *slog.Logger) Option {
 	return func(s *settings) { s.log = l }

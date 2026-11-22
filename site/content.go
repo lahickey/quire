@@ -103,12 +103,14 @@ func (s *Site) AddDocumentPages[T model.Metadata](col *model.Collection[T], page
 	s.route("GET "+col.Path()+"/{slug}", s.owner, func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
+			if out, placed := w.(*placedWriter); placed {
+				out.markup = nil
+			}
 			s.notFound404.ServeHTTP(w, r)
 			return
 		}
-		s.render(s.Page(page(doc)))(w, r)
-	})
-	s.handlers[len(s.handlers)-1].Shared = true
+		s.render(s.page(page(doc)))(w, r)
+	}).Shared = true
 	for _, d := range col.Docs() {
 		href := col.Href(d)
 		if err := s.reserve("GET "+href, s.owner); err != nil {

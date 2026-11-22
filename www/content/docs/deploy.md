@@ -31,6 +31,7 @@ The image is `FROM scratch`: the binary and nothing else, running as a user that
 ```
 
 The binary serves plain HTTP. Put it behind whatever terminates TLS for you: a platform's proxy, a load balancer or a reverse proxy.
+Behind one that hands the site a path and not a whole host, start it with `--root /that/path`; see [Placing a site](./wiring.md#placing-a-site).
 
 Set `Identity.BaseURL` to the address visitors use. It decides:
 

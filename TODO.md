@@ -6,8 +6,8 @@ The model as it is today is [the design page](./www/content/docs/architecture.md
 ## Where it is going
 
 Quire's site, server, baker and bundle are parts with public interfaces, a feature is the one way to add to a site, and what it ships by default is the base pack.
-Services are plain values the server starts and stops, and a group is a part of a site behind one gate.
-A server still holds one site at `/`, a route cannot say how it is kept, and a host cannot take the pieces alone.
+Services are plain values the server starts and stops, a group is a part of a site behind one gate, and a site can be placed at any path.
+A server still holds one site, and a route cannot say how it is kept.
 The plan finishes separating the parts so that each has one job and a public interface, and so that nothing Quire ships is a special case.
 Quire is then the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
 
@@ -20,6 +20,7 @@ The nouns:
 - **Identity.** A site's name, base URL and description. Data only.
 - **Feature.** Code that declares on a site: the documents it reads, its pages, routes, stylesheets and widgets. It only declares, so it runs in a bake as well as when serving, and it has no lifecycle. Several go into one site: the site's own, and those it includes.
 - **Service.** Something that runs while a site is served and that others call: a store, sessions, a bus. It is started and stopped, and never sees the site.
+- **Place.** Where a site is served: the root in front of its own addresses, and where the engine's are. The site does not know it.
 - **Group.** A part of a site behind one gate, at the address of its name: `Admin` is `/admin`. Features add to it and the site gives it its gate. One with no gate is not served.
 - **Core.** What cannot be removed: the site, the server, the baker's machinery and the bundle's format. It converts nothing and draws nothing by itself.
 - **Source.** The requests a site makes for content: a document, a picture, the output of a converter. Everything below either answers them or asks them.
@@ -220,9 +221,14 @@ Its stylesheets are 27KB and its templates less.
 
 ### One server, several sites
 
+A site writes its addresses as if it were at `/`, and a place says where it is served: a root for its pages, features and groups, and where the engine's `/_quire/` is.
+The place is applied only at the edges, to the route table coming in and to what is sent going out, so a site, a feature and a template never mention it.
+A placed site can be mounted in somebody else's server, beside routes Quire does not manage, or sit behind a proxy at a path.
+
 A server with one entry at `/` is a site as it is today.
-Several entries are several sites, or one site in parts, each under its own root and each with its own bundle or sharing one.
-A site with a root other than `/` can also be mounted in somebody else's server, beside routes Quire does not manage, or sit behind a proxy at a path.
+Several entries are several placed sites, or one site in parts, each with its own bundle or sharing one.
+"Several sites" is nothing more than several places: the documentation with its examples under `/examples/`, a subdomain each, or a box of tenants.
+The operator's level is the site at `/` and its `Admin` group; a tenant's is its own.
 
 ### Inside another program
 
@@ -246,32 +252,28 @@ Each step leaves everything working and is worth having if nothing after it happ
 4. **Packs provide the parts.** Done.
 5. **One table, and one way to add to it.** Done.
 6. **Services and groups.** Done.
-7. **Give the server entries.**
-   Several of root, bundle and site.
-   `Ship` registers bundles by name, and one `ship.go` embeds every bundle under `.quire`.
-8. **Let a route state its cache policy.**
+7. **Place a site at a path.** Done.
+8. **Several sites in one server.**
+   The server holds entries, each a placed site and its bundle, and starts and stops the services of all of them.
+   A site is placed by path or by host, so one of several can be lifted into a server of its own, or given a subdomain, and nothing in it changes.
+   `/_quire/` is shared by every site on the box, so what each site serves there has a name that cannot collide with another's.
+   `Ship` registers bundles by name, and one `ship.go` embeds every bundle under `.quire`; a `main` written by hand can then be handed a baked bundle too, which today only `Run` can.
+   A group travels with its site. One gathered above the sites, `/admin/<site>/` behind the server's own gate, is added when something wants it.
+9. **Let a route state its cache policy.**
    Shared or none, on any route, and a way to drop what is kept.
-9. **Root a site at a path.**
-   The root is prepended wherever a URL is built, and a rendered page has its root-absolute URLs prefixed before it is cached, so a hand-written `/writing` is still right.
-   A site at `/` skips all of it.
-   The session cookie and the saved theme and palette are scoped to the root.
-   `examples_test.go` serves every example a second time under a root and fails on any URL that escapes it.
-10. **Offer the pieces to a host.**
-   The assets, the cache headers, live reload and sessions are each reachable without a site or a server.
-   An example is a program with its own mux that mounts a documentation site at a root and draws a page of its own from the pieces.
-11. **Show the examples on the documentation site.**
-   An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
-   Then each example live, as an entry under `/examples/`.
-12. **Tidy the helper layer.**
+   A group has a cache of its own, inside its gate.
+10. **The helper layer.**
    `Run`, `model.Basic` and the other shortcuts sit together in the root, and say which parts they compose.
-   A helper for each common pattern, so the smallest example is one call.
-13. **Make the examples templates as well as tutorials.**
+   A helper for each common pattern, so the smallest example is one call: base gives a whole site from a content folder, as the docs pack does for documentation, and the site names base once.
+   The top-level folders are looked at as a whole.
+11. **Make the examples templates as well as tutorials.**
    A proper pass over every example once the parts and the helpers have settled, so each is written the way a site should be.
    Each is a kind of site somebody starts from with `quire new`: a simple site, a blog, documentation, a shop.
    The shop takes what is worth keeping from the toys project, which is no longer worked on.
    Each still teaches one thing more than the one before, and reads from top to bottom.
-
-The Examples page with screenshots in step 11 depends on nothing before it.
+12. **Show the examples on the documentation site.**
+   An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
+   Then each example live, as an entry under `/examples/`.
 
 ## To decide
 
@@ -297,7 +299,7 @@ The Examples page with screenshots in step 11 depends on nothing before it.
 - **How the documentation site imports the examples.**
   Each is a `package main`, which nothing can import.
   Either the site's build generates importable copies and the examples stay as they are, or the examples become a package with a small `main` beside it and `quire new` flattens the two.
-  Decide in step 11.
+  Decide in step 12.
 - **Who holds a subject to its publisher's name.**
   A publisher holds the bus itself, so the site cannot.
   It is a convention, or the bus is handed over already scoped.
@@ -344,7 +346,7 @@ These depend on none of the steps.
   Its queries are past a key-value store, so it brings a database of its own as a service.
   Its dashboards are in the `Admin` group.
   Between taking an event in and working on it is a queue, as Platoon had in NATS.
-  A flag changes what one visitor is shown, so flags wait on per-visitor caching in step 8, or fill the flagged part live.
+  A flag changes what one visitor is shown, so flags wait on per-visitor caching in step 9, or fill the flagged part live.
 - **Warnings.** The site, the baker and every service write to one logger. These are the gremlins to warn on.
   **A master in bad shape.** A bake reads whatever master content refers to and corrects it in memory, so nothing here breaks a page — it costs work on every changed master, and it costs the chance to copy rather than re-encode.
   Only `quire ingest` writes a master, so every one of these says the same thing: run it, or fix the file at the source.
@@ -360,19 +362,16 @@ These depend on none of the steps.
   - **A public-bucket URL for a variant the bucket does not hold.** Once the browser is sent to the bucket, Quire is out of the loop: the visitor gets a broken image. The bake did not run.
 - **Sign-in.** A service that knows who a visitor is beyond a cookie, with the gates `Members` and `Admin` need: has a token, and has a token with the admin flag.
   Its sign-in page and callback are a feature that is handed it.
+- **Pre-rendered pages.** The bake runs the features, so after the make a server over the new bundle can render every page the page cache would render once for everyone into the bundle, as Astro's `dist/` and Hugo's `public/` do, and the shipped binary serves finished HTML. Plugin routes and anything per visitor stay live, the per-route split Astro and Next make. It is a third axis beside `quire_nobake` and the ship overlay: whether its pages are pre-rendered (a light site's would be). A site with no live routes at all needs no server, only its bundle on a static host. Documents are already converted in the bake, so the gain is boot time and static hosting rather than weight.
+  A static host often serves under a path, which is what a place is for.
+- **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
+  A picture's URL goes out through the same place every other address does.
 
 ## Waiting on a step
 
 Each of these is easier, or only possible, once the step it names is done.
 
-- **After step 8: what is kept can be dropped.**
+- **After step 9: what is kept can be dropped.**
 
   - **Dev re-bakes in-process.** A site already bakes before it serves; with `--dev` it could also re-bake when content or masters change, so a watcher is only for Go and templ. A CMS needs the same thing: re-bake after an upload and swap the bundle, rather than a second bundle beside the first.
     Swapping a bundle is replacing an entry's and dropping what was kept from the old one.
-
-- **After step 9: a site can be rooted at a path.**
-
-  - **Pre-rendered pages.** The bake runs the features, so after the make a server over the new bundle can render every page the page cache would render once for everyone into the bundle, as Astro's `dist/` and Hugo's `public/` do, and the shipped binary serves finished HTML. Plugin routes and anything per visitor stay live, the per-route split Astro and Next make. It is a third axis beside `quire_nobake` and the ship overlay: whether its pages are pre-rendered (a light site's would be). A site with no live routes at all needs no server, only its bundle on a static host. Documents are already converted in the bake, so the gain is boot time and static hosting rather than weight.
-    A static host often serves under a path, which is what the root is for.
-  - **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
-    A picture's URL is built in the same place the root is applied.

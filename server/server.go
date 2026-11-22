@@ -12,20 +12,19 @@ import (
 	"strings"
 
 	"github.com/lahickey/quire/internal/serve"
+	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/site"
 )
 
-const (
-	healthPath = "/_quire/health"
-	pageCache  = 4 << 20
-)
+const pageCache = 4 << 20
 
 // Server serves one site.
 type Server struct {
-	site  *site.Site
-	mux   *http.ServeMux
-	pages *serve.Pages
-	apex  string
+	site   *site.Site
+	health string
+	mux    *http.ServeMux
+	pages  *serve.Pages
+	apex   string
 }
 
 func sitemap(abs func(string) string, locs []site.Loc) string {
@@ -53,8 +52,8 @@ func sitemap(abs func(string) string, locs []site.Loc) string {
 }
 
 func New(s *site.Site) (*Server, error) {
-	id := s.Identity()
-	v := &Server{site: s, mux: http.NewServeMux(), pages: serve.NewPages(pageCache, s.Dev())}
+	id, at := s.Identity(), s.Chrome()
+	v := &Server{site: s, mux: http.NewServeMux(), pages: serve.NewPages(pageCache, s.Dev()), health: at.Out(model.EnginePath + "health")}
 	if !s.Dev() {
 		v.apex = id.Host()
 	}
@@ -74,12 +73,12 @@ func New(s *site.Site) (*Server, error) {
 		}
 		v.mux.HandleFunc(pattern, h)
 	}
-	own("GET "+healthPath, serve.Health)
+	own("GET "+v.health, serve.Health)
 	own("GET /{path...}", s.NotFound().ServeHTTP)
 	if id.BaseURL != "" {
-		robots := "User-agent: *\nAllow: /\n\nSitemap: " + id.AbsURL("/sitemap.xml") + "\n"
+		robots := "User-agent: *\nAllow: /\n\nSitemap: " + at.AbsURL("/sitemap.xml") + "\n"
 		own("GET /robots.txt", serve.Static("text/plain; charset=utf-8", []byte(robots)).ServeHTTP)
-		own("GET /sitemap.xml", serve.Static("application/xml; charset=utf-8", []byte(sitemap(id.AbsURL, s.Locs()))).ServeHTTP)
+		own("GET "+at.Out("/sitemap.xml"), serve.Static("application/xml; charset=utf-8", []byte(sitemap(at.AbsURL, s.Locs()))).ServeHTTP)
 	}
 	return v, err
 }
@@ -113,7 +112,7 @@ func (v *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	control := "no-store"
-	if r.URL.Path != healthPath {
+	if r.URL.Path != v.health {
 		control = v.site.CacheControl(r)
 	}
 	w.Header().Set("Cache-Control", control)

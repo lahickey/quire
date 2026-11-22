@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	toggleTheme = `document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', document.documentElement.dataset.theme)`
+	toggleTheme = `document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme' + (document.documentElement.dataset.root || ''), document.documentElement.dataset.theme)`
 	codeOpen    = `<div class="code"><button type="button" class="code-copy" aria-label="Copy code" data-on:click="navigator.clipboard.writeText(el.nextElementSibling.textContent); el.classList.add('code-copy--done'); setTimeout(() => el.classList.remove('code-copy--done'), 1500)"></button>`
-	pickPalette = `document.documentElement.dataset.palette = el.value; localStorage.setItem('palette', el.value); el.closest('details').open = false`
+	pickPalette = `document.documentElement.dataset.palette = el.value; localStorage.setItem('palette' + (document.documentElement.dataset.root || ''), el.value); el.closest('details').open = false`
 )
 
 func navActive(path, href string) bool {

@@ -52,10 +52,13 @@ func (s *Site) claim(pattern, owner string, h http.HandlerFunc) error {
 	return nil
 }
 
-func (s *Site) route(pattern, owner string, h http.HandlerFunc) {
+// route adds a route and answers with it, for what more there is to say of it.
+func (s *Site) route(pattern, owner string, h http.HandlerFunc) *Route {
 	if err := s.claim(pattern, owner, h); err != nil {
 		s.fail("%w", err)
+		return &Route{}
 	}
+	return &s.handlers[len(s.handlers)-1]
 }
 
 func (s *Site) versioned(url, hash string) string {
@@ -64,7 +67,7 @@ func (s *Site) versioned(url, hash string) string {
 }
 
 func (s *Site) addBytes(url, contentType string, body []byte) string {
-	s.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP)
+	s.route("GET "+url, ownerQuire, serve.Static(contentType, body).ServeHTTP).asIs = true
 	return s.versioned(url, journal.Hash(body))
 }
 
@@ -77,7 +80,7 @@ func (s *Site) prepare(path string, c templ.Component, code int) *serve.Prepared
 func (s *Site) live(page func(*http.Request) (model.PageSpec, templ.Component)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		s.render(s.Page(page(r)))(w, r)
+		s.render(s.page(page(r)))(w, r)
 	}
 }
 
@@ -96,7 +99,7 @@ func (s *Site) AddPage(p model.PageSpec, body templ.Component) {
 		s.fail("page %s: no body", p.Path)
 		return
 	}
-	s.route("GET "+pagePattern(p.Path), s.owner, s.prepare(p.Path, s.Page(p, body), http.StatusOK).ServeHTTP)
+	s.route("GET "+pagePattern(p.Path), s.owner, s.prepare(p.Path, s.Page(p, body), http.StatusOK).ServeHTTP).asIs = true
 	s.sitemap = append(s.sitemap, Loc{Path: p.Path})
 	s.addNavItem(p.Path)
 }
@@ -130,7 +133,7 @@ func (s *Site) SetNotFound(body templ.Component) { s.notFound.set(body, s.own("t
 func (s *Site) SetDefaultHome(body templ.Component) { s.home.set(body, s.own("the default home page")) }
 
 // Routes is the site's table, for a server or a mux of somebody else's.
-func (s *Site) Routes() []Route { return s.handlers }
+func (s *Site) Routes() []Route { return s.table }
 
 // NotFound answers an address nothing in the table does.
 func (s *Site) NotFound() http.Handler { return s.notFound404 }
@@ -142,7 +145,10 @@ func (s *Site) CacheControl(r *http.Request) string {
 	if s.dev {
 		return "no-store"
 	}
-	return serve.CacheControl(r, s.versions)
+	if h := r.URL.Query().Get("h"); h != "" && s.versions[s.chrome.In(r.URL.Path)] == h {
+		return "public, max-age=31536000, immutable"
+	}
+	return "no-cache"
 }
 
 func (s *Site) Dev() bool { return s.dev }
@@ -159,5 +165,9 @@ func (s *Site) URL(path string) string {
 // Streams is the live updates of the feature now declaring, scoped by its name. It links Datastar on every page.
 func (s *Site) Streams() *streams.Streams {
 	s.datastar = true
-	return streams.New(s.owner, s.URL(""))
+	live := streams.New(s.owner, s.URL(""))
+	if p := s.chrome.Place; p != (model.Place{}) {
+		live.Through(func(markup string) string { return string(placedHTML(p, []byte(markup))) })
+	}
+	return live
 }

@@ -2,6 +2,7 @@
 package sessions
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"strings"
@@ -15,6 +16,7 @@ const cookieName = "qsid"
 type Sessions struct {
 	secure bool
 	chosen bool
+	path   string
 }
 
 type Option func(*Sessions)
@@ -33,6 +35,7 @@ func New(opts ...Option) *Sessions {
 }
 
 func (s *Sessions) Start(_ context.Context, env model.Env) error {
+	s.path = env.Root
 	if !s.chosen {
 		s.secure = !env.Dev && strings.HasPrefix(env.BaseURL, "https://")
 	}
@@ -59,7 +62,7 @@ func (s *Sessions) ID(w http.ResponseWriter, r *http.Request) string {
 		return id
 	}
 	c := &http.Cookie{
-		Name: cookieName, Value: uuid.New().String(), Path: "/",
+		Name: cookieName, Value: uuid.New().String(), Path: cmp.Or(s.path, "/"),
 		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: s.secure,
 	}
 	http.SetCookie(w, c)

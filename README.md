@@ -76,6 +76,8 @@ The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves t
 5. [`5-docs`](./examples/5-docs) — a documentation site from the docs pack: a landing page, a sidebar and search, with no templates or CSS.
 6. [`6-naked`](./examples/6-naked) — no pack beneath it: Quire's machinery and nothing of its look.
 
+[`mounted`](./examples/mounted) is not a starter: it is a program with a mux of its own that mounts a site under a path.
+
 ## Documentation
 
 The documentation is at [quire.hiddenbridge.io](https://quire.hiddenbridge.io).

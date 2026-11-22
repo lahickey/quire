@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	assetPrefix      = "/_quire/"
 	imageMemory      = 12 << 20
 	imageMemoryLimit = 64 << 10
 )
@@ -77,6 +76,7 @@ type Route struct {
 	Handler http.HandlerFunc
 	Shared  bool
 	Group   Group
+	asIs    bool
 }
 
 // Loc is an address a sitemap lists.
@@ -126,6 +126,7 @@ type Site struct {
 
 	routes      map[string]string
 	handlers    []Route
+	table       []Route
 	versions    map[string]string
 	sitemap     []Loc
 	fixed       []*serve.Prepared
@@ -146,6 +147,11 @@ func (d *Description) site(from Source) *Site {
 		widgets: [2]map[string]model.Widget{{}, {}}, gates: map[Group]said[Gate]{},
 	}
 	s.chrome.NavEnd, s.chrome.FooterLinks = slices.Clip(s.chrome.NavEnd), slices.Clip(s.chrome.FooterLinks)
+	for _, at := range []string{s.chrome.Root, s.chrome.Engine} {
+		if at != "" && (!strings.HasPrefix(at, "/") || strings.HasSuffix(at, "/")) {
+			s.fail("a site is placed at %q: a path with a leading slash and no trailing one", at)
+		}
+	}
 	s.frame.v, s.notFound.v, s.placePicture.v, s.placeVideo.v = bareFrame, notFoundBody(), s.barePicture, s.bareVideo
 	if from == nil {
 		s.from = &bundle.Bundle{}
@@ -211,6 +217,14 @@ func (s *Site) close() error {
 	s.gate()
 	s.notFound404 = s.prepare("404", s.Page(model.PageSpec{Title: "Not found"}, s.notFound.v), http.StatusNotFound)
 	s.built = true
+	s.table = s.handlers
+	if p := s.chrome.Place; p != (model.Place{}) {
+		s.table = make([]Route, len(s.handlers))
+		for i, r := range s.handlers {
+			r.Pattern, r.Handler = placedPattern(p, r.Pattern), placedHandler(p, r.Handler, r.asIs)
+			s.table[i] = r
+		}
+	}
 	if s.err != nil {
 		return s.err
 	}
@@ -274,7 +288,7 @@ func (s *Site) Services() []Service { return s.services }
 
 // Env is the site's environment, as its services are told it.
 func (s *Site) Env() model.Env {
-	return model.Env{Identity: s.chrome.Identity, Dev: s.dev, Log: s.log}
+	return model.Env{Identity: s.chrome.Identity, Place: s.chrome.Place, Dev: s.dev, Log: s.log}
 }
 
 // Log is where the feature now declaring writes, under its name.

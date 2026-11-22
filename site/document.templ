@@ -64,7 +64,13 @@ templ notFoundBody() {
 // The document is the site's: a correct head and the body. What goes round a page's content inside the body is the frame's.
 templ document(c model.Chrome, p model.PageSpec, frame Frame, end []templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme={ c.Theme.String() }>
+	<html
+		lang="en"
+		data-theme={ c.Theme.String() }
+		if c.Root != "" {
+			data-root={ c.Root }
+		}
+	>
 		<head>
 			@head(c, p)
 		</head>

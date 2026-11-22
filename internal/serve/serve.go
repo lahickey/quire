@@ -152,13 +152,6 @@ func Redirect(r *http.Request, apex string) (string, bool) {
 	return p, true
 }
 
-func CacheControl(r *http.Request, hashes map[string]string) string {
-	if h := r.URL.Query().Get("h"); h != "" && hashes[r.URL.Path] == h {
-		return "public, max-age=31536000, immutable"
-	}
-	return "no-cache"
-}
-
 func Prepare(path string, c templ.Component, code int) *Prepared {
 	return &Prepared{path: path, c: c, code: code}
 }
