@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/ui"
+	"github.com/lahickey/quire/site"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -96,13 +96,13 @@ func palette(name, body string) (string, error) {
 	return b.String(), nil
 }
 
-func mermaid(site *quire.Site) model.Widget {
+func mermaid(s *site.Site) model.Widget {
 	return func(_, body string) (string, error) {
-		file, err := site.Converted("mermaid", []byte(strings.TrimSpace(body)), site.FontSetID())
+		file, err := s.Converted("mermaid", []byte(strings.TrimSpace(body)), s.FontSetID())
 		if err != nil {
 			return "", err
 		}
-		svg, err := site.Body(file)
+		svg, err := s.Body(file)
 		return `<figure class="diagram">` + string(svg) + "</figure>", err
 	}
 }

@@ -3,33 +3,35 @@ Rules for coding agents working on Quire.
 ## Read first
 
 - [DEVELOPING.md](DEVELOPING.md): the tools, how to run, test and release.
-- [Design](site/content/docs/architecture.md): why Quire is shaped as it is, and the decisions it keeps to.
+- [Design](www/content/docs/architecture.md): why Quire is shaped as it is, and the decisions it keeps to.
 - [TODO.md](TODO.md): what is planned.
-- The page in `site/content/docs/` for whatever you are changing.
+- The page in `www/content/docs/` for whatever you are changing.
 
 ## Where things are
 
 | Path | Holds |
 |-|-|
-| `*.go` at the root | The site and the server |
-| `app/` | The helpers: `Run` |
-| `model/`, `plugin/` | Data, the plugin API |
+| `*.go` at the root | The helpers: `Run` |
+| `site/`, `server/` | What a feature declares on; what serves it |
+| `model/` | Data |
+| `feature/` | Named features Quire ships: search, reload |
+| `service/` | Services Quire ships: a store, sessions |
 | `bundle/` | Opens what a bake left |
 | `pack/` | Whole kinds of site, such as `pack/docs` |
 | `pack/base/` | The default kind of site: `ui`, stylesheets, fonts, widgets |
-| `libs/` | Packages for use outside Quire, such as `libs/lexis` |
+| `libs/` | Packages for use outside Quire: `libs/lexis`, `libs/streams` |
 | `bake/` | The baker: cache, keys, journal |
 | `pack/base/convert/` | The converters: markdown, mermaid, card, picture |
 | `examples/` | Complete sites, and what `quire new` copies |
-| `site/` | The documentation site, built with `pack/docs` |
+| `www/` | The documentation site, built with `pack/docs` |
 
 A package under `libs/` imports nothing else of Quire's.
 
 ## A change is not done until
 
 - `just test` passes. It regenerates templ, vets, lints and runs every example through `quire new`.
-- **It is documented and demonstrated.** A feature a site can use gets a section on its page in `site/content/docs/`, and that section shows the feature working on the page, not only its source: the rendered callout beside the markdown for it, the picture beside the line that places it. What this site cannot draw is shown as a screenshot of an example, retaken by `site/shots.sh`.
-- A new page is listed in `docs.sections` in `site/content/index.md`, or the site will not load.
+- **It is documented and demonstrated.** A feature a site can use gets a section on its page in `www/content/docs/`, and that section shows the feature working on the page, not only its source: the rendered callout beside the markdown for it, the picture beside the line that places it. What this site cannot draw is shown as a screenshot of an example, retaken by `www/shots.sh`.
+- A new page is listed in `docs.sections` in `www/content/index.md`, or the site will not load.
 - A feature of the default look is in an example, with a check in `examples/examples_test.go`.
 - A converter whose output changed has `Version` bumped in its package under `pack/base/convert/`; `just release-check` says which.
 

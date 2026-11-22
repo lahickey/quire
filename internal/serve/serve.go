@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"encoding/xml"
 	"fmt"
 	"maps"
 	"net"
@@ -52,10 +51,6 @@ type buffer struct {
 type Pages struct {
 	cache *cache[*page]
 	dev   bool
-}
-
-type Loc struct {
-	Path, LastMod string
 }
 
 func ifNoneMatch(inm, etag string) bool {
@@ -225,34 +220,6 @@ func (p *Pages) Cached(h http.HandlerFunc) http.HandlerFunc {
 		}
 		page.write(w, r)
 	}
-}
-
-func Sitemap(abs func(string) string, locs []Loc) string {
-	var b strings.Builder
-	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
-	b.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
-	seen := map[string]bool{}
-	for _, loc := range locs {
-		if seen[loc.Path] {
-			continue
-		}
-		seen[loc.Path] = true
-		b.WriteString("  <url><loc>")
-		_ = xml.EscapeText(&b, []byte(abs(loc.Path)))
-		b.WriteString("</loc>")
-		if loc.LastMod != "" {
-			b.WriteString("<lastmod>")
-			_ = xml.EscapeText(&b, []byte(loc.LastMod))
-			b.WriteString("</lastmod>")
-		}
-		b.WriteString("</url>\n")
-	}
-	b.WriteString("</urlset>\n")
-	return b.String()
-}
-
-func Robots(sitemap string) string {
-	return "User-agent: *\nAllow: /\n\nSitemap: " + sitemap + "\n"
 }
 
 func Health(w http.ResponseWriter, _ *http.Request) {

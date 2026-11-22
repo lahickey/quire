@@ -1,4 +1,4 @@
-// Package assets assembles a site's stylesheet and script from what its packs, plugins and the site itself add.
+// Package assets assembles a site's stylesheet and script from what its features, packs and the site itself add.
 package assets
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/lahickey/quire/model"
 )
 
-const layerOrder = "@layer base, plugin, pack, site;\n"
+const layerOrder = "@layer base, feature, pack, site;\n"
 
 //go:embed datastar.js
 var files embed.FS
@@ -87,7 +87,7 @@ func appendJS(b *strings.Builder, name string, body []byte) {
 	b.WriteString("})();\n")
 }
 
-// Stylesheet is one sheet in four layers: the look at the bottom, then plugins, packs and the site, each at its width.
+// Stylesheet is one sheet in four layers: the look at the bottom, then named features, packs and the site, each at its width.
 func Stylesheet(p Parts) []byte {
 	var b strings.Builder
 	if len(p.Fonts) > 0 {
@@ -98,7 +98,7 @@ func Stylesheet(p Parts) []byte {
 		if w != 0 {
 			q = media(p.Scale, w)
 		}
-		for _, layer := range []string{"base", "plugin", "pack", "site"} {
+		for _, layer := range []string{"base", "feature", "pack", "site"} {
 			for _, f := range p.Sheets {
 				if f.At == w && f.Layer == layer {
 					appendCSS(&b, layer, f.Name, q, read(f))

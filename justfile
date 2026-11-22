@@ -6,7 +6,7 @@ port := "8091"
 # The corpus is other people's kinds of file, for Lexis to read: no formatter or check of ours touches it.
 corpus := "libs/lexis/_corpus"
 # The languages page shows the corpus's files as they are, tabs and all.
-shown := "site/content/docs/languages.md"
+shown := "www/content/docs/languages.md"
 gofiles := 'find . -name "*.go" ! -path "./vendor/*" ! -path "./' + corpus + '/*"'
 
 _default:
@@ -30,7 +30,7 @@ generate:
 check:
     @cd {{ dir }} && ! git grep -nP '\t' -- '*.md' ':!{{ corpus }}' ':!{{ shown }}'
     @cd {{ dir }} && go vet ./...
-    @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /site)
+    @cd {{ dir }} && go vet -tags quire_nobake $(go list -tags quire_nobake ./... | grep -v -e /examples -e /www)
     @cd {{ dir }} && go vet -tags release ./pack/base/convert
     @cd {{ dir }} && golangci-lint run --show-stats=false ./...
     @cd {{ dir }} && sh -c 'out=$(gopls check -severity=hint $({{ gofiles }})); if [ -n "$out" ]; then printf "%s\n" "$out"; exit 1; fi'
@@ -66,7 +66,7 @@ dev name="1-minimal": generate
     	:: go run . --dev --drafts --addr :{{ port }}
 
 # The documentation site: `just site` lists its recipes, `just site run` runs it, `just site dev` adds live reload.
-mod site
+mod site 'www'
 
 # Lexis, the highlighter: `just lexis` lists its recipes.
 mod lexis 'libs/lexis'

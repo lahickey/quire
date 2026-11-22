@@ -50,7 +50,7 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, `[data-palette="harbour"][data-theme="light"]`},
 		{"GET", "/missing", 404, "never written"},
 	},
-	"4-plugin": {
+	"4-feature": {
 		{"GET", "/", 200, "Paper Moon"},
 		{"GET", "/", 200, "figure--bleed"},
 		{"GET", "/pieces", 200, "Tidal Drift"},
@@ -64,6 +64,7 @@ var checks = map[string][]check{
 		{"GET", "/basket", 200, `basket-qty">1`},
 		{"POST", "/_basket/dec?item=paper-moon", 303, ""},
 		{"GET", "/basket", 200, "Nothing in it"},
+		{"GET", "/admin/basket", 404, ""},
 		{"SSE", "/_basket/events", 200, "datastar-patch-signals"},
 		{"GET", "/_quire/style.css", 200, "basket-narrow.css"},
 		{"GET", "/missing", 404, ""},

@@ -5,22 +5,22 @@ package main
 
 import (
 	"github.com/lahickey/quire"
-	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base"
+	"github.com/lahickey/quire/site"
 )
 
 func main() {
-	app.Run(model.Identity{
+	quire.Run(model.Identity{
 		Name:        "Pictures",
 		BaseURL:     "https://example.com",
 		Description: "A Quire site with pictures and no CSS of its own.",
-	}, quire.BlueprintFunc(func(site *quire.Site) error {
-		posts, err := site.Collection(model.Basic{ID: "posts"})
+	}, site.FeatureFunc(func(s *site.Site) error {
+		posts, err := s.Collection(model.Basic{ID: "posts"})
 		if err != nil {
 			return err
 		}
-		base.Pages(site, posts)
+		base.Pages(s, posts)
 		return nil
 	}))
 }

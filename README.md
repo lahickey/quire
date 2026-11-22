@@ -5,7 +5,7 @@ Content in, complete site out — looks good by default yet every layer of it ca
 
 - **One binary.** Words, pictures and diagrams are baked into the site's own binary.
 - **Pictures handled end to end.** Refer to a picture beside a document and get a responsive ladder in WebP.
-- **Server-rendered.** HTML from [templ](https://templ.guide); live features are plugins streaming through [Datastar](https://data-star.dev).
+- **Server-rendered.** HTML from [templ](https://templ.guide); live features stream through [Datastar](https://data-star.dev).
 
 ## Getting started
 
@@ -23,19 +23,19 @@ package main
 
 import (
   "github.com/lahickey/quire"
-  "github.com/lahickey/quire/app"
   "github.com/lahickey/quire/model"
   "github.com/lahickey/quire/pack/base"
+  "github.com/lahickey/quire/site"
 )
 
 func main() {
-  app.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
-    quire.BlueprintFunc(func(site *quire.Site) error {
-      posts, err := site.Collection(model.Basic{ID: "posts"})
+  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
+    site.FeatureFunc(func(s *site.Site) error {
+      posts, err := s.Collection(model.Basic{ID: "posts"})
       if err != nil {
         return err
       }
-      base.Pages(site, posts)
+      base.Pages(s, posts)
       return nil
     }))
 }
@@ -72,14 +72,14 @@ The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves t
 1. [`1-minimal`](./examples/1-minimal) — the site above.
 2. [`2-pictures`](./examples/2-pictures) — pictures and a diagram, from the markdown alone.
 3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
-4. [`4-plugin`](./examples/4-plugin) — a shop: its own frontmatter and templates, and a basket plugin with sessions and live updates.
+4. [`4-feature`](./examples/4-feature) — a shop: its own frontmatter and templates, and a basket feature with live updates, handed a store and sessions, and an admin page behind a gate.
 5. [`5-docs`](./examples/5-docs) — a documentation site from the docs pack: a landing page, a sidebar and search, with no templates or CSS.
 6. [`6-naked`](./examples/6-naked) — no pack beneath it: Quire's machinery and nothing of its look.
 
 ## Documentation
 
 The documentation is at [quire.hiddenbridge.io](https://quire.hiddenbridge.io).
-That site is itself built with Quire; its source is in [`site/`](./site).
+That site is itself built with Quire; its source is in [`www/`](./www).
 
 - [Getting started](https://quire.hiddenbridge.io/docs/getting-started)
 - [A blog](https://quire.hiddenbridge.io/docs/blog)
@@ -87,11 +87,11 @@ That site is itself built with Quire; its source is in [`site/`](./site).
 - [Pictures](https://quire.hiddenbridge.io/docs/pictures)
 - [The look](https://quire.hiddenbridge.io/docs/look)
 - [Wiring](https://quire.hiddenbridge.io/docs/wiring)
-- [Plugins](https://quire.hiddenbridge.io/docs/plugins)
+- [Features](https://quire.hiddenbridge.io/docs/features)
 - [Packs](https://quire.hiddenbridge.io/docs/packs)
 - [Baking](https://quire.hiddenbridge.io/docs/bake)
 - [Deploying](https://quire.hiddenbridge.io/docs/deploy)
-- [Lexis](https://quire.hiddenbridge.io/docs/lexis), the syntax highlighter, and [its benchmarks](./site/content/docs/benchmarks.md)
+- [Lexis](https://quire.hiddenbridge.io/docs/lexis), the syntax highlighter, and [its benchmarks](./www/content/docs/benchmarks.md)
 - [Design](https://quire.hiddenbridge.io/docs/architecture)
 
 Working on Quire itself is in [DEVELOPING.md](./DEVELOPING.md).

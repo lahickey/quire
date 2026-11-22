@@ -9,7 +9,7 @@ package searchui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/lahickey/quire/plugin/search"
+import "github.com/lahickey/quire/feature/search"
 
 // The nav control. Typing fetches the results, which replace #search-live;
 // without JavaScript, submitting the form loads the results page instead.

@@ -1,0 +1,46 @@
+# The documentation site. From the repo root `just site` lists these, and `just site run` is the first.
+root := source_directory() / ".."
+port := env("PORT", "8091")
+
+_default:
+    @just --justfile {{ source_file() }} --list
+
+# Run the site.
+[continue]
+[no-exit-message]
+run:
+    cd {{ root }} && go tool templ generate -path .
+    cd {{ source_directory() }} && go run . --addr :{{ port }}
+
+# Needs `wgo` on PATH; see DEVELOPING.md.
+# Run with live reload: a change to Quire, the site or its content rebuilds and reloads the page.
+[continue]
+[no-exit-message]
+dev:
+    cd {{ root }} && wgo \
+    	-cd {{ source_directory() }} \
+    	-xfile '_templ\.go$' \
+    	-file '\.go$' -file '\.templ$' -file '\.css$' -file '\.md$' -file '\.svg$' -file '\.js$' -file '\.yaml$' \
+    	go tool templ generate -path {{ root }} \
+    	:: go run . --dev --drafts --addr :{{ port }}
+
+# Retake the screenshots in content/docs/shots from the examples. Needs chromium.
+shots:
+    sh {{ source_directory() }}/shots.sh
+
+# Bake and exit, for the image build.
+bake:
+    cd {{ root }} && go tool templ generate -path .
+    cd {{ source_directory() }} && go run . bake
+
+# Build the image locally, as `quire-site`.
+build: bake
+    cd {{ root }} && docker build -f www/Dockerfile -t quire-site .
+
+# Long-running CLIs need a pseudo-TTY when invoked via just. There is no
+# `fly launch` recipe: creating the app is a one-off, by hand.
+# --local-only keeps the image build on this machine.
+# Bake, build the image and deploy it to Fly. This is production.
+[no-quiet]
+deploy: bake
+    cd {{ root }} && script -q -c "fly deploy . --config www/fly.toml --dockerfile www/Dockerfile --local-only" /dev/null

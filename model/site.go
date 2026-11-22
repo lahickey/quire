@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
@@ -45,10 +46,11 @@ type NavItem struct {
 	Href  string
 }
 
-type LiveReload struct {
-	On     bool
-	BootID string
-	Init   string
+// Env is what is fixed for the life of a running site. A service is told it once, when it starts.
+type Env struct {
+	Identity
+	Dev bool
+	Log *slog.Logger
 }
 
 type Chrome struct {
@@ -64,7 +66,6 @@ type Chrome struct {
 	NavEnd      []templ.Component
 	StyleURLs   []string
 	FontPreload []string
-	LiveReload  LiveReload
 	OGImageURL  string
 	Nav         []NavItem
 	Icons       []Icon

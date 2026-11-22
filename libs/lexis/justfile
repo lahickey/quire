@@ -10,7 +10,7 @@ test:
 
 # Set Lexis beside Chroma for speed and agreement, and write the docs page of the results.
 bench:
-    cd {{ source_directory() }}/bench && go run . {{ root }}/site/content/docs/benchmarks.md
+    cd {{ source_directory() }}/bench && go run . {{ root }}/www/content/docs/benchmarks.md
 
 # List the text Lexis and Chroma disagree on in a language: `just lexis diff go`.
 diff language:
@@ -36,7 +36,7 @@ languages:
             head -n {{ shown }} "$name/$file"
             printf '`````\n\n</div>\n'
         done
-    } > {{ root }}/site/content/docs/languages.md
+    } > {{ root }}/www/content/docs/languages.md
 
 # Write both generated docs pages: the benchmarks and the languages.
 docs: bench languages

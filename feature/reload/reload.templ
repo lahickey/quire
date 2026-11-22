@@ -1,0 +1,15 @@
+package reload
+
+import (
+	"fmt"
+	"github.com/lahickey/quire/libs/streams"
+)
+
+templ watch(live *streams.Streams, boot string) {
+	<div
+		style="display:none"
+		data-signals={ live.Signals(map[string]string{"boot": boot}) }
+		data-effect={ fmt.Sprintf("$reload.boot !== %q && window.location.reload()", boot) }
+		data-init={ live.Listen("boot") }
+	></div>
+}

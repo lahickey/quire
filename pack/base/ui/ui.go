@@ -4,8 +4,6 @@ package ui
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -67,15 +65,6 @@ func ShortDate(ctx context.Context, d model.Date) string {
 func MonthYear(ctx context.Context, d model.Date) string {
 	c, _ := model.ChromeOf(ctx)
 	return c.Dates.MonthYear(d)
-}
-
-func Render(c templ.Component) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := c.Render(r.Context(), w); err != nil {
-			log.Printf("render: %v", err)
-		}
-	}
 }
 
 // CodeBlock wraps escaped or highlighted code as the block the default look shows, with its copy button.

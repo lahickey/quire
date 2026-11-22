@@ -12,7 +12,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/lahickey/quire"
 	"github.com/lahickey/quire/bake"
 	"github.com/lahickey/quire/bundle"
 	"github.com/lahickey/quire/internal/journal"
@@ -20,13 +19,15 @@ import (
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/convert"
 	"github.com/lahickey/quire/pack/base/ui"
+	"github.com/lahickey/quire/server"
+	"github.com/lahickey/quire/site"
 )
 
-func described(declare func(*quire.Site) error) *quire.Description {
-	return quire.Describe(model.Identity{}, quire.BlueprintFunc(declare), quire.WithPacks(Pack{}))
+func described(declare func(*site.Site) error) *site.Description {
+	return site.Describe(model.Identity{}, site.FeatureFunc(declare), site.WithFeatures(Pack{}))
 }
 
-func baked(t *testing.T, files fs.FS, declare func(*quire.Site) error) (string, *bundle.Bundle, error) {
+func baked(t *testing.T, files fs.FS, declare func(*site.Site) error) (string, *bundle.Bundle, error) {
 	t.Helper()
 	content := t.TempDir()
 	if err := os.CopyFS(content, files); err != nil {
@@ -44,7 +45,7 @@ func baked(t *testing.T, files fs.FS, declare func(*quire.Site) error) (string, 
 	return spec.Bundle(), b, err
 }
 
-func bundleOf(t *testing.T, files fs.FS, declare func(*quire.Site) error) fs.FS {
+func bundleOf(t *testing.T, files fs.FS, declare func(*site.Site) error) fs.FS {
 	t.Helper()
 	dir, _, err := baked(t, files, declare)
 	if err != nil {
@@ -53,17 +54,17 @@ func bundleOf(t *testing.T, files fs.FS, declare func(*quire.Site) error) fs.FS 
 	return os.DirFS(dir)
 }
 
-func served(t *testing.T, files fs.FS, declare func(*quire.Site) error) (*quire.Site, *bundle.Bundle, error) {
+func served(t *testing.T, files fs.FS, declare func(*site.Site) error) (*site.Site, *bundle.Bundle, error) {
 	t.Helper()
 	_, b, err := baked(t, files, declare)
 	if err != nil {
 		return nil, nil, err
 	}
-	site, err := described(declare).Build(b)
-	return site, b, err
+	built, err := described(declare).Build(b)
+	return built, b, err
 }
 
-func posts(s *quire.Site) error {
+func posts(s *site.Site) error {
 	_, err := s.Collection(model.Basic{ID: "posts"})
 	return err
 }
@@ -75,7 +76,7 @@ func TestBodyMarkdownImages(t *testing.T) {
 		"images/ridge.png": {Data: body},
 	}
 	var col *model.Collection[model.Meta]
-	site, _, err := served(t, fsys, func(s *quire.Site) (err error) {
+	built, _, err := served(t, fsys, func(s *site.Site) (err error) {
 		col, err = s.Collection(model.Basic{ID: "posts"})
 		return err
 	})
@@ -98,7 +99,7 @@ func TestBodyMarkdownImages(t *testing.T) {
 	if strings.Contains(d.HTML, `fetchpriority="high"`) {
 		t.Fatal("a picture in the body took the hero's priority")
 	}
-	im, err := site.Picture("images/ridge.png")
+	im, err := built.Picture("images/ridge.png")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func TestBodyVideo(t *testing.T) {
 		}
 	}
 	var col *model.Collection[model.Meta]
-	site, baked, err := served(t, page(`![a clip](clip.webm "Caption")`), func(s *quire.Site) (err error) {
+	built, baked, err := served(t, page(`![a clip](clip.webm "Caption")`), func(s *site.Site) (err error) {
 		col, err = s.Collection(model.Basic{ID: "posts"})
 		return err
 	})
@@ -135,7 +136,7 @@ func TestBodyVideo(t *testing.T) {
 	}
 	d, _ := col.Get("hello")
 	name, _ := baked.File("posts/clip.webm")
-	poster, _ := site.Picture("posts/clip.png")
+	poster, _ := built.Picture("posts/clip.png")
 	for _, want := range []string{`src="` + model.BundleURL(name) + `"`, `poster="` + model.DefaultScale().URL(poster, model.SizePage) + `"`, `width="600"`, "<figcaption>Caption</figcaption>"} {
 		if !strings.Contains(d.HTML, want) {
 			t.Errorf("no %s in %s", want, d.HTML)
@@ -158,7 +159,7 @@ func TestBodyVideo(t *testing.T) {
 func TestMermaid(t *testing.T) {
 	post := "---\ntitle: A\ndate: 2026-02-01\n---\n\n```mermaid\nflowchart LR\n  a[client] --> b[(store)]\n```\n"
 	var col *model.Collection[model.Meta]
-	read := func(s *quire.Site) (err error) {
+	read := func(s *site.Site) (err error) {
 		col, err = s.Collection(model.Basic{ID: "posts"})
 		return err
 	}
@@ -203,28 +204,28 @@ func TestPaletteDrawsRangesAndTheRest(t *testing.T) {
 }
 
 func TestShareCard(t *testing.T) {
-	site, _, err := served(t, fstest.MapFS{"posts/a.md": {Data: []byte("---\ntitle: A\n---\nText.\n")}}, posts)
+	built, _, err := served(t, fstest.MapFS{"posts/a.md": {Data: []byte("---\ntitle: A\n---\nText.\n")}}, posts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var head strings.Builder
-	if err := site.Page(model.PageSpec{Title: "T"}, ui.NotFound()).Render(t.Context(), &head); err != nil {
+	if err := built.Page(model.PageSpec{Title: "T"}, ui.NotFound()).Render(t.Context(), &head); err != nil {
 		t.Fatal(err)
 	}
 	_, after, _ := strings.Cut(head.String(), `property="og:image" content="`)
 	card, _, _ := strings.Cut(after, `"`)
-	server, err := quire.NewServer(site)
+	v, err := server.New(built)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, card, nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, card, nil))
 	cfg, format, err := image.DecodeConfig(rec.Body)
 	if err != nil || format != "png" || cfg.Width != 1200 || cfg.Height != 630 {
 		t.Errorf("the share card at %q: %s %d×%d %v, want a 1200×630 png", card, format, cfg.Width, cfg.Height, err)
 	}
 
-	bare, err := described(func(*quire.Site) error { return nil }).Build(nil)
+	bare, err := described(func(*site.Site) error { return nil }).Build(nil)
 	if err != nil || bare == nil {
 		t.Errorf("a site with nothing baked has no card to ask for, and must still build: %v", err)
 	}
@@ -232,7 +233,7 @@ func TestShareCard(t *testing.T) {
 
 func TestPagesSkipACollectionWithNothingIn(t *testing.T) {
 	draft := fstest.MapFS{"posts/d.md": {Data: []byte("---\ntitle: D\ndate: 2026-01-01\ndraft: true\n---\n")}}
-	site, _, err := served(t, draft, func(s *quire.Site) error {
+	built, _, err := served(t, draft, func(s *site.Site) error {
 		c, err := s.Collection(model.Basic{ID: "posts"})
 		if err != nil {
 			return err
@@ -243,12 +244,12 @@ func TestPagesSkipACollectionWithNothingIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := quire.NewServer(site)
+	v, err := server.New(built)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts", nil))
+	v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("a collection whose only document is a draft has a listing: %d", rec.Code)
 	}

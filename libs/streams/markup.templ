@@ -1,0 +1,22 @@
+package streams
+
+// Listen is the Datastar action that opens the stream at path and keeps it open.
+func (s *Streams) Listen(path string) string {
+	return "@get('" + s.base + path + "', {retry: 'always', retryMaxCount: Infinity, requestCancellation: 'cleanup'})"
+}
+
+// Signals is v as the feature's signals, for data-signals.
+func (s *Streams) Signals(v any) string {
+	b, err := scoped(s.scope, v)
+	if err != nil {
+		panic("streams " + s.scope + ": signals: " + err.Error())
+	}
+	return string(b)
+}
+
+// Form posts to path as a plain form, and through Datastar once it has loaded.
+templ (s *Streams) Form(path string) {
+	<form method="post" action={ s.base + path } data-on:submit={ "@post('" + s.base + path + "', {contentType: 'form'})" }>
+		{ children... }
+	</form>
+}

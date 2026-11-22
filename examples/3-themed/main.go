@@ -10,10 +10,10 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire"
-	"github.com/lahickey/quire/app"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base"
 	"github.com/lahickey/quire/pack/base/ui"
+	"github.com/lahickey/quire/site"
 )
 
 // The site's own files: stylesheets and the favicon, compiled into the binary.
@@ -41,52 +41,52 @@ var harbour = model.Palette{
 
 // declare says what the site holds and how it looks. It runs at bake and at
 // boot, so it only declares.
-func declare(site *quire.Site) error {
+func declare(s *site.Site) error {
 	// What changes how a document is drawn comes before any is read.
-	site.SetWidget("swatch", swatch)
+	s.SetWidget("swatch", swatch)
 	// The default frame, with a footer of the site's own.
-	site.SetFrame(ui.FrameWith(ui.Header, siteFooter))
+	s.SetFrame(ui.FrameWith(ui.Header, siteFooter))
 	// site.css applies at every width, site-narrow.css only on narrow screens.
-	site.AddStylesheets(static, "site.css")
-	site.AddStylesheetsAt(model.WidthNarrow, static, "site-narrow.css")
+	s.AddStylesheets(static, "site.css")
+	s.AddStylesheetsAt(model.WidthNarrow, static, "site-narrow.css")
 
 	// content/writing/*.md, with the default look's listing at /writing and an
 	// article for each document.
-	notes, err := site.Collection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds})
+	notes, err := s.Collection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds})
 	if err != nil {
 		return err
 	}
-	base.Pages(site, notes)
+	base.Pages(s, notes)
 	// content/projects/*.md, with an index of its own at /projects, a grid of
 	// cards, and the default article for each document.
-	projects, err := site.Collection(model.Basic{ID: "projects", Title: "Projects", Tags: kinds})
+	projects, err := s.Collection(model.Basic{ID: "projects", Title: "Projects", Tags: kinds})
 	if err != nil {
 		return err
 	}
-	site.AddPage(projects.Page(), projectsPage(projects))
-	site.AddDocumentPages(projects, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
+	s.AddPage(projects.Page(), projectsPage(projects))
+	s.AddDocumentPages(projects, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(projects, d), ui.Article(projects, d)
 	})
 	// A page is its head data and its body. This one takes the place of the
 	// default home page.
-	site.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes, projects))
-	site.SetNotFound(notFoundPage())
+	s.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes, projects))
+	s.SetNotFound(notFoundPage())
 	return nil
 }
 
 func main() {
-	app.Run(model.Identity{
+	quire.Run(model.Identity{
 		Name:        "Writing",
 		Author:      "A. Writer",
 		BaseURL:     "https://example.com",
 		Description: "Notes on building things, and the things built.",
-	}, quire.BlueprintFunc(declare),
+	}, site.FeatureFunc(declare),
 		// Dark unless the visitor or their system says otherwise.
-		quire.WithTheme(model.ThemeDark),
-		quire.WithPalette(model.PaletteInk),
+		site.WithTheme(model.ThemeDark),
+		site.WithPalette(model.PaletteInk),
 		// A control in the navigation switches between Ink, the site's own
 		// palette and two more of the built-in ones.
-		quire.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk),
-		quire.WithIcons(static, "favicon.svg"),
+		site.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk),
+		site.WithIcons(static, "favicon.svg"),
 	)
 }

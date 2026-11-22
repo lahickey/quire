@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"maps"
 	"os"
 	"path"
@@ -85,8 +85,8 @@ type Baker struct {
 	made   map[string]journal.Record
 }
 
-func report(name string, encoded, kept int) {
-	log.Printf("%-30s %2d encoded %2d kept", name, encoded, kept)
+func (b *Baker) report(name string, encoded, kept int) {
+	b.spec.Log.Info("baked", "name", name, "encoded", encoded, "kept", kept)
 }
 
 func within(dir, p string) bool {
@@ -128,7 +128,7 @@ func (b *Baker) single(rec journal.Record, make func() (Output, error)) ([]byte,
 		if file, ok := prev.File(); ok {
 			if body, err := b.cache.Read(file); err == nil {
 				b.made[rec.Name] = prev
-				report(rec.Name, 0, 1)
+				b.report(rec.Name, 0, 1)
 				return body, nil
 			}
 		}
@@ -143,7 +143,7 @@ func (b *Baker) single(rec journal.Record, make func() (Output, error)) ([]byte,
 	}
 	rec.Type, rec.Files = out.Type, []journal.File{{Name: file, Size: int64(len(out.Body))}}
 	b.made[rec.Name] = rec
-	report(rec.Name, 1, 0)
+	b.report(rec.Name, 1, 0)
 	return out.Body, nil
 }
 
@@ -227,7 +227,7 @@ func (b *Baker) encode() (map[string]journal.Record, error) {
 					first = err
 				case err == nil:
 					records[rec.Name] = rec
-					report(rec.Name, made, len(rec.Files)-made)
+					b.report(rec.Name, made, len(rec.Files)-made)
 				}
 				mu.Unlock()
 			}
@@ -270,6 +270,7 @@ func merge(sets []Tools) (Tools, error) {
 
 // Start opens a bake that can convert what the sets hold between them.
 func Start(s model.BakeSpec, sets ...Tools) (*Baker, error) {
+	s.Log = cmp.Or(s.Log, slog.Default())
 	tools, err := merge(sets)
 	if err != nil {
 		return nil, err

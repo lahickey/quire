@@ -8,11 +8,11 @@ import (
 	"fmt"
 
 	"github.com/a-h/templ"
-	"github.com/lahickey/quire"
+	"github.com/lahickey/quire/feature/search"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/searchui"
 	"github.com/lahickey/quire/pack/base/ui"
-	"github.com/lahickey/quire/plugin/search"
+	"github.com/lahickey/quire/site"
 )
 
 //go:embed *.css
@@ -75,8 +75,10 @@ func groups(b *Book) []group {
 	return out
 }
 
-func (p *Pack) Declare(site *quire.Site) error {
-	landing, err := site.Document[Landing]("index.md")
+func (p *Pack) Name() string { return "" }
+
+func (p *Pack) Declare(s *site.Site) error {
+	landing, err := s.Document[Landing]("index.md")
 	if err != nil {
 		return err
 	}
@@ -100,7 +102,7 @@ func (p *Pack) Declare(site *quire.Site) error {
 	if item == nil {
 		item = Item
 	}
-	c, err := site.Collection(model.Basic{
+	c, err := s.Collection(model.Basic{
 		ID:          "docs",
 		Title:       cmp.Or(l.Docs.Title, "Documentation"),
 		Description: l.Docs.Summary,
@@ -119,24 +121,22 @@ func (p *Pack) Declare(site *quire.Site) error {
 			return fmt.Errorf("index.md lists %q, which is not a document in docs", slug)
 		}
 	}
-	site.AddStylesheets(css, "docs.css")
-	site.AddStylesheetsAt(model.WidthWide, css, "docs-wide.css")
+	s.AddStylesheets(css, "docs.css")
+	s.AddStylesheetsAt(model.WidthWide, css, "docs-wide.css")
 	if l.Repo != "" {
-		site.AddNavEnd(ui.Link(source(l.Repo), "site-repo"))
-		site.AddFooterLinks(source(l.Repo))
+		s.AddNavEnd(ui.Link(source(l.Repo), "site-repo"))
+		s.AddFooterLinks(source(l.Repo))
 	}
 	if l.Footer != "" {
-		site.SetFooterText(l.Footer)
+		s.SetFooterText(l.Footer)
 	}
 	book := &Book{c, sections}
-	site.AddPage(c.Page(), index(book))
-	site.AddDocumentPages(c, func(d Document) (model.PageSpec, templ.Component) {
+	s.AddPage(c.Page(), index(book))
+	s.AddDocumentPages(c, func(d Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(c, d), item(book, d)
 	})
-	site.AddPage(model.PageSpec{Title: site.Identity().Name, Path: "/"}, home(site.Identity(), landing, book))
+	s.AddPage(model.PageSpec{Title: s.Identity().Name, Path: "/"}, home(s.Identity(), landing, book))
 	found := search.New("/search", searchui.Look())
 	found.Add(c)
-	site.AddPlugins(found)
-	site.AddLivePage("/search", found.Page)
-	return nil
+	return s.Include(found)
 }

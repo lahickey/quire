@@ -4,7 +4,7 @@ package searchui
 import (
 	"embed"
 
-	"github.com/lahickey/quire/plugin/search"
+	"github.com/lahickey/quire/feature/search"
 )
 
 //go:embed search.css search.js
