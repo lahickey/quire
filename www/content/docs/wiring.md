@@ -29,7 +29,8 @@ quire.Run(identity, feature, options...)
 
 A [feature](./features.md) is the one way to add to a site, and the site's own is the one handed to `Run`.
 Its `Declare` is handed the site and says what it holds. It runs at bake and at boot, so it only declares.
-A site writes it as a function, and `site.FeatureFunc` makes it a feature:
+A site made wholly from its content folder writes none: it hands `Run` [`base.Content()`](./content.md#a-site-from-the-folder).
+A site with pages of its own writes it as a function, and `site.FeatureFunc` makes it a feature:
 
 ```go
 func declare(s *site.Site) error {
@@ -41,7 +42,7 @@ func declare(s *site.Site) error {
   base.Pages(s, notes)
   s.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes))
   s.SetNotFound(notFoundPage())
-  return s.Include(basket.New("/basket"))
+  return s.Include(search.New("/search", searchui.Look()))
 }
 
 func main() {
@@ -52,6 +53,7 @@ func main() {
 ### Content and pages
 
 - `Collection(spec)` loads documents. A collection is its documents and nothing else. See [Content](./content.md#collections).
+- `Names(pattern)` is the documents under the content root that match a pattern, for a feature that finds out what is there.
 - `AddPage(head, body)` adds a fixed page at `head.Path`, drawn once and kept, in the navigation and the sitemap. The page at `/` is the home page.
 - `AddCollectionPages(collection, listing, document)` gives a collection its listing and a page for each document, drawn on its first request and kept. One with nothing in it gets neither.
 - `AddDocumentPages(collection, page)` is the second half alone, for a page that sets its own head data.
@@ -63,7 +65,7 @@ func main() {
 - `Picture(name)` is a picture of the site's content, for a page of your own to place.
 - `Include(feature)` runs another [feature](./features.md) on the site: a pack, a basket, a search box.
 - `In(group)` is a [group](./features.md#groups) to add to, and `SetGroup(group, gate)` gives one its gate, which is what makes it served.
-- `AddServices(services…)` says the site has these [services](./features.md#services), for whatever serves it to start and stop.
+- `AddServices(services…)` says the site has these [services](./services.md), for whatever serves it to start and stop.
 
 ### A page is head data and a body
 
@@ -137,7 +139,7 @@ The site has a correct document and whatever its own feature says, with no style
 
 ## The head
 
-A page hands the shell a `model.PageSpec`, and the shell writes the head from it.
+A page hands the site a `model.PageSpec`, and the site writes the head from it.
 
 | Field | Does |
 |-|-|
@@ -175,192 +177,7 @@ Everything Quire serves for itself is under `/_quire/`: `health`, `style.css`, `
 Datastar signals follow the same split: a feature's stream patches only `$<name>`.
 Only the files that have to be findable at a known location stay at the root: `robots.txt` and `sitemap.xml`.
 
-## In depth
+## Beyond Run
 
-### The server
-
-A site has no server in it: its routes are a table, which `Routes()` reads.
-The server, in package `server`, makes a mux from that table and adds what claims the whole address space: the not-found page for every other path, `robots.txt`, the sitemap, the health check and the `www` redirect.
-It also runs the site's services: `Start` starts them in the order they were added, and `Stop` stops them in reverse.
-
-Building the site renders every fixed page, so a template error stops the binary at boot.
-A site with routes of its own adds them with `AddRoute`, in its own feature or one it includes. Both go through the site's route claims, so a clash is an error at boot.
-
-A test of a feature needs no bundle: `site.Describe(identity, feature).Build(nil)` and `server.New` give its handler.
-
-### Without Run
-
-A site is described once, and the same description is baked and served. Serving is three calls on it, and a program that wants a `main` of its own makes them itself:
-
-```go
-//go:embed all:.quire/bundle
-var embedded embed.FS
-
-func main() {
-  files, err := fs.Sub(embedded, ".quire/bundle")
-  if err != nil {
-    log.Fatal(err)
-  }
-  baked, err := bundle.Open(files)
-  if err != nil {
-    log.Fatal(err)
-  }
-  built, err := site.Describe(identity, feature, site.WithFeatures(base.Pack{})).Build(baked)
-  if err != nil {
-    log.Fatal(err)
-  }
-  handler, err := server.New(built)
-  if err != nil {
-    log.Fatal(err)
-  }
-  if err := handler.Start(context.Background()); err != nil {
-    log.Fatal(err)
-  }
-  log.Fatal(http.ListenAndServe(":8090", handler))
-}
-```
-
-- `bundle.Open` reads a bundle from any `fs.FS`: one embedded by hand, as here, or a folder through `os.DirFS`.
-- `site.Describe` gathers what makes a site but its source: the identity, the site's own feature and the options, as `Run` takes them.
-- `Build` runs the features over the bundle and returns the site.
-- `base.Pack{}`, from `pack/base`, is what `Run` puts beneath every site: what a document's fences and pictures become, the share card, and the home and not-found pages. Without it a `mermaid` fence is plain code, a picture is a bare `<img>`, no page has a share image but a document's own, and there is no page at `/` until the site adds one.
-- `server.New` returns the server, which is an `http.Handler`. `Start` starts the site's services, and `Stop` stops them; `Run` calls `Stop` when the process is interrupted, after closing its connections.
-
-A program with a mux of its own needs no server: it adds each of `built.Routes()` to its mux, and `built.NotFound()` is the page for anything else.
-
-`Build(nil)` builds a site with nothing baked. Its pages are all Go, it needs no bundle, and its stylesheet, scripts and fonts are served as for any other site.
-What a site asks of a bundle is `site.Source`, and anything with those six methods can stand in for one.
-
-### Placing a site
-
-A site writes its own addresses as if it were at `/`: its pages, its links, its features' endpoints and its groups.
-Where it is served is a separate thing, a `model.Place`, and nothing in the site changes when that does.
-
-```go
-at := model.Place{Root: "/docs", Engine: "/docs/_quire"}
-built, err := site.Describe(identity, feature, site.WithPlace(at)).Build(baked)
-```
-
-- `Root` goes in front of the site's pages, its features' `/_<name>/` and its groups: `/docs/install`, `/docs/_search/live`, `/docs/admin/`.
-- `Engine` is where what the site has under `/_quire/` goes: its stylesheet, scripts, fonts and pictures. Left empty that is `/_quire` itself, which is right for a site alone. Under a host that owns the rest of the address space it is beneath the root, as here.
-
-The place is applied at the two edges, and nowhere between:
-
-- **Coming in.** `Routes()` gives the placed patterns, and a handler is handed the request with the site's own address in it.
-- **Going out.** A page, any markup a handler answers with, and a stream's element patch have their addresses placed, in `href`, `src`, `srcset`, `action`, `poster` and what a Datastar action fetches. So are a redirect, the stylesheet's `url()`s, the canonical and share addresses, the sitemap and the session cookie's path.
-
-An address built in a script, or written into an attribute not listed, is not placed; a link in a page always is.
-The saved theme and palette are kept under the root, so two sites on one host do not share them.
-
-`--root /docs` gives `Run` a place with everything under it, for a site behind a proxy that hands it one path.
-`examples/mounted` is a program with a mux of its own that mounts a site under `/docs`, beside a page of its own drawn with the site's document.
-
-### Several sites
-
-`quire.RunSites` is `Run` for several sites in one server:
-
-```go
-quire.RunSites(
-  quire.Site{Identity: model.Identity{Name: "Front"}, Feature: base.Content(), Content: "front"},
-  quire.Site{Identity: model.Identity{Name: "Notes"}, Feature: base.Content(), Content: "notes", Root: "/notes"},
-)
-```
-
-- `Root` is the path a site is served under. The first has none.
-- `Content` is the site's content folder, `content` if it names none, so each of several names its own.
-- `Options` are the site's own, as the last arguments of `Run` are.
-- Each site is baked into a bundle of its own: the first into `.quire`, and one at `/notes` into `.quire/sites/notes`. The one `ship.go` embeds them all, so shipping is the same two commands.
-- The flags are `Run`'s, and apply to every site. `--root` puts all of them under one path.
-- Every site has base beneath it. Sites with no pack beneath them are composed by hand.
-
-`examples/several` is two sites made this way.
-
-Beneath it, a server takes any number of placed sites:
-
-```go
-v, err := server.New(
-  front,                                                             // model.Place{}
-  notes,                                                             // model.Place{Root: "/notes", Engine: "/_quire/notes"}
-)
-```
-
-- **Each site is whole.** It has its own identity, features, look, groups and bundle, and is written as if it were alone at `/`. One of several can be given a server of its own later and nothing in it changes.
-- **Everything Quire serves for itself is under `/_quire/`**, each site in a part of its own, so one rule at a proxy covers every site on the box.
-- **The first site is the box's own.** The health check, `robots.txt`, the `www` redirect and the page for an address no site has are its. Every other site has its own not-found page under its root, and each has its own sitemap, which the one `robots.txt` lists.
-- **Two sites with a route at one address** fail when the server is made.
-- **Every site's services are started**, in the order the sites were given. One handed to several sites is started once, and told the environment of the first.
-
-
-### A bake of your own
-
-Baking is three calls too:
-
-```go
-func main() {
-  baker, err := bake.Start(model.BakeSpec{Content: "content", Dir: ".quire"}, convert.Standard())
-  if err != nil {
-    log.Fatal(err)
-  }
-  if err := site.Describe(identity, feature, site.WithFeatures(base.Pack{})).Collect(baker); err != nil {
-    log.Fatal(err)
-  }
-  if _, err := baker.Finish(); err != nil {
-    log.Fatal(err)
-  }
-}
-```
-
-`quire.Bake(description, spec)` is those three calls with base's converters and any added with `quire.Converters`, and it also writes the `ship.go` that embeds what was baked.
-A program with several sites bakes each into a folder of its own beneath `.quire`, and the one `ship.go` embeds them all.
-`quire.Bundle(spec)` then opens a site's bundle: from the binary when it was built with that `ship.go`, and from disk otherwise.
-
-- `bake.Start` is told where the content and the output live, and handed what it can convert. `convert.Standard()`, from `pack/base/convert`, is the default set: markdown, mermaid, the share card and WebP pictures. Several sets are combined, and two converters of one name are refused.
-- `Collect` runs the features over the baker, so the site asks for everything it needs. It is the same description `Build` is called on, so the bake and the site cannot ask for different things.
-- `Finish` encodes the pictures, writes the bundle to `.quire/bundle`, and returns it.
-
-A baker asked for a picture has not made it yet, because pictures are encoded together in `Finish`. Until then its answer is the master's name and nothing more, and the record is in the bundle `Finish` returns.
-
-A program that serves with `site` and `server` and bakes in a program of its own, as these two do, links no codec, no markdown and no highlighter into what it ships, with no build tag.
-
-### Redirects
-
-A trailing slash redirects to the path without one. `www` redirects to the host in `BaseURL`, and only to that host.
-Both are sent with `Cache-Control: no-cache`, so a browser cannot pin one.
-
-### Caching and compression
-
-- A fixed page is rendered once, when the site is built.
-- A collection's document page is rendered on first request and held in a 4MB page cache, keyed by its path.
-- A raw route goes straight to its handler and is never cached.
-- `robots.txt` and `sitemap.xml` are built once, at boot.
-- An asset linked with its content hash (`?h=`) is cached by the browser for good. Anything else is revalidated.
-
-A cached body is compressed once, as brotli or gzip, and stored that way. A body under 256 bytes is sent as it is.
-`--dev` sends pages `no-store`.
-
-### Scripts
-
-`/_quire/quire.js` holds the stored theme, soft navigation and any scripts a feature adds. It is a classic script loaded in the head, so the theme is set before the first paint.
-Datastar is an ES module linked beside it.
-Soft navigation replaces `main` and nothing else, so the header and anything in it lasts for the life of the tab.
-
-A page can keep more than the header. Put `data-region="name"` on the element inside `main` that holds what changes:
-
-```html
-<main>
-  <aside>a sidebar</aside>
-  <article data-region="docs">the page</article>
-</main>
-```
-
-Between two pages that both have that region, only the region is replaced, and everything round it stays as it was: its scroll position, its open panels, anything a feature is streaming into it.
-Between any other two pages `main` is replaced, as before.
-A link outside what was replaced takes its `class` and `aria-current` from the same link in the new page, so the header and a sidebar both show where the reader now is.
-The sidebar on this site is kept that way: follow a link in it and only the page beside it changes.
-
-While the next page is on its way, `html` carries `data-navigating`. Quire's own sheet draws a thin bar across the top after a moment, so a quick page shows nothing and a slow one shows the click was taken. When the page arrives the bar runs to the end and fades, with `data-navigating="done"` for that moment. A second click on the link already being fetched does nothing, and a click on another link drops the first.
-Once the new page is in, `quirenavigate` fires on `window`. Anything kept across the swap can listen for it, as this site's sidebar does to close its menu on a narrow screen:
-
-```html
-<aside data-on:quirenavigate__window="$site.menu = false">
-```
+`Run` is a helper over parts that are all public.
+[The parts](./parts.md) is how to compose them yourself: a `main` of your own, a site at a path, several sites in one server, and a bake of your own.

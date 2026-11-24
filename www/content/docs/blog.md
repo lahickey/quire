@@ -60,7 +60,7 @@ Tags sit under the date, and a post with headings gets a table of contents.
 
 ## What else you get
 
-- **A home page** with the site's name, its description and a link to each collection. `AddPage("/", …)` replaces it.
+- **A home page** with the site's name, its description and a link to each collection. An `index.md` in the content folder replaces it.
 - **Navigation**, with the collection in it, and a light and dark toggle.
 - **`sitemap.xml` and `robots.txt`**, once `BaseURL` is set.
 - **A share image** for each post: its `picture`, or the site's card when it has none.

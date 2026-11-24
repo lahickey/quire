@@ -111,7 +111,7 @@ flowchart LR
 
 Three ideas cover most of Quire.
 
-- **The feature.** The function you hand to `Run` is the site's own [feature](./features.md). It says what the site holds: its collections, its pages, and any other feature it includes. It is the only description of the site.
+- **The feature.** What you hand to `Run` is the site's own [feature](./features.md). It says what the site holds: its collections, its pages, and any other feature it includes. Here it is `base.Content()`, which says the site is whatever the folder holds, and a site with pages of its own writes one. It is the only description of the site.
 - **The bake.** Before it serves, the binary bakes. It runs the feature, converts the markdown it asked for, encodes the pictures, draws the diagrams, and writes the results into `.quire`. A second run only redoes what changed.
 - **The bundle.** What the bake wrote is the bundle. The site serves from the bundle and never converts anything while serving.
 
@@ -138,14 +138,16 @@ See [Baking](./bake.md) for the other ways to ship.
 - [The look](./look.md): change the palette, fonts and CSS, or replace a page.
 - [Wiring](./wiring.md): the site's settings, options and routes.
 - [Features](./features.md): add behaviour, such as a basket or search.
+- [Services](./services.md): a store and sessions, for a feature that keeps things.
 - [Packs](./packs.md): a documentation site with no templates or CSS of your own.
+- [The parts](./parts.md): a `main` of your own, a site at a path, or several sites in one server.
 - [Deploying](./deploy.md): build the binary and run it.
 
 ## Start from an example
 
-The repository's `examples/` are complete sites, each adding to the one before, and each a kind of site to start from:
+The repository's `examples/` are complete sites, each adding to the one before, and each a site to start from:
 
-- `1-site` is a simple site from a folder: a home page, a page and some posts. It is the site on this page, with two more files.
+- `1-site` is a simple site from a folder: a home page, a page and some posts. It is the site on this page, with three more files.
 - `2-blog` is the same one call, with pictures, links and a diagram in its posts.
 - `3-portfolio` has a look of its own: a home page, a projects grid and a contact page, its own palette and footer.
 - `4-shop` is a shop: prints with a price, and a basket feature that updates live.

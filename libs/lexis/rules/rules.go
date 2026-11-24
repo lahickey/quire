@@ -82,8 +82,9 @@ type emit struct {
 }
 
 type rule struct {
-	// at0 matches at the start of the text and at1 after one character
-	// before it, so a pattern sees what is behind it.
+	// at0 matches at the start of the text. at1 matches after one character
+	// before it, for a pattern that looks at what is behind it, and is nil
+	// for one that does not.
 	at0, at1 *regexp.Regexp
 	fn       Matcher
 	// first is the bytes a match can start with, nil for any, and inLine
@@ -302,6 +303,39 @@ func analyse(pattern string) (first *[256]bool, inLine bool) {
 	return &set, inLine
 }
 
+// looksBehind says a match of pattern can depend on the character before
+// it: a word boundary or the start of a line or of the text, reached before
+// anything is taken.
+func looksBehind(pattern string) bool {
+	re, err := syntax.Parse(pattern, syntax.Perl)
+	if err != nil {
+		return true
+	}
+	prog, err := syntax.Compile(re.Simplify())
+	if err != nil {
+		return true
+	}
+	const behind = syntax.EmptyBeginLine | syntax.EmptyBeginText | syntax.EmptyWordBoundary | syntax.EmptyNoWordBoundary
+	seen := map[uint32]bool{}
+	var walk func(pc uint32) bool
+	walk = func(pc uint32) bool {
+		if seen[pc] {
+			return false
+		}
+		seen[pc] = true
+		switch in := prog.Inst[pc]; in.Op {
+		case syntax.InstAlt, syntax.InstAltMatch:
+			return walk(in.Out) || walk(in.Arg)
+		case syntax.InstCapture, syntax.InstNop:
+			return walk(in.Out)
+		case syntax.InstEmptyWidth:
+			return syntax.EmptyOp(in.Arg)&behind != 0 || walk(in.Out)
+		}
+		return false
+	}
+	return walk(uint32(prog.Start))
+}
+
 // parse reads a language's rules and its config from its file's contents.
 func parse(b []byte, set *lexis.Languages, funcs map[string]Matcher) (grammar, xmlConfig, error) {
 	if twoStates.Match(b) {
@@ -334,12 +368,18 @@ func parse(b []byte, set *lexis.Languages, funcs map[string]Matcher) (grammar, x
 	}
 	var failed error
 	combined := map[string]bool{}
+	made := map[*xmlRule]*rule{}
 	var expand func(state string) []*rule
 	expand = func(state string) []*rule {
 		var out []*rule
-		for _, xr := range raw[state] {
+		for i := range raw[state] {
+			xr := &raw[state][i]
 			if xr.Include != nil {
 				out = append(out, expand(xr.Include.State)...)
+				continue
+			}
+			if r := made[xr]; r != nil {
+				out = append(out, r)
 				continue
 			}
 			r := &rule{fn: funcs[xr.Func], ahead: xr.Ahead != ""}
@@ -392,11 +432,14 @@ func parse(b []byte, set *lexis.Languages, funcs map[string]Matcher) (grammar, x
 				if xr.Behind != "" {
 					behind = flagged(xr.Behind)
 				}
-				if r.at1, err = regexp.Compile(`\A` + behind + pattern); err != nil {
-					failed = fmt.Errorf("state %s: %w", state, err)
-					continue
+				if xr.Behind != "" || looksBehind(pattern) {
+					if r.at1, err = regexp.Compile(`\A` + behind + pattern); err != nil {
+						failed = fmt.Errorf("state %s: %w", state, err)
+						continue
+					}
 				}
 			}
+			made[xr] = r
 			out = append(out, r)
 		}
 		return out
@@ -477,7 +520,7 @@ func (r *rule) match(text string, pos, lineEnd int) []int {
 		return nil
 	}
 	re, from := r.at0, pos
-	if pos > 0 {
+	if pos > 0 && r.at1 != nil {
 		_, n := utf8.DecodeLastRuneInString(text[:pos])
 		re, from = r.at1, pos-n
 	}

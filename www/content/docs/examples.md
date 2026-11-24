@@ -1,10 +1,10 @@
 ---
 title: Examples
-summary: Six complete sites, each a kind of site to start from with quire new.
+summary: Six complete sites, each one to start from with quire new.
 ---
 
 Each example is a complete site in the repository, commented part by part.
-Each adds one thing to the one before, so they read in order, and each is a kind of site to start from.
+Each adds one thing to the one before, so they read in order, and each is a site to start from.
 
 Each but the last is also running on this site, beneath `/examples/`, from the same code and content.
 
@@ -100,4 +100,4 @@ The source is [`examples/6-naked`](https://github.com/lahickey/quire/tree/master
 - [`mounted`](https://github.com/lahickey/quire/tree/master/examples/mounted) is a program with a mux of its own that mounts a Quire site under a path.
 - [`several`](https://github.com/lahickey/quire/tree/master/examples/several) is two sites in one server, each from a folder of its own.
 
-[Wiring](./wiring.md#in-depth) covers both.
+[The parts](./parts.md) covers both.

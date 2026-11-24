@@ -75,13 +75,16 @@ The documentation is at [quire.hiddenbridge.io](https://quire.hiddenbridge.io).
 That site is itself built with Quire; its source is in [`www/`](./www).
 
 - [Getting started](https://quire.hiddenbridge.io/docs/getting-started)
+- [Examples](https://quire.hiddenbridge.io/docs/examples), each of them running
 - [A blog](https://quire.hiddenbridge.io/docs/blog)
 - [Content](https://quire.hiddenbridge.io/docs/content)
 - [Pictures](https://quire.hiddenbridge.io/docs/pictures)
 - [The look](https://quire.hiddenbridge.io/docs/look)
 - [Wiring](https://quire.hiddenbridge.io/docs/wiring)
 - [Features](https://quire.hiddenbridge.io/docs/features)
+- [Services](https://quire.hiddenbridge.io/docs/services)
 - [Packs](https://quire.hiddenbridge.io/docs/packs)
+- [The parts](https://quire.hiddenbridge.io/docs/parts)
 - [Baking](https://quire.hiddenbridge.io/docs/bake)
 - [Deploying](https://quire.hiddenbridge.io/docs/deploy)
 - [Lexis](https://quire.hiddenbridge.io/docs/lexis), the syntax highlighter, and [its benchmarks](./www/content/docs/benchmarks.md)

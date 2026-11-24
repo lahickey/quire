@@ -39,4 +39,4 @@ A package under `libs/` imports nothing else of Quire's.
 
 - Comments are the absolute minimum.
 - No history in code or docs; git has it.
-- Docs: one sentence per line where it reads well, short tables only, no tabs.
+- Docs: short tables only, no tabs.

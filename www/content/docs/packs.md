@@ -1,15 +1,15 @@
 ---
 title: Packs
-summary: A whole kind of site, ready made. The docs pack is this one.
+summary: A look and its pages, ready made. The docs pack is this one.
 ---
 
-A pack is a site's Go somebody else wrote: collections, pages, styles and features for one kind of site.
+A pack is a site's Go somebody else wrote: collections, pages, styles and features, shipped together.
 It is a [feature](./features.md) with no name, as a site's own is, so a site hands it to `Run` or includes it in its own, and writes content.
 
 ## The docs pack
 
 `pack/docs` makes a documentation site: a landing page, the documents beside a sidebar, and search.
-This site is the whole of its Go:
+A documentation site is this much Go:
 
 ```go
 package main
@@ -88,4 +88,4 @@ Each draws a body, and is handed a `*docs.Book`: the collection of documents, wi
 The documents take the site's [widgets](./content.md#widgets), added with `SetWidget` as for any site, before the pack is included.
 
 The pack's CSS is in the `pack` layer, so the site's own sheets win over it.
-The page beside the sidebar is a [region](./wiring.md#scripts), so the sidebar is not redrawn when a link in it is followed. A page of your own keeps that by putting `data-region="docs"` on its content, as the defaults do.
+The page beside the sidebar is a [region](./look.md#scripts), so the sidebar is not redrawn when a link in it is followed. A page of your own keeps that by putting `data-region="docs"` on its content, as the defaults do.

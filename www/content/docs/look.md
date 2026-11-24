@@ -201,6 +201,33 @@ The "Built with Quire" at the foot of this page is it:
 s.AddFooterLinks(model.BuiltWithQuire)
 ```
 
+## Scripts
+
+`/_quire/quire.js` holds the stored theme, soft navigation and any scripts a feature adds. It is a classic script loaded in the head, so the theme is set before the first paint.
+Datastar is an ES module linked beside it.
+Soft navigation replaces `main` and nothing else, so the header and anything in it lasts for the life of the tab.
+
+A page can keep more than the header. Put `data-region="name"` on the element inside `main` that holds what changes:
+
+```html
+<main>
+  <aside>a sidebar</aside>
+  <article data-region="docs">the page</article>
+</main>
+```
+
+Between two pages that both have that region, only the region is replaced, and everything round it stays as it was: its scroll position, its open panels, anything a feature is streaming into it.
+Between any other two pages `main` is replaced, as before.
+A link outside what was replaced takes its `class` and `aria-current` from the same link in the new page, so the header and a sidebar both show where the reader now is.
+The sidebar on this site is kept that way: follow a link in it and only the page beside it changes.
+
+While the next page is on its way, `html` carries `data-navigating`. Quire's own sheet draws a thin bar across the top after a moment, so a quick page shows nothing and a slow one shows the click was taken. When the page arrives the bar runs to the end and fades, with `data-navigating="done"` for that moment. A second click on the link already being fetched does nothing, and a click on another link drops the first.
+Once the new page is in, `quirenavigate` fires on `window`. Anything kept across the swap can listen for it, as this site's sidebar does to close its menu on a narrow screen:
+
+```html
+<aside data-on:quirenavigate__window="$site.menu = false">
+```
+
 ## Reference
 
 ### Fonts

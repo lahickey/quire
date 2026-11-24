@@ -13,7 +13,7 @@ docs:
     - title: Authoring
       pages: [content, pictures, look]
     - title: Building
-      pages: [wiring, features, packs, bake, deploy]
+      pages: [wiring, features, services, packs, parts, bake, deploy]
     - title: Libraries
       pages: [lexis, languages, benchmarks]
     - title: Background
@@ -69,3 +69,4 @@ func main() {
 
 This site is built with Quire, from the [docs pack](./docs/packs.md) and a folder of markdown.
 Its [source](https://github.com/lahickey/quire/tree/master/www) is one short Go file, a stylesheet and `content/`.
+Each of the [examples](./docs/examples.md) runs beneath it, from the same code and content as in the repository.

@@ -24,6 +24,45 @@ The body starts here.
 
 The file's name is its address: `content/posts/hello.md` is served at `/posts/hello`.
 
+## A site from the folder
+
+`base.Content()` makes a whole site from the content folder, with no Go beyond the call:
+
+```go
+quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.Content())
+```
+
+| In `content/` | Becomes |
+|-|-|
+| `index.md` | The home page |
+| `about.md` | A page at `/about` |
+| `posts/` | A listing at `/posts`, and a page for each file |
+| `posts/index.md` | The collection's title and summary |
+
+- Each page and each folder is in the navigation. `nav` in `index.md` puts them in order, and whatever it leaves out follows in alphabetical order:
+
+  ```yaml
+  title: Example
+  nav: [posts, about]
+  ```
+
+- A name in `nav` that is neither a page nor a folder fails the build.
+- A folder with no documents, as when every one is a draft, has no pages and is not in the navigation.
+- With no `index.md` the home page is the default one: the site's name, its description and its sections.
+- A folder with no markdown in it, such as one of pictures, is left alone.
+- `index.md` is never a document of a collection, here or in one a site adds itself.
+
+`examples/1-site` is a site made this way.
+
+It is the feature `content.Pages`, from `feature/content`, handed the default look's drawings: `ui.Page`, `ui.Listing` and `ui.Article`.
+A site with another look hands it its own:
+
+```go
+s.Include(content.Pages{Page: page, Listing: listing, Document: article})
+```
+
+A site that wants pages of its own for a collection does not use it, and adds its collections as below.
+
 ## Frontmatter
 
 The stock fields are `model.Meta`:
@@ -318,45 +357,6 @@ accent spot tone1 tone2 ok warn error
 - A widget is added before any content is read. One added after a document was read fails the load.
 - A pack adds a widget the same way, and the site's own wins over a pack's of the same name, whichever came first.
 - A widget that returns an error fails the load, the same as bad frontmatter.
-
-## A site from the folder
-
-`base.Content()` makes a whole site from the content folder, with no Go beyond the call:
-
-```go
-quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.Content())
-```
-
-| In `content/` | Becomes |
-|-|-|
-| `index.md` | The home page |
-| `about.md` | A page at `/about` |
-| `posts/` | A listing at `/posts`, and a page for each file |
-| `posts/index.md` | The collection's title and summary |
-
-- Each page and each folder is in the navigation. `nav` in `index.md` puts them in order, and whatever it leaves out follows in alphabetical order:
-
-  ```yaml
-  title: Example
-  nav: [posts, about]
-  ```
-
-- A name in `nav` that is neither a page nor a folder fails the build.
-- A folder with no documents, as when every one is a draft, has no pages and is not in the navigation.
-- With no `index.md` the home page is the default one: the site's name, its description and its sections.
-- A folder with no markdown in it, such as one of pictures, is left alone.
-- `index.md` is never a document of a collection, here or in one a site adds itself.
-
-`examples/1-site` is a site made this way.
-
-It is the feature `content.Pages`, from `feature/content`, handed the default look's drawings: `ui.Page`, `ui.Listing` and `ui.Article`.
-A site with another look hands it its own:
-
-```go
-s.Include(content.Pages{Page: page, Listing: listing, Document: article})
-```
-
-A site that wants pages of its own for a collection does not use it, and adds its collections as below.
 
 ## Collections
 
