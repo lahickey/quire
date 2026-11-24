@@ -29,9 +29,9 @@ func main() {
 	flag.Parse()
 
 	// The place is the host's to choose. Root goes in front of the site's
-	// pages. Engine goes in front of /_quire/, where its stylesheet, scripts
-	// and fonts are: under /docs too, because this program owns everything else.
-	at := model.Place{Root: "/docs", Engine: "/docs"}
+	// pages. Engine is where its stylesheet, scripts and fonts go: under /docs
+	// too, because this program owns everything else.
+	at := model.Place{Root: "/docs", Engine: "/docs/_quire"}
 	built, err := site.Describe(model.Identity{Name: "Docs"}, site.FeatureFunc(docs),
 		site.WithFeatures(base.Pack{}), site.WithPlace(at)).Build(nil)
 	if err != nil {

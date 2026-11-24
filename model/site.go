@@ -48,11 +48,15 @@ type NavItem struct {
 }
 
 // EnginePath is what Quire serves for itself: assets, the bundle's files, the health check.
-const EnginePath = "/_quire/"
+const (
+	EnginePath = "/_quire/"
+	engineTop  = "/_quire"
+)
 
 // Place is where a site is put in the address space it is served from. A site writes its own addresses as if it were at /,
 // and they are placed on the way in and on the way out. Root goes in front of its pages, its features and its groups.
-// Engine goes in front of EnginePath, which every site on a box can share: empty is the top, and it is Root where a host owns the rest.
+// Engine is where what the site has under EnginePath goes. Left empty that is /_quire, the top, which is right for a site alone.
+// Each of several sites on a box takes a part of it, /_quire/shop, and a site in a host's address space takes one under its root.
 type Place struct{ Root, Engine string }
 
 // Env is what is fixed for the life of a running site. A service is told it once, when it starts.
@@ -180,7 +184,7 @@ func (s Identity) Host() string { return hostOf(s.BaseURL) }
 func (p Place) Out(path string) string {
 	switch {
 	case strings.HasPrefix(path, EnginePath):
-		return p.Engine + path
+		return cmp.Or(p.Engine, engineTop) + path[len(engineTop):]
 	case path == "/" && p.Root != "":
 		return p.Root
 	}
@@ -189,8 +193,8 @@ func (p Place) Out(path string) string {
 
 // In is a served address as the site wrote it. One outside the place is left as it is.
 func (p Place) In(path string) string {
-	if rest, ok := strings.CutPrefix(path, p.Engine); ok && strings.HasPrefix(rest, EnginePath) {
-		return rest
+	if rest, ok := strings.CutPrefix(path, cmp.Or(p.Engine, engineTop)+"/"); ok {
+		return EnginePath + rest
 	}
 	if rest, ok := strings.CutPrefix(path, p.Root); ok && (rest == "" || rest[0] == '/') {
 		return cmp.Or(rest, "/")

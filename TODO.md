@@ -7,7 +7,7 @@ The model as it is today is [the design page](./www/content/docs/architecture.md
 
 Quire's site, server, baker and bundle are parts with public interfaces, a feature is the one way to add to a site, and what it ships by default is the base pack.
 Services are plain values the server starts and stops, a group is a part of a site behind one gate, and a site can be placed at any path.
-A server still holds one site, and a route cannot say how it is kept.
+A server holds several of them. A route cannot yet say how it is kept.
 The plan finishes separating the parts so that each has one job and a public interface, and so that nothing Quire ships is a special case.
 Quire is then the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
 
@@ -225,8 +225,8 @@ A site writes its addresses as if it were at `/`, and a place says where it is s
 The place is applied only at the edges, to the route table coming in and to what is sent going out, so a site, a feature and a template never mention it.
 A placed site can be mounted in somebody else's server, beside routes Quire does not manage, or sit behind a proxy at a path.
 
-A server with one entry at `/` is a site as it is today.
-Several entries are several placed sites, or one site in parts, each with its own bundle or sharing one.
+A server holds any number of placed sites, each with its own bundle, and the first is the box's own.
+Everything Quire serves for itself is under `/_quire/`, each site in a part of its own.
 "Several sites" is nothing more than several places: the documentation with its examples under `/examples/`, a subdomain each, or a box of tenants.
 The operator's level is the site at `/` and its `Admin` group; a tenant's is its own.
 
@@ -253,18 +253,14 @@ Each step leaves everything working and is worth having if nothing after it happ
 5. **One table, and one way to add to it.** Done.
 6. **Services and groups.** Done.
 7. **Place a site at a path.** Done.
-8. **Several sites in one server.**
-   The server holds entries, each a placed site and its bundle, and starts and stops the services of all of them.
-   A site is placed by path or by host, so one of several can be lifted into a server of its own, or given a subdomain, and nothing in it changes.
-   `/_quire/` is shared by every site on the box, so what each site serves there has a name that cannot collide with another's.
-   `Ship` registers bundles by name, and one `ship.go` embeds every bundle under `.quire`; a `main` written by hand can then be handed a baked bundle too, which today only `Run` can.
-   A group travels with its site. One gathered above the sites, `/admin/<site>/` behind the server's own gate, is added when something wants it.
+8. **Several sites in one server.** Done.
 9. **Let a route state its cache policy.**
    Shared or none, on any route, and a way to drop what is kept.
    A group has a cache of its own, inside its gate.
 10. **The helper layer.**
    `Run`, `model.Basic` and the other shortcuts sit together in the root, and say which parts they compose.
    A helper for each common pattern, so the smallest example is one call: base gives a whole site from a content folder, as the docs pack does for documentation, and the site names base once.
+   One for several sites: it bakes each and serves them all, where today `Run` is one site and several need a `main` of their own.
    The top-level folders are looked at as a whole.
 11. **Make the examples templates as well as tutorials.**
    A proper pass over every example once the parts and the helpers have settled, so each is written the way a site should be.
@@ -366,6 +362,8 @@ These depend on none of the steps.
   A static host often serves under a path, which is what a place is for.
 - **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
   A picture's URL goes out through the same place every other address does.
+- **A site placed by host.** `shop.hiddenbridge.io` for one of several sites in a server. The mux already routes by host; what is the box's own today, the `www` redirect and `robots.txt`, becomes each host's.
+- **A group gathered above the sites.** `/admin/<site>/` behind the server's own gate, for a platform whose operator owns admin. A group travels with its site until something wants this.
 
 ## Waiting on a step
 

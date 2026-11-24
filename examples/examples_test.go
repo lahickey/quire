@@ -72,6 +72,17 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, "basket-narrow.css"},
 		{"GET", "/missing", 404, ""},
 	},
+	"several": {
+		{"GET", "/", 200, `<a href="/notes">notes</a>`},
+		{"GET", "/", 200, `href="/_quire/style.css`},
+		{"GET", "/notes", 200, `<a href="/notes/first">the first</a>`},
+		{"GET", "/notes", 200, `href="/_quire/notes/style.css`},
+		{"GET", "/notes/first", 200, `<a href="/notes">the notes</a>`},
+		{"GET", "/_quire/notes/style.css", 200, "@layer"},
+		{"GET", "/_quire/health", 200, "ok"},
+		{"GET", "/first", 404, ""},
+		{"GET", "/notes/nothing", 404, ""},
+	},
 	"mounted": {
 		{"GET", "/", 200, "The host's own page"},
 		{"GET", "/", 200, `href="/docs/_quire/style.css`},

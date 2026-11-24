@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -27,13 +28,28 @@ const closeWithin = 10 * time.Second
 
 var shipped fs.FS
 
-// Ship hands Run a bundle embedded in the binary. The ship.go a bake writes calls it.
-func Ship(files fs.FS, dir string) {
-	b, err := fs.Sub(files, dir)
-	if err != nil {
-		panic("quire: ship: " + err.Error())
+// Ship hands the binary the bundles a bake embedded in it. The ship.go a bake writes calls it.
+func Ship(bundles fs.FS) { shipped = bundles }
+
+// Bundle opens what a bake left for spec: from the binary if bundles were shipped in it, and from disk otherwise.
+func Bundle(spec model.BakeSpec) (*bundle.Bundle, error) {
+	dir := spec.WithDefaults().Bundle()
+	if shipped == nil {
+		return bundle.Open(os.DirFS(dir))
 	}
-	shipped = b
+	files, err := fs.Sub(shipped, filepath.ToSlash(dir))
+	if err != nil {
+		return nil, err
+	}
+	return bundle.Open(files)
+}
+
+// under is a place with everything a site serves beneath one path.
+func under(root string) model.Place {
+	if root == "" {
+		return model.Place{}
+	}
+	return model.Place{Root: root, Engine: root + "/_quire"}
 }
 
 // serve starts the site's services and answers requests until the process is told to stop, then stops the services.
@@ -81,24 +97,20 @@ func RunBare(id model.Identity, f site.Feature, extra ...site.Option) {
 	if flag.NArg() > 1 || (flag.NArg() == 1 && !baking) {
 		log.Fatalf("usage: %s [flags] [bake]", os.Args[0])
 	}
-	opts := append([]site.Option{site.WithDev(*dev), site.WithDrafts(*drafts), site.WithPlace(model.Place{Root: *root, Engine: *root})}, extra...)
+	opts := append([]site.Option{site.WithDev(*dev), site.WithDrafts(*drafts), site.WithPlace(under(*root))}, extra...)
 	if *dev {
 		opts = append(opts, site.WithFeatures(reload.New()))
 	}
 	d := site.Describe(id, f, opts...)
 	if baking || (shipped == nil && canBake) {
-		if err := bakeSite(d); err != nil {
+		if err := Bake(d, model.BakeSpec{}); err != nil {
 			log.Fatal(err)
 		}
 		if baking {
 			return
 		}
 	}
-	files := shipped
-	if files == nil {
-		files = os.DirFS(model.BakeSpec{}.WithDefaults().Bundle())
-	}
-	baked, err := bundle.Open(files)
+	baked, err := Bundle(model.BakeSpec{})
 	if err != nil {
 		log.Fatalf("bundle: %v; run the site's bake", err)
 	}

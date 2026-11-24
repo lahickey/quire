@@ -119,7 +119,7 @@ An `Option` is something that has to be known before a feature runs.
 - `WithDev` and `WithDrafts` are what `--dev` and `--drafts` set.
 
 Datastar is linked when a feature has streams, or one asks for it, as the base pack does for its theme toggle and copy buttons.
-`Ship` is not an option: the `ship.go` the bake writes calls it to hand `Run` the embedded bundle.
+`Ship` is not an option: the `ship.go` the bake writes calls it to hand the binary its embedded bundles.
 
 ### Without the base pack
 
@@ -234,12 +234,12 @@ A site writes its own addresses as if it were at `/`: its pages, its links, its 
 Where it is served is a separate thing, a `model.Place`, and nothing in the site changes when that does.
 
 ```go
-at := model.Place{Root: "/docs", Engine: "/docs"}
+at := model.Place{Root: "/docs", Engine: "/docs/_quire"}
 built, err := site.Describe(identity, feature, site.WithPlace(at)).Build(baked)
 ```
 
 - `Root` goes in front of the site's pages, its features' `/_<name>/` and its groups: `/docs/install`, `/docs/_search/live`, `/docs/admin/`.
-- `Engine` goes in front of `/_quire/`, where the stylesheet, scripts, fonts and pictures are. Left empty they stay at the top, where every site on a box can share them. It is the same as `Root` where a host owns the rest of the address space.
+- `Engine` is where what the site has under `/_quire/` goes: its stylesheet, scripts, fonts and pictures. Left empty that is `/_quire` itself, which is right for a site alone. Under a host that owns the rest of the address space it is beneath the root, as here.
 
 The place is applied at the two edges, and nowhere between:
 
@@ -251,6 +251,26 @@ The saved theme and palette are kept under the root, so two sites on one host do
 
 `--root /docs` gives `Run` a place with everything under it, for a site behind a proxy that hands it one path.
 `examples/mounted` is a program with a mux of its own that mounts a site under `/docs`, beside a page of its own drawn with the site's document.
+
+### Several sites
+
+A server takes any number of placed sites:
+
+```go
+v, err := server.New(
+  front,                                                             // model.Place{}
+  notes,                                                             // model.Place{Root: "/notes", Engine: "/_quire/notes"}
+)
+```
+
+- **Each site is whole.** It has its own identity, features, look, groups and bundle, and is written as if it were alone at `/`. One of several can be given a server of its own later and nothing in it changes.
+- **Everything Quire serves for itself is under `/_quire/`**, each site in a part of its own, so one rule at a proxy covers every site on the box.
+- **The first site is the box's own.** The health check, `robots.txt`, the `www` redirect and the page for an address no site has are its. Every other site has its own not-found page under its root, and each has its own sitemap, which the one `robots.txt` lists.
+- **Two sites with a route at one address** fail when the server is made.
+- **Every site's services are started**, in the order the sites were given. One handed to several sites is started once, and told the environment of the first.
+
+`examples/several` is two sites in one server.
+`Run` is one site; a program with several is a `main` of its own, as that one is.
 
 ### A bake of your own
 
@@ -270,6 +290,10 @@ func main() {
   }
 }
 ```
+
+`quire.Bake(description, spec)` is those three calls with base's converters and any added with `quire.Converters`, and it also writes the `ship.go` that embeds what was baked.
+A program with several sites bakes each into a folder of its own beneath `.quire`, and the one `ship.go` embeds them all.
+`quire.Bundle(spec)` then opens a site's bundle: from the binary when it was built with that `ship.go`, and from disk otherwise.
 
 - `bake.Start` is told where the content and the output live, and handed what it can convert. `convert.Standard()`, from `pack/base/convert`, is the default set: markdown, mermaid, the share card and WebP pictures. Several sets are combined, and two converters of one name are refused.
 - `Collect` runs the features over the baker, so the site asks for everything it needs. It is the same description `Build` is called on, so the bake and the site cannot ask for different things.

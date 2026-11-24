@@ -656,7 +656,7 @@ func TestPlace(t *testing.T) {
 	about := get(s, "/shop/about").Body.String()
 	for _, want := range []string{
 		`<a href="/shop">Home</a>`, `href="https://example.org/x"`, `srcset="/shop/a.png 1x, /shop/b.png 2x"`, `plain /about text`,
-		`href="/static/_quire/style.css?h=`, `rel="canonical" href="https://example.com/shop/about"`,
+		`href="/static/style.css?h=`, `rel="canonical" href="https://example.com/shop/about"`,
 	} {
 		if !strings.Contains(about, want) {
 			t.Errorf("the placed page lacks %s:\n%s", want, about)
@@ -679,7 +679,7 @@ func TestPlace(t *testing.T) {
 	if patch := get(s, "/shop/_basket/events").Body.String(); saw != "/_basket/events" || !strings.Contains(patch, `href="/shop/about"`) {
 		t.Errorf("a feature's handler saw %q and its stream sent:\n%s", saw, patch)
 	}
-	sheet := get(s, "/static/_quire/style.css").Body.String()
+	sheet := get(s, "/static/style.css").Body.String()
 	if !strings.Contains(sheet, `url("/shop/art/hero.png")`) {
 		t.Errorf("the stylesheet's address is not placed:\n%s", sheet)
 	}

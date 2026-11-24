@@ -181,3 +181,49 @@ func TestServicesStartInOrderAndStopInReverse(t *testing.T) {
 		t.Errorf("after a failed start the services ran as %v, want %v", log, want)
 	}
 }
+
+func TestSeveralSites(t *testing.T) {
+	var log []string
+	shared := recorded{"store", &log, false}
+	make := func(name string, at model.Place) *site.Site {
+		s, err := site.Describe(model.Identity{Name: name, BaseURL: "https://example.com"}, site.FeatureFunc(func(s *site.Site) error {
+			s.AddServices(shared, recorded{name, &log, false})
+			s.AddPage(model.PageSpec{Path: "/"}, body("home of "+name))
+			s.SetNotFound(body("nothing here in " + name))
+			return nil
+		}), site.WithPlace(at)).Build(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	front, shop := make("front", model.Place{}), make("shop", model.Place{Root: "/shop", Engine: "/_quire/shop"})
+	v, err := New(front, shop)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{
+		"/":                 "home of front",
+		"/shop":             "home of shop",
+		"/missing":          "nothing here in front",
+		"/shop/missing":     "nothing here in shop",
+		"/robots.txt":       "Sitemap: https://example.com/shop/sitemap.xml",
+		"/shop/sitemap.xml": "<loc>https://example.com/shop</loc>",
+		"/_quire/health":    "ok",
+	} {
+		rec := httptest.NewRecorder()
+		v.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("%s lacks %q: %s", path, want, rec.Body.String())
+		}
+	}
+	if err := cmp.Or(v.Start(t.Context()), v.Stop(t.Context())); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"start store front", "start front front", "start shop shop", "stop shop", "stop front", "stop store"}; !slices.Equal(log, want) {
+		t.Errorf("the services of two sites ran as %v, want %v", log, want)
+	}
+	if _, err := New(front, make("other", model.Place{})); err == nil {
+		t.Error("two sites in one place were served together")
+	}
+}

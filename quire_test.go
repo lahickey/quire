@@ -1,10 +1,14 @@
 package quire
 
 import (
+	"os"
 	"os/exec"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/lahickey/quire/model"
+	"github.com/lahickey/quire/site"
 )
 
 const q = "github.com/lahickey/quire"
@@ -75,6 +79,26 @@ func TestLayers(t *testing.T) {
 			if rule, ok := may[pkg]; ok && !rule(imp) {
 				t.Errorf("%s imports %s", pkg, imp)
 			}
+		}
+	}
+}
+
+func TestShipEmbedsEveryBundle(t *testing.T) {
+	t.Chdir(t.TempDir())
+	d := site.Describe(model.Identity{}, site.FeatureFunc(func(*site.Site) error { return nil }))
+	dirs := []string{"", ".quire/shop"}
+	for _, dir := range dirs {
+		if err := Bake(d, model.BakeSpec{Dir: dir}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ship, err := os.ReadFile(".quire/ship.go")
+	if err != nil || !strings.Contains(string(ship), "//go:embed all:.quire/bundle all:.quire/shop/bundle\n") {
+		t.Fatalf("ship.go does not embed both bundles: %v\n%s", err, ship)
+	}
+	for _, dir := range dirs {
+		if _, err := Bundle(model.BakeSpec{Dir: dir}); err != nil {
+			t.Errorf("the bundle baked into %q does not open: %v", dir, err)
 		}
 	}
 }
