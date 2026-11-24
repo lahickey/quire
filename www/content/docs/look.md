@@ -122,7 +122,7 @@ site.WithPalettePicker(harbour, model.PaletteMoss, model.PaletteDusk)
 - Share cards are drawn at bake time, so they stay in the site's own palette.
 - A header of your own draws the control itself with `ui.PalettePicker(c.Palettes)`, as it does `ui.ThemeToggle()`.
 
-The `themed` example offers its own palette and two built-in ones.
+The `portfolio` example offers its own palette and two built-in ones.
 
 ## Add your own CSS
 

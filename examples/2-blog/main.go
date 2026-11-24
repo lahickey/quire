@@ -1,4 +1,4 @@
-// The minimal site's code, with pictures and a diagram in its content.
+// A blog: the smallest site's code, with pictures and a diagram in its content.
 // Nothing here asks for them: the bake finds them in the markdown.
 // See content/posts for what each one does.
 package main

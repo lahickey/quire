@@ -120,7 +120,7 @@ How any of it is drawn is a pack's, and none of that is in `site`.
 
 A feature with no look is handed one. Search is handed its box and its results, and the feature that makes a site from the content folder is handed how a page, a listing and a document are drawn. The base pack does the handing for the default look, and a pack may bring features of its own.
 
-The default look is the base pack, and nothing of it is in `site`: its components, its stylesheets and scripts, its fonts, its frame, its pages and its widgets. `Run` puts it beneath every site, and `examples/1-minimal` is the proof. A site built without it has a correct document and nothing else. A site is not a pack.
+The default look is the base pack, and nothing of it is in `site`: its components, its stylesheets and scripts, its fonts, its frame, its pages and its widgets. `Run` puts it beneath every site, and `examples/1-site` is the proof. A site built without it has a correct document and nothing else. A site is not a pack.
 
 Quire ships a class only if it ships the rules for it.
 

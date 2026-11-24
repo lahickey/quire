@@ -4,6 +4,9 @@ date: 2026-03-01
 summary: A print that hums, if you look at it long enough.
 picture: quiet-machine.jpg
 tag: [Design]
+links:
+  - label: See it
+    url: https://example.com/quiet-machine
 ---
 
 A project page is the same document as a note, with a picture on top. The card

@@ -33,10 +33,12 @@ templ (p *Feature) lines(cart map[string]int) {
 							@p.button("dec", it.ID, "−")
 							<span class="basket-qty">{ strconv.Itoa(cart[it.ID]) }</span>
 							@p.button("add", it.ID, "+")
+							<span class="basket-price">{ (it.Price * Money(cart[it.ID])).String() }</span>
 						</li>
 					}
 				}
 			</ul>
+			<p class="basket-total">Total <span class="basket-price">{ p.total(cart).String() }</span></p>
 		}
 	</div>
 }
@@ -49,9 +51,14 @@ templ (p *Feature) page(cart map[string]int) {
 	</article>
 }
 
-// Add is the button a site places on an item's page.
+// Add is the price and the button a site places on an item's page.
 templ (p *Feature) Add(id string) {
 	<div class="basket-add">
+		for _, it := range p.items {
+			if it.ID == id {
+				<span class="basket-price">{ it.Price.String() }</span>
+			}
+		}
 		@p.button("add", id, "Add to basket")
 	</div>
 }

@@ -46,10 +46,10 @@ release-check:
 release version:
     @cd {{ dir }} && go run ./internal/tools/release {{ quote(version) }}
 
-# Run an example: `just example` for 1-minimal, or `just example <name>`.
+# Run an example: `just example` for 1-site, or `just example <name>`.
 [continue]
 [no-exit-message]
-example name="1-minimal": generate
+example name="1-site": generate
     cd {{ dir }}/examples/{{ name }} && go run . --addr :{{ port }}
 
 # Same, with live reload. Needs `wgo` on PATH (not `go tool wgo` — that
@@ -57,7 +57,7 @@ example name="1-minimal": generate
 #   go install github.com/bokwoon95/wgo@latest
 [continue]
 [no-exit-message]
-dev name="1-minimal": generate
+dev name="1-site": generate
     cd {{ dir }} && wgo \
     	-cd {{ dir }}/examples/{{ name }} \
     	-xfile '_templ\.go$' \

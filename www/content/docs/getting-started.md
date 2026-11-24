@@ -143,22 +143,22 @@ See [Baking](./bake.md) for the other ways to ship.
 
 ## Start from an example
 
-The repository's `examples/` are complete sites, each adding to the one before:
+The repository's `examples/` are complete sites, each adding to the one before, and each a kind of site to start from:
 
-- `1-minimal` is the site on this page.
-- `2-pictures` is the same code with pictures and a diagram in its content.
-- `3-themed` has a look of its own.
-- `4-feature` is a shop with a basket feature.
+- `1-site` is a simple site from a folder: a home page, a page and some posts. It is the site on this page, with two more files.
+- `2-blog` is the same one call, with pictures, links and a diagram in its posts.
+- `3-portfolio` has a look of its own: a home page, a projects grid and a contact page, its own palette and footer.
+- `4-shop` is a shop: prints with a price, and a basket feature that updates live.
 - `5-docs` is a documentation site, made by the [docs pack](./packs.md).
-- `6-naked` has no pack beneath it: Quire's machinery, and a look that is yours to bring.
+- `6-naked` has no pack beneath it: the same folder of markdown, drawn by templates that are yours.
 
 `quire new` copies one into a new directory as a site of its own:
 
 ```sh
-go run github.com/lahickey/quire/cmd/quire@latest new --from feature shop
+go run github.com/lahickey/quire/cmd/quire@latest new --from shop shop
 ```
 
-- `--from` names the example, with or without its number. The default is `minimal`.
+- `--from` names the example, with or without its number. The default is `site`.
 - `--module` sets the module path. The default is the directory's name.
 - `--no-just` leaves out the justfile, which has `dev`, `serve`, `test`, `bake`, `build` and `run`.
 - `--replace <dir>` builds against a Quire checkout instead of a release.

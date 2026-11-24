@@ -1,6 +1,6 @@
-// A site with its own look: a home page, projects page and not-found page of
-// its own, tags, a markdown widget, and its own palette, theme, stylesheets,
-// icon and footer.
+// A portfolio: a site with its own look. It has a home page, a projects page, a
+// contact page and a not-found page of its own, tags, a markdown widget, and its
+// own palette, theme, stylesheets, icon and footer.
 // Everything else is the default look, including each article and the writing index.
 package main
 
@@ -70,6 +70,13 @@ func declare(s *site.Site) error {
 	// A page is its head data and its body. This one takes the place of the
 	// default home page.
 	s.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes, projects))
+	// A page of the site's own whose words are in content/contact.md, so they
+	// are edited as markdown and not as a template.
+	contact, err := s.Markdown("contact.md")
+	if err != nil {
+		return err
+	}
+	s.AddPage(model.PageSpec{Title: "Contact", Path: "/contact"}, contactPage(contact))
 	s.SetNotFound(notFoundPage())
 	return nil
 }

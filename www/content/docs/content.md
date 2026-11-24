@@ -54,7 +54,7 @@ extra:
 ```
 
 `d.Meta.Extra` is that map, and `d.Meta.Text("medium")` is one of its values when it is a string.
-`examples/4-feature` shows a print's medium that way.
+`examples/4-shop` shows a print's medium that way, and reads its price into a type of its own.
 
 Fields with more shape than a string are read into a type of the site's own, once, when the site is built:
 
@@ -347,7 +347,7 @@ quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.
 - A folder with no markdown in it, such as one of pictures, is left alone.
 - `index.md` is never a document of a collection, here or in one a site adds itself.
 
-`examples/1-minimal` is a site made this way.
+`examples/1-site` is a site made this way.
 
 It is the feature `content.Pages`, from `feature/content`, handed the default look's drawings: `ui.Page`, `ui.Listing` and `ui.Article`.
 A site with another look hands it its own:

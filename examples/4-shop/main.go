@@ -13,7 +13,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire"
-	"github.com/lahickey/quire/examples/4-feature/basket"
+	"github.com/lahickey/quire/examples/4-shop/basket"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/service/sessions"
 	"github.com/lahickey/quire/service/store"
@@ -22,6 +22,12 @@ import (
 
 //go:embed site.css
 var css embed.FS
+
+// piece is what a print's frontmatter says beyond the stock fields.
+type piece struct {
+	Medium string       `yaml:"medium"`
+	Price  basket.Money `yaml:"price"`
+}
 
 // password is a gate: it lets a request through only with the password, by HTTP basic auth.
 func password(want string) site.Gate {
@@ -47,9 +53,15 @@ func declare(s *site.Site, carts *store.Memory, visitors *sessions.Sessions) err
 	if err != nil {
 		return err
 	}
+	// A piece's own fields are under extra in its frontmatter. Extra reads them
+	// into a type of the site's, once, and a field it does not have fails the build.
+	extra, err := pieces.Extra[piece]()
+	if err != nil {
+		return err
+	}
 	var items []basket.Item
 	for _, d := range pieces.Docs() {
-		items = append(items, basket.Item{ID: d.Slug, Title: d.Meta.Title})
+		items = append(items, basket.Item{ID: d.Slug, Title: d.Meta.Title, Price: extra[d.Slug].Price})
 	}
 	// Include runs the basket on the site: its endpoints, stylesheets, nav
 	// link and its page at /basket. It is handed the services it uses.

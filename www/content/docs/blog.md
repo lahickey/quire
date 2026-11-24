@@ -34,7 +34,7 @@ Each field shows up somewhere, and none of it needs a template.
 
 `/posts` lists every post, newest first: its month, title and summary, and its `picture` as a thumbnail.
 
-![The post index of the pictures example, one post with a thumbnail and one without](shots/listing.jpg "The index: a post with a picture and a post without")
+![The post index of the blog example, one post with a thumbnail and one without](shots/listing.jpg "The index: a post with a picture and a post without")
 
 ## The post's page
 
@@ -56,7 +56,7 @@ A link to another site opens in a new tab.
 
 Tags sit under the date, and a post with headings gets a table of contents.
 
-![A post with a tag under its date, a table of contents, and a diagram in the body](shots/tagged.jpg "A post in the themed example: a tag, the contents and a diagram")
+![A post with a tag under its date, a table of contents, and a diagram in the body](shots/tagged.jpg "A post in the portfolio example: a tag, the contents and a diagram")
 
 ## What else you get
 
@@ -70,7 +70,7 @@ Tags sit under the date, and a post with headings gets a table of contents.
 - `draft: true` keeps a post out of the site and the sitemap. `--drafts` shows it, badged, so it can be read in place before it is published.
 - `featured: true` marks a post. `Collection.Featured()` selects them, for a home page of your own to show first.
 
-A card badges both. This is the themed example's home page, run with `--drafts`:
+A card badges both. This is the portfolio example's home page, run with `--drafts`:
 
 ![Three cards: one badged Draft, one badged Featured, one plain, each with its tags](shots/badges.jpg "Cards: a draft, a featured post and a plain one")
 
@@ -92,4 +92,4 @@ Each tag is drawn with a class for its kind, so a language and a topic can look 
 
 - [Content](./content.md) is everything a post can hold.
 - [The look](./look.md) changes the colours and fonts, or replaces a page.
-- The `themed` example has a home page, a tag vocabulary and a palette of its own.
+- The `portfolio` example has a home page, a tag vocabulary and a palette of its own.

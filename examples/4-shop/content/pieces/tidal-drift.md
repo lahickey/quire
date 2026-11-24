@@ -5,6 +5,7 @@ summary: Fourteen passes of the same wave, each a little further out of step wit
 picture: tidal-drift.jpg
 extra:
   medium: Screenprint on Somerset, 50 × 62 cm
+  price: 3500
 ---
 
 The plate was cut once and pulled fourteen times, rotating a fraction between

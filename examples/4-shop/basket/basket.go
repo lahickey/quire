@@ -7,6 +7,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json/v2"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -23,8 +24,14 @@ import (
 //go:embed basket.css basket-narrow.css
 var css embed.FS
 
+// Money is an amount in pence.
+type Money int
+
 // Item is something the basket can hold.
-type Item struct{ ID, Title string }
+type Item struct {
+	ID, Title string
+	Price     Money
+}
 
 type Feature struct {
 	at       string
@@ -69,6 +76,16 @@ func (p *Feature) keep(ctx context.Context, visitor string, cart map[string]int)
 		return err
 	}
 	return p.carts.Put(ctx, visitor, kept)
+}
+
+func (m Money) String() string { return fmt.Sprintf("£%d.%02d", m/100, m%100) }
+
+func (p *Feature) total(cart map[string]int) Money {
+	var t Money
+	for _, it := range p.items {
+		t += it.Price * Money(cart[it.ID])
+	}
+	return t
 }
 
 func count(cart map[string]int) int {

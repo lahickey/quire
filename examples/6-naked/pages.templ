@@ -2,8 +2,15 @@ package main
 
 import "github.com/lahickey/quire/model"
 
-templ index(posts *model.Collection) {
-	<h1>Naked</h1>
+// A page written as one document: content/index.md is the home page.
+templ page(d model.Document) {
+	<h1>{ d.Meta.Title }</h1>
+	@templ.Raw(d.HTML)
+}
+
+// A folder's listing: content/posts is at /posts.
+templ listing(posts *model.Collection) {
+	<h1>{ posts.Title() }</h1>
 	<ul>
 		for _, d := range posts.Docs() {
 			<li><a href={ posts.Href(d) }>{ d.Meta.Title }</a></li>
@@ -11,8 +18,9 @@ templ index(posts *model.Collection) {
 	</ul>
 }
 
-templ post(d model.Document) {
+// One document of a folder.
+templ post(posts *model.Collection, d model.Document) {
 	<h1>{ d.Meta.Title }</h1>
 	@templ.Raw(d.HTML)
-	<p><a href="/">Back</a></p>
+	<p><a href={ posts.Path() }>Back</a></p>
 }

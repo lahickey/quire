@@ -28,6 +28,22 @@ templ homePage(notes, projects *model.Collection) {
 	</article>
 }
 
+// The contact page: a heading and a button of the site's own, round words that
+// come from markdown.
+templ contactPage(words templ.Component) {
+	<article class="page">
+		<header class="page-head">
+			<h1>Get in touch</h1>
+			<div class="btn-row">
+				<a href="mailto:writer@example.com" class="btn-primary">writer@example.com</a>
+			</div>
+		</header>
+		<div class="prose">
+			@words
+		</div>
+	</article>
+}
+
 // Served with a 404 for any path the site does not have.
 templ notFoundPage() {
 	<article class="page">

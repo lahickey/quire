@@ -17,7 +17,7 @@ import (
 )
 
 var checks = map[string][]check{
-	"1-minimal": {
+	"1-site": {
 		{"GET", "/", 200, "This page is <code>content/index.md</code>"},
 		{"GET", "/", 200, `class="nav-link">Posts</a><a `},
 		{"GET", "/about", 200, "This page is <code>content/about.md</code>"},
@@ -27,7 +27,7 @@ var checks = map[string][]check{
 		{"GET", "/posts/hello", 200, "Some words"},
 		{"GET", "/missing", 404, ""},
 	},
-	"2-pictures": {
+	"2-blog": {
 		{"GET", "/", 200, "Pictures"},
 		{"GET", "/posts", 200, "ridge"},
 		{"GET", "/posts/ridge", 200, "/_quire/img/"},
@@ -36,7 +36,7 @@ var checks = map[string][]check{
 		{"GET", "/posts/plain", 200, "<svg"},
 		{"GET", "/missing", 404, ""},
 	},
-	"3-themed": {
+	"3-portfolio": {
 		{"GET", "/", 200, "page--wide"},
 		{"GET", "/", 200, "Featured"},
 		{"GET", "/", 200, `data-theme="dark"`},
@@ -51,6 +51,9 @@ var checks = map[string][]check{
 		{"GET", "/writing/one-binary", 200, `class="palette"`},
 		{"GET", "/writing/one-binary", 200, "back-link"},
 		{"GET", "/projects/quiet-machine", 200, "/_quire/img/"},
+		{"GET", "/projects/quiet-machine", 200, `class="btn-secondary"`},
+		{"GET", "/contact", 200, "what you take on"},
+		{"GET", "/", 200, `>Contact</a>`},
 		{"GET", "/favicon.svg", 200, "<svg"},
 		{"GET", "/", 200, `type="image/svg+xml"`},
 		{"GET", "/_quire/style.css", 200, "site-narrow.css"},
@@ -58,7 +61,7 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 200, `[data-palette="harbour"][data-theme="light"]`},
 		{"GET", "/missing", 404, "never written"},
 	},
-	"4-feature": {
+	"4-shop": {
 		{"GET", "/", 200, "Paper Moon"},
 		{"GET", "/", 200, "figure--bleed"},
 		{"GET", "/pieces", 200, "Tidal Drift"},
@@ -66,10 +69,15 @@ var checks = map[string][]check{
 		{"GET", "/pieces/paper-moon", 200, "page--wide"},
 		{"GET", "/_quire/style.css", 200, "--qr-measure-full"},
 		{"GET", "/pieces/paper-moon", 200, "Add to basket"},
+		{"GET", "/pieces/paper-moon", 200, "£35.00"},
+		{"GET", "/pieces/eight-thirty", 200, "£42.00"},
 		{"GET", "/pieces/paper-moon", 200, "/_quire/img/"},
 		{"POST", "/_basket/add?item=paper-moon", 303, ""},
 		{"POST", "/_basket/add?item=nothing", 400, ""},
 		{"GET", "/basket", 200, `basket-qty">1`},
+		{"POST", "/_basket/add?item=eight-thirty", 303, ""},
+		{"GET", "/basket", 200, `Total <span class="basket-price">£77.00`},
+		{"POST", "/_basket/dec?item=eight-thirty", 303, ""},
 		{"POST", "/_basket/dec?item=paper-moon", 303, ""},
 		{"GET", "/basket", 200, "Nothing in it"},
 		{"GET", "/admin/basket", 404, ""},
@@ -98,7 +106,8 @@ var checks = map[string][]check{
 		{"GET", "/_quire/style.css", 404, ""},
 	},
 	"6-naked": {
-		{"GET", "/", 200, `/posts/hello">Hello</a></li>`},
+		{"GET", "/", 200, "A site with no look."},
+		{"GET", "/posts", 200, `/posts/hello">Hello</a></li>`},
 		{"GET", "/posts/hello", 200, "Some words"},
 		{"GET", "/posts/hello", 200, "lx-number"},
 		{"GET", "/_quire/style.css", 404, ""},

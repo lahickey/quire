@@ -83,7 +83,7 @@ func rename(dir, from, to string) error {
 
 func newSite(args []string) {
 	fl := flag.NewFlagSet("new", flag.ExitOnError)
-	name := fl.String("from", "minimal", "the example to start from, with or without its number: "+strings.Join(starters(), ", "))
+	name := fl.String("from", "site", "the example to start from, with or without its number: "+strings.Join(starters(), ", "))
 	module := fl.String("module", "", "the site's module path (default: the directory's name)")
 	replace := fl.String("replace", "", "build against the Quire checkout in this directory")
 	noJust := fl.Bool("no-just", false, "write no justfile")

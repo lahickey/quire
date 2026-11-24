@@ -18,8 +18,8 @@ shot() {
 	(cd "$root" && go run ./cmd/quire ingest "$site/content/docs/shots" "$1" "$tmp/$1.png")
 }
 
-serve 2-pictures 8111
-serve 3-themed 8112
+serve 2-blog 8111
+serve 3-portfolio 8112
 shot listing 8111/posts 520
 shot article 8111/posts/ridge 1000
 shot tagged 8112/writing/one-binary 1000
@@ -27,8 +27,8 @@ shot badges 8112/ 900
 shot draft 8112/writing/unfinished 620
 
 mkdir "$tmp/rec"
-cp -r "$root/examples/2-pictures/content" "$tmp/rec"
-cp "$tmp/2-pictures" "$tmp/rec/pictures"
+cp -r "$root/examples/2-blog/content" "$tmp/rec"
+cp "$tmp/2-blog" "$tmp/rec/pictures"
 (cd "$tmp/rec" && vhs "$site/bake.tape" >/dev/null)
 cp "$tmp/rec/bake.webm" "$tmp/rec/bake.png" "$site/content/docs"
-cp "$tmp/rec/bake.webm" "$tmp/rec/bake.png" "$root/examples/2-pictures/content/posts"
+cp "$tmp/rec/bake.webm" "$tmp/rec/bake.png" "$root/examples/2-blog/content/posts"

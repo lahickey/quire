@@ -54,18 +54,18 @@ Each example is a complete site, commented part by part, and each adds to the on
 `quire new` starts a site of your own from the one nearest what you want:
 
 ```sh
-go run github.com/lahickey/quire/cmd/quire@latest new --from themed mysite
+go run github.com/lahickey/quire/cmd/quire@latest new --from portfolio mysite
 cd mysite && go run .
 ```
 
-The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves that out). `--from` takes the name with or without its number; without it the copy is `1-minimal`.
+The copy has its own `go.mod`, a Dockerfile and a justfile (`--no-just` leaves that out). `--from` takes the name with or without its number; without it the copy is `1-site`.
 
-1. [`1-minimal`](./examples/1-minimal) — the site above.
-2. [`2-pictures`](./examples/2-pictures) — pictures and a diagram, from the markdown alone.
-3. [`3-themed`](./examples/3-themed) — a look of its own: home page, tags, a markdown widget, palette, stylesheets, icon and footer.
-4. [`4-feature`](./examples/4-feature) — a shop: its own frontmatter and templates, and a basket feature with live updates, handed a store and sessions, and an admin page behind a gate.
+1. [`1-site`](./examples/1-site) — a simple site from a folder: the site above, with a home page and a page of its own.
+2. [`2-blog`](./examples/2-blog) — a blog: pictures, links and a diagram, from the markdown alone.
+3. [`3-portfolio`](./examples/3-portfolio) — a portfolio with a look of its own: home page, projects, a contact page, tags, a markdown widget, palette, stylesheets, icon and footer.
+4. [`4-shop`](./examples/4-shop) — a shop: fields of its own in the frontmatter, its own templates, and a basket feature with prices and live updates, handed a store and sessions, and an admin page behind a gate.
 5. [`5-docs`](./examples/5-docs) — a documentation site from the docs pack: a landing page, a sidebar and search, with no templates or CSS.
-6. [`6-naked`](./examples/6-naked) — no pack beneath it: Quire's machinery and nothing of its look.
+6. [`6-naked`](./examples/6-naked) — no pack beneath it: the folder of markdown, drawn by templates of its own.
 
 Two more are not starters: [`mounted`](./examples/mounted) is a program with a mux of its own that mounts a site under a path, and [`several`](./examples/several) is two sites in one server.
 

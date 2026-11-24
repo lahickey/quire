@@ -256,15 +256,11 @@ Each step leaves everything working and is worth having if nothing after it happ
 8. **Several sites in one server.** Done.
 9. **Let a route ask to be shared.** Done.
 10. **The helper layer.** Done.
-11. **Make the examples templates as well as tutorials.**
-   A proper pass over every example once the parts and the helpers have settled, so each is written the way a site should be.
-   Each is a kind of site somebody starts from with `quire new`: a simple site, a blog, documentation, a shop.
-   The shop takes what is worth keeping from the toys project, which is no longer worked on.
-   Each still teaches one thing more than the one before, and reads from top to bottom.
+11. **Make the examples templates as well as tutorials.** Done.
 12. **Show the examples on the documentation site.**
    An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
    Then each example live, as an entry under `/examples/`.
-   Last, the portfolio is written again on the parts: it is on the API from before step 1.
+   Last, the two sites outside this repository that are on the API from before step 1: the portfolio is written again on the parts, and archr's documentation site, which is only the docs pack, has its `main` brought up to date.
 
 ## To decide
 

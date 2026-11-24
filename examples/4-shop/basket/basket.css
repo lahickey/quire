@@ -33,11 +33,30 @@
 
 .basket-line {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto 5rem;
   align-items: center;
   gap: var(--qr-space-3);
 }
 
 .basket-qty {
   font-variant-numeric: tabular-nums;
+}
+
+.basket-add {
+  display: flex;
+  align-items: center;
+  gap: var(--qr-space-4);
+}
+
+.basket-price {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.basket-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--qr-space-3);
+  border-top: 1px solid var(--qr-neutral-6);
+  font-weight: var(--qr-weight-semibold);
 }

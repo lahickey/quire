@@ -19,7 +19,7 @@ if err := s.Include(basket.New(carts, visitors, "/basket", items...)); err != ni
 The basket is told where its page goes, so the address is still the site's choice.
 It is also handed the [services](#services) it uses: somewhere to keep its carts, and who each visitor is.
 
-`examples/4-feature` is a shop built this way.
+`examples/4-shop` is a shop built this way.
 
 ## Search
 
@@ -204,7 +204,7 @@ s.SetGroup(site.Admin, auth.Admins)
 - **The gate is the site's to choose.** A named feature may not set one, and the site's word beats a pack's.
 
 A gate is a `func(http.Handler) http.Handler`, so "is signed in" and "is signed in and an admin" are two gates, the second calling the first.
-`examples/4-feature` gates `site.Admin` with a password when `SHOP_ADMIN` is set, and without it has nothing at `/admin` at all.
+`examples/4-shop` gates `site.Admin` with a password when `SHOP_ADMIN` is set, and without it has nothing at `/admin` at all.
 
 ## Services
 
