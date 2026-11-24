@@ -81,13 +81,7 @@ templ Index(c *Book) {
 					<p class="page-intro">{ c.Description() }</p>
 				}
 			</header>
-			<div class="card-grid">
-				for _, d := range c.Docs() {
-					{{ card := ui.DocCard(ctx, c.Collection, d) }}
-					{{ card.Kicker = c.Section(d) }}
-					@ui.Card(card)
-				}
-			</div>
+			@ui.CardGrid(c.cards(ctx))
 		</div>
 	</div>
 }

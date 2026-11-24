@@ -30,7 +30,7 @@ It is [running here](/examples/site).
 The same one call, with more in its posts: a picture as the hero and the thumbnail, pictures in the body, a video, links and a diagram.
 Nothing in the code asks for any of them. [A blog](./blog.md) goes through what each field does.
 
-![A post's page, with its date and two link buttons under the title and its picture as the hero](shots/article.jpg "A post: date, links, hero, body")
+![A post's page: under the title its date, the date it was updated and a reading time, then its summary, two link buttons and its picture as the hero](shots/article.jpg "A post: dates, reading time, summary, links, hero, body")
 
 ```sh
 go run github.com/lahickey/quire/cmd/quire@latest new --from blog mysite

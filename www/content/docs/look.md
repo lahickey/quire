@@ -143,12 +143,12 @@ Most changes are an override of a custom property rather than a new rule. The pr
 
 ## Replace a page or a component
 
-The default pages are `Home`, `Listing`, `Article`, `NotFound` and `Footer`, in package `ui`, which is `pack/base/ui`.
+The default pages are `Home`, `Page`, `Listing`, `CardListing`, `Article`, `NotFound` and `Footer`, in package `ui`, which is `pack/base/ui`.
 
 - A page added at `/` replaces `Home`.
 - `SetNotFound` replaces `NotFound`.
 - `SetFrame(ui.FrameWith(header, footer))` replaces the header, the footer or both, and `SetFrame` with a frame of your own replaces everything round the content.
-- `base.Pages` adds `Listing` and `Article` for a collection. Add pages of your own in their place with `AddPage` and `AddDocumentPages`.
+- `base.Pages` adds `Listing` and `Article` for a collection. `AddCollectionPages(collection, listing, document)` adds any two in their place: `CardListing` for a grid of cards, or pages of your own.
 
 A page of your own is a body. The site supplies the document, navigation and footer:
 
@@ -156,19 +156,25 @@ A page of your own is a body. The site supplies the document, navigation and foo
 templ projectsPage(c *model.Collection) {
   <article class="page page--wide">
     <h1>{ c.Title() }</h1>
-    <div class="card-grid">
-      for _, d := range c.Docs() {
-        @ui.Card(ui.DocCard(ctx, c, d))
-      }
-    </div>
+    @ui.Cards(c, c.Featured())
+    @ui.Entries(c, c.Docs())
   </article>
 }
 ```
 
-It is added with its head data: `s.AddPage(projects.Page(), projectsPage(projects))`.
+It is added as the collection's listing, with the default article for each document:
 
-The components it can use, also in `ui`: `Card` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle` `PalettePicker`.
+```go
+s.AddCollectionPages(projects, projectsPage(projects), func(d model.Document) templ.Component {
+  return ui.Article(projects, d)
+})
+```
+
+A collection with nothing in it gets neither page, and so no place in the navigation.
+
+The components it can use, also in `ui`: `Card` `CardGrid` `Cards` `Entries` `Img` `LazyFigure` `HeroFigure` `Code` `Contents` `DraftBadge` `Badges` `Tags` `BackLink` `ForwardLink` `Link` `Pager` `Nav` `ThemeToggle` `PalettePicker`.
 `Code(text)` is a code block with the copy button a fenced block gets; the install line on this site's home page is one.
+`Cards(c, docs)` is a grid of cards for those documents, as `Entries(c, docs)` is a list of rows, and `CardGrid(cards)` is one for cards made any other way: `DocCards(ctx, c, docs)` makes them from documents, to change or join before they are drawn.
 `Pager(c, d)` links to the documents before and after `d` in its collection. `Nav(c, p)` is the header's links: the site's name as the link home (see `WithBrand`), then each section.
 `DocCard(ctx, c, d)` fills a `Card` from a document: its link, its month and year as the kicker, title, summary, draft and featured flags, picture, badges and tags. A site changes the fields it wants different.
 

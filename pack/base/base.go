@@ -67,13 +67,6 @@ func Content() site.Feature {
 }
 
 // Pages gives a collection the default look's two pages: a listing at its address and an article for each document.
-// A collection with nothing in it, as when every document is a draft, gets neither.
 func Pages(s *site.Site, c *model.Collection) {
-	if c.Len() == 0 {
-		return
-	}
-	s.AddPage(c.Page(), ui.Listing(c))
-	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
-		return model.DocumentPage(c, d), ui.Article(c, d)
-	})
+	s.AddCollectionPages(c, ui.Listing(c), func(d model.Document) templ.Component { return ui.Article(c, d) })
 }

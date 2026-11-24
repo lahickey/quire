@@ -63,16 +63,14 @@ func Declare(s *site.Site) error {
 		return err
 	}
 	base.Pages(s, notes)
-	// content/projects/*.md, with an index of its own at /projects, a grid of
-	// cards, and the default article for each document.
+	// content/projects/*.md, with a listing and a page for each document that
+	// this names: the default look's grid of cards at /projects, and its
+	// article. A template of the site's own goes in either place.
 	projects, err := s.Collection(model.Spec{ID: "projects", Title: "Projects", Tags: kinds})
 	if err != nil {
 		return err
 	}
-	s.AddPage(projects.Page(), projectsPage(projects))
-	s.AddDocumentPages(projects, func(d model.Document) (model.PageSpec, templ.Component) {
-		return model.DocumentPage(projects, d), ui.Article(projects, d)
-	})
+	s.AddCollectionPages(projects, ui.CardListing(projects), func(d model.Document) templ.Component { return ui.Article(projects, d) })
 	// A page is its head data and its body. This one takes the place of the
 	// default home page.
 	s.AddPage(model.PageSpec{Title: "Writing", Path: "/"}, homePage(notes, projects))

@@ -1,15 +1,15 @@
 # Quire — plan
 
-Where Quire is going, the steps that get it there, and what else is waiting.
-The model as it is today is [the design page](./www/content/docs/architecture.md).
+The shape Quire holds to, what is still to decide, and what is waiting.
+Why it is shaped this way is [the design page](./www/content/docs/architecture.md).
 
-## Where it is going
+## The shape
 
 Quire's site, server, baker and bundle are parts with public interfaces, a feature is the one way to add to a site, and what it ships by default is the base pack.
 Services are plain values the server starts and stops, a group is a part of a site behind one gate, and a site can be placed at any path.
 A server holds several of them, and a route says whether what it answers is kept.
-The plan finishes separating the parts so that each has one job and a public interface, and so that nothing Quire ships is a special case.
-Quire is then the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
+Each part has one job and a public interface, and nothing Quire ships is a special case.
+Quire is the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
 
 ### The words
 
@@ -205,7 +205,7 @@ Nothing is dropped today, because nothing can change while a site runs.
 A pack provides any number of features, services, converters, components, stylesheets, fonts and palettes.
 It is how they are shipped together, and not a mechanism of its own.
 Changes to the base colour system are a pack's to make too.
-A pack whose feature has pages is a whole kind of site, as `pack/docs` is.
+A pack may bring features of its own, as `pack/docs` does for documentation.
 
 What Quire ships is one pack, **base**, which holds every default: markdown, the WebP codec, mermaid, the share card, the default look and its components, and the default font files and palettes.
 Search, sessions and a store are mechanisms, not look: each stays outside base, and base brings only how search is drawn.
@@ -242,23 +242,6 @@ Whatever claims the whole address space is the server's, so a host that does not
 A site's own files, its pictures among them, are routes in its table and go where it is mounted.
 What fails while a site is built is returned as an error, for the host to act on.
 
-## The steps
-
-Each step leaves everything working and is worth having if nothing after it happens.
-
-1. **Split the engine into site and server.** Done.
-2. **Make the source, the baker and the bundle public.** Done.
-3. **Declare widgets once for a site.** Done.
-4. **Packs provide the parts.** Done.
-5. **One table, and one way to add to it.** Done.
-6. **Services and groups.** Done.
-7. **Place a site at a path.** Done.
-8. **Several sites in one server.** Done.
-9. **Let a route ask to be shared.** Done.
-10. **The helper layer.** Done.
-11. **Make the examples templates as well as tutorials.** Done.
-12. **Show the examples on the documentation site.** Done.
-
 ## To decide
 
 - **The footer's text and links.**
@@ -284,8 +267,6 @@ Each step leaves everything working and is worth having if nothing after it happ
   Sites that ship as separate binaries would need a front that routes by hostname and starts each on its first request, perhaps as `quire host`.
 
 ## Alongside
-
-These depend on none of the steps.
 
 - **Feeds** — RSS/Atom. `Collection` already holds everything required.
   It would live in base.

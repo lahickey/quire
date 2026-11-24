@@ -53,7 +53,8 @@ func main() {
 
 - `Collection(spec)` loads documents. A collection is its documents and nothing else. See [Content](./content.md#collections).
 - `AddPage(head, body)` adds a fixed page at `head.Path`, drawn once and kept, in the navigation and the sitemap. The page at `/` is the home page.
-- `AddDocumentPages(collection, page)` gives each of a collection's documents a page, drawn on its first request and kept.
+- `AddCollectionPages(collection, listing, document)` gives a collection its listing and a page for each document, drawn on its first request and kept. One with nothing in it gets neither.
+- `AddDocumentPages(collection, page)` is the second half alone, for a page that sets its own head data.
 - `AddLivePage(path, page)` adds a page drawn for each request and never kept. It is handed the request and answers with the head data and the body.
 - `AddRoute(method, path, handler)` is the raw mux: nothing added, never kept.
 - `AddSharedRoute(path, handler)` is a `GET` whose answer is the same for every visitor, so it is drawn on the first request for a path and kept. See [Features](./features.md#a-route-that-is-kept).

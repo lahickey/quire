@@ -60,13 +60,10 @@ func (p Pages) collection(s *site.Site, id string) error {
 		spec.Title, spec.Description = m.Title, m.Summary
 	}
 	c, err := s.Collection(spec)
-	if err != nil || c.Len() == 0 {
+	if err != nil {
 		return err
 	}
-	s.AddPage(c.Page(), p.Listing(c))
-	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
-		return model.DocumentPage(c, d), p.Document(c, d)
-	})
+	s.AddCollectionPages(c, p.Listing(c), func(d model.Document) templ.Component { return p.Document(c, d) })
 	return nil
 }
 

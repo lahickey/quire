@@ -81,10 +81,7 @@ func declare(s *site.Site, carts *store.Memory, visitors *sessions.Sessions) err
 	}
 
 	// A collection is its documents and nothing more; these are its pages.
-	s.AddPage(pieces.Page(), wall(pieces))
-	s.AddDocumentPages(pieces, func(d model.Document) (model.PageSpec, templ.Component) {
-		return model.DocumentPage(pieces, d), piecePage(b, pieces, d)
-	})
+	s.AddCollectionPages(pieces, wall(pieces), func(d model.Document) templ.Component { return piecePage(b, pieces, d) })
 	s.AddPage(model.PageSpec{Title: "Prints", Path: "/"}, home(pieces))
 	return nil
 }

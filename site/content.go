@@ -104,6 +104,18 @@ func (s *Site) Collection(spec model.Spec) (*model.Collection, error) {
 	return model.Collect(spec, docs, s.drafts)
 }
 
+// AddCollectionPages gives a collection its listing, at its address, and a page for each document, with the head data the collection has for each.
+// A collection with nothing in it, as when every document is a draft, gets neither.
+func (s *Site) AddCollectionPages(c *model.Collection, listing templ.Component, document func(model.Document) templ.Component) {
+	if c.Len() == 0 {
+		return
+	}
+	s.AddPage(c.Page(), listing)
+	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
+		return model.DocumentPage(c, d), document(d)
+	})
+}
+
 // AddDocumentPages gives each of a collection's documents a page at its address, with its aliases leading there and its place in the sitemap.
 // A page is drawn on its first request and kept.
 func (s *Site) AddDocumentPages(col *model.Collection, page func(model.Document) (model.PageSpec, templ.Component)) {

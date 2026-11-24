@@ -33,6 +33,19 @@ templ Entries(c *model.Collection, docs []model.Document) {
 	</div>
 }
 
+// CardListing is the body of a collection's index as a grid of cards, across the wide page.
+templ CardListing(c *model.Collection) {
+	<article class="page page--wide">
+		<header class="page-head">
+			<h1>{ c.Title() }</h1>
+			if d := c.Description(); d != "" {
+				<p class="page-intro">{ d }</p>
+			}
+		</header>
+		@Cards(c, c.Docs())
+	</article>
+}
+
 // Listing is the body of a collection's index: its title and a row for each document.
 templ Listing(c *model.Collection) {
 	<article class="page">
@@ -50,14 +63,28 @@ templ Listing(c *model.Collection) {
 templ Article(c *model.Collection, d model.Document) {
 	<article class="page">
 		<header class="page-head">
-			if d.Meta.Draft {
+			if badges := c.Badges(d); d.Meta.Draft || len(badges) > 0 {
 				<div class="header-badges">
-					@DraftBadge()
+					if d.Meta.Draft {
+						@DraftBadge()
+					}
+					@Badges(badges)
 				</div>
 			}
 			<h1>{ d.Meta.Title }</h1>
 			if date := d.Meta.Date; !date.IsZero() {
-				<p class="page-meta">{ LongDate(ctx, date) }</p>
+				<div class="page-meta">
+					<span>{ LongDate(ctx, date) }</span>
+					if up := d.Meta.Updated; !up.IsZero() {
+						<span class="meta-separator">·</span>
+						<span>Updated { LongDate(ctx, up) }</span>
+					}
+					<span class="meta-separator">·</span>
+					<span>{ ReadingTime(d.Words) }</span>
+				</div>
+			}
+			if d.Meta.Summary != "" {
+				<p class="page-intro">{ d.Meta.Summary }</p>
 			}
 			@Tags(c.Tags(d))
 			if len(d.Meta.Links) > 0 {

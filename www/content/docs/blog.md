@@ -38,9 +38,9 @@ Each field shows up somewhere, and none of it needs a template.
 
 ## The post's page
 
-`/posts/{name}` is the post: its title and date, its `links`, its `picture` as the hero, then the body.
+`/posts/{name}` is the post: its title, its date with `updated` beside it and a reading time, its `summary`, its `links`, its `picture` as the hero, then the body.
 
-![A post's page, with its date and two link buttons under the title and its picture as the hero](shots/article.jpg "A post: date, links, hero, body")
+![A post's page: under the title its date, the date it was updated and a reading time, then its summary, two link buttons and its picture as the hero](shots/article.jpg "A post: dates, reading time, summary, links, hero, body")
 
 `links` are buttons under the date, for where the thing a post is about can be found:
 

@@ -10,7 +10,7 @@ import (
 
 var fingerprints = map[string]string{
 	"card":     "3a75fa5790f113a6",
-	"markdown": "ed6080588da846dc",
+	"markdown": "94eae77adcb7d891",
 	"mermaid":  "b7ab7089fcdc6402",
 	"picture":  "d76217852cd98cee",
 }

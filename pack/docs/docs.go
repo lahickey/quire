@@ -4,6 +4,7 @@ package docs
 
 import (
 	"cmp"
+	"context"
 	"embed"
 	"fmt"
 
@@ -58,6 +59,15 @@ type group struct {
 }
 
 func (b *Book) Section(d model.Document) string { return b.sections[d.Slug] }
+
+// cards is a card for each document, labelled with its section.
+func (b *Book) cards(ctx context.Context) []ui.CardData {
+	cards := ui.DocCards(ctx, b.Collection, b.Docs())
+	for i, d := range b.Docs() {
+		cards[i].Kicker = b.Section(d)
+	}
+	return cards
+}
 
 func groups(b *Book) []group {
 	var out []group
@@ -125,10 +135,7 @@ func (p *Pack) Declare(s *site.Site) error {
 		s.SetFooterText(l.Footer)
 	}
 	book := &Book{c, sections}
-	s.AddPage(c.Page(), index(book))
-	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
-		return model.DocumentPage(c, d), item(book, d)
-	})
+	s.AddCollectionPages(c, index(book), func(d model.Document) templ.Component { return item(book, d) })
 	s.AddPage(model.PageSpec{Title: s.Identity().Name, Path: "/"}, home(s.Identity(), l, body, book))
 	found := search.New("/search", searchui.Look())
 	found.Add(c)

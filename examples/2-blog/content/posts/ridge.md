@@ -1,6 +1,7 @@
 ---
 title: The ridge at first light
 date: 2026-02-01
+updated: 2026-02-10
 summary: One line of frontmatter is the whole of it.
 picture: ridge.jpg
 links:

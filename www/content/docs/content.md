@@ -373,17 +373,17 @@ base.Pages(s, notes)
 The first call reads `content/writing/*.md`.
 `base.Pages`, from `pack/base`, gives the collection the default look's two pages: a listing at `/writing`, which goes in the navigation, and an article at `/writing/{slug}` for each document, with every page in the sitemap.
 
-Pages of your own are two calls on the site:
+Pages of your own are one call on the site:
 
 ```go
-s.AddPage(notes.Page(), index(notes))
-s.AddDocumentPages(notes, func(d model.Document) (model.PageSpec, templ.Component) {
-  return model.DocumentPage(notes, d), article(notes, d)
+s.AddCollectionPages(notes, index(notes), func(d model.Document) templ.Component {
+  return article(notes, d)
 })
 ```
 
-`AddPage` is the index, like any other fixed page. `AddDocumentPages` gives each document a page at its address, drawn on its first request and kept, with its aliases leading there.
-Each page is its head data and its body: `notes.Page()` and `model.DocumentPage` are the head data, and `index` and `article` draw bodies.
+The listing is a fixed page at the collection's address. Each document's page is at its own, drawn on its first request and kept, with its aliases leading there.
+Each is given its head data by the collection, and `index` and `article` draw bodies.
+`ui.CardListing(notes)` is a listing as a grid of cards, where `ui.Listing` is rows.
 A collection with neither is still worth having, for a home page to draw from.
 
 The fields of a `Spec`:
@@ -397,8 +397,8 @@ The fields of a `Spec`:
 Other things to know:
 
 - `ui.Page` is a page written as one document: its title, summary, picture and body.
-- `ui.Listing` and `ui.Article` are the pages `base.Pages` adds. They show the title, date, tags, hero, contents and body, and link back to the index. `ui.Entries(c, docs)` renders the listing's rows anywhere, each labelled with its month and year.
-- Drafts are dropped unless `WithDrafts`. `base.Pages` gives a collection that is empty after that no pages.
+- `ui.Listing` and `ui.Article` are the pages `base.Pages` adds. An article shows its badges, title, date, the date it was updated, a reading time, its summary, tags, links, hero, contents and body, and links back to the index. `ui.Entries(c, docs)` renders the listing's rows anywhere, each labelled with its month and year.
+- Drafts are dropped unless `WithDrafts`. A collection that is empty after that gets no pages.
 - A missing slug is the site's 404. Two documents with one slug fail the load.
 - `Featured()` selects from a collection, and `Docs()` is all of it, in order.
 - `Neighbours(d)` is the documents before and after `d` in that order; either is nil at an end. `ui.Pager` renders them as previous and next links.

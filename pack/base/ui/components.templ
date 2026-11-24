@@ -56,6 +56,15 @@ func DocCard(ctx context.Context, c *model.Collection, d model.Document) CardDat
 	}
 }
 
+// DocCards is a card for each of a collection's documents given.
+func DocCards(ctx context.Context, c *model.Collection, docs []model.Document) []CardData {
+	out := make([]CardData, len(docs))
+	for i, d := range docs {
+		out[i] = DocCard(ctx, c, d)
+	}
+	return out
+}
+
 templ DraftBadge() {
 	<span class="status-badge status-badge--draft">Draft</span>
 }
@@ -145,6 +154,11 @@ templ CardGrid(cards []CardData) {
 			@Card(c)
 		}
 	</div>
+}
+
+// Cards is a grid of cards, one for each of a collection's documents given.
+templ Cards(c *model.Collection, docs []model.Document) {
+	@CardGrid(DocCards(ctx, c, docs))
 }
 
 templ Card(c CardData) {
