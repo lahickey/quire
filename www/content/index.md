@@ -9,7 +9,7 @@ docs:
   summary: How to build a site with Quire, and why it is shaped the way it is.
   sections:
     - title: Start here
-      pages: [getting-started, blog]
+      pages: [getting-started, examples, blog]
     - title: Authoring
       pages: [content, pictures, look]
     - title: Building

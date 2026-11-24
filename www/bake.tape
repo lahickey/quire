@@ -10,7 +10,7 @@ Hide
 Type "PS1='$ '; clear" Enter
 Show
 Sleep 500ms
-Type "./pictures bake" Enter
+Type "./blog bake" Enter
 Sleep 2.5s
 Screenshot bake.png
 Sleep 1.5s

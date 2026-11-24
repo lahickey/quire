@@ -4,7 +4,9 @@ package store
 
 import (
 	"bytes"
+	"container/list"
 	"context"
+	"fmt"
 	"iter"
 	"maps"
 	"slices"
@@ -22,10 +24,17 @@ type Store interface {
 	List(ctx context.Context, prefix string) iter.Seq2[string, []byte]
 }
 
-// Memory is a store that a restart empties.
+// memoryMax is how much a Memory keeps, in bytes of keys and values.
+const memoryMax = 8 << 20
+
+// Memory is a store that a restart empties. It keeps only so much: when it is full, what was written longest ago is dropped.
 type Memory struct {
-	mu   sync.RWMutex
-	kept map[string][]byte
+	mu    sync.RWMutex
+	kept  map[string][]byte
+	order *list.List
+	at    map[string]*list.Element
+	size  int
+	max   int
 }
 
 type under struct {
@@ -33,7 +42,18 @@ type under struct {
 	prefix string
 }
 
-func NewMemory() *Memory { return &Memory{kept: map[string][]byte{}} }
+func NewMemory() *Memory {
+	return &Memory{kept: map[string][]byte{}, order: list.New(), at: map[string]*list.Element{}, max: memoryMax}
+}
+
+func (m *Memory) drop(key string) {
+	if e, ok := m.at[key]; ok {
+		m.size -= len(key) + len(m.kept[key])
+		m.order.Remove(e)
+		delete(m.at, key)
+		delete(m.kept, key)
+	}
+}
 
 func (m *Memory) Start(context.Context, model.Env) error { return nil }
 
@@ -49,14 +69,23 @@ func (m *Memory) Get(_ context.Context, key string) ([]byte, bool, error) {
 func (m *Memory) Put(_ context.Context, key string, value []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.kept[key] = bytes.Clone(value)
+	need := len(key) + len(value)
+	if need > m.max {
+		return fmt.Errorf("store: %s is %d bytes, and the whole store keeps %d", key, need, m.max)
+	}
+	m.drop(key)
+	for m.size+need > m.max {
+		m.drop(m.order.Front().Value.(string))
+	}
+	m.kept[key], m.at[key] = bytes.Clone(value), m.order.PushBack(key)
+	m.size += need
 	return nil
 }
 
 func (m *Memory) Delete(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.kept, key)
+	m.drop(key)
 	return nil
 }
 

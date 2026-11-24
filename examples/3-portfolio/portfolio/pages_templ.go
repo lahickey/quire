@@ -2,7 +2,7 @@
 
 // templ: version: v0.3.1100
 
-package main
+package portfolio
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
@@ -192,7 +192,7 @@ func projectsPage(c *model.Collection) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Title())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `examples/3-portfolio/pages.templ`, Line: 59, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `examples/3-portfolio/portfolio/pages.templ`, Line: 59, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

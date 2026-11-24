@@ -257,10 +257,7 @@ Each step leaves everything working and is worth having if nothing after it happ
 9. **Let a route ask to be shared.** Done.
 10. **The helper layer.** Done.
 11. **Make the examples templates as well as tutorials.** Done.
-12. **Show the examples on the documentation site.**
-   An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
-   Then each example live, as an entry under `/examples/`.
-   Last, the two sites outside this repository that are on the API from before step 1: the portfolio is written again on the parts, and archr's documentation site, which is only the docs pack, has its `main` brought up to date.
+12. **Show the examples on the documentation site.** Done.
 
 ## To decide
 
@@ -279,10 +276,6 @@ Each step leaves everything working and is worth having if nothing after it happ
 - **"Diagram" in the docs.**
   The pages say a `mermaid` fence is a diagram, and the section is `#diagrams`.
   Either that stays as plain English, or the docs say mermaid and leave the word for charts.
-- **How the documentation site imports the examples.**
-  Each is a `package main`, which nothing can import.
-  Either the site's build generates importable copies and the examples stay as they are, or the examples become a package with a small `main` beside it and `quire new` flattens the two.
-  Decide in step 12.
 - **Who holds a subject to its publisher's name.**
   A publisher holds the bus itself, so the site cannot.
   It is a convention, or the bus is handed over already scoped.

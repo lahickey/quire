@@ -39,3 +39,27 @@ func TestMemoryAndUnder(t *testing.T) {
 		t.Error("a deleted key is still kept")
 	}
 }
+
+func TestMemoryKeepsOnlySoMuch(t *testing.T) {
+	ctx, m := t.Context(), NewMemory()
+	m.max = 6
+	for _, k := range []string{"a", "b", "c"} {
+		if err := m.Put(ctx, k, []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := m.Put(ctx, "a", []byte("y")); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Put(ctx, "d", []byte("z")); err != nil {
+		t.Fatal(err)
+	}
+	got := slices.Collect(maps.Keys(maps.Collect(m.List(ctx, ""))))
+	slices.Sort(got)
+	if want := []string{"a", "c", "d"}; !slices.Equal(got, want) {
+		t.Errorf("kept %v, want %v: b was written longest ago", got, want)
+	}
+	if err := m.Put(ctx, "e", []byte("too long")); err == nil {
+		t.Error("a value bigger than the whole store was kept")
+	}
+}

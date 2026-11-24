@@ -247,7 +247,7 @@ type Store interface {
 }
 ```
 
-- `store.NewMemory()` is one that a restart empties.
+- `store.NewMemory()` is one that a restart empties. It keeps 8MB of keys and values, and when it is full it drops what was written longest ago, so nobody can fill a server's memory through it.
 - `store.Under(st, "basket")` is a store's keys beneath a name. A feature puts its own name there, so every feature can be handed the same store and none can read another's.
 
 What has to ask questions of its data brings a database of its own, as a service.
