@@ -29,19 +29,10 @@ import (
   "github.com/lahickey/quire"
   "github.com/lahickey/quire/model"
   "github.com/lahickey/quire/pack/base"
-  "github.com/lahickey/quire/site"
 )
 
 func main() {
-  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"},
-    site.FeatureFunc(func(s *site.Site) error {
-      posts, err := s.Collection(model.Basic{ID: "posts"})
-      if err != nil {
-        return err
-      }
-      base.Pages(s, posts)
-      return nil
-    }))
+  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.Content())
 }
 ```
 
@@ -67,7 +58,7 @@ go run .
 ```
 
 Open http://localhost:8090. You have a home page, a post index at `/posts`, the post at `/posts/hello`, navigation, a light and dark toggle, `sitemap.xml` and `robots.txt`.
-There are no templates and no CSS of your own: `model.Basic` is a collection of documents with the stock frontmatter, and Quire supplies the look.
+There are no templates and no CSS of your own: `base.Content` makes the site [from the folder](./content.md#a-site-from-the-folder), and Quire supplies the look.
 
 `Run` takes a few flags:
 

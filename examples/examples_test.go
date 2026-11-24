@@ -18,8 +18,12 @@ import (
 
 var checks = map[string][]check{
 	"1-minimal": {
-		{"GET", "/", 200, "Example"},
+		{"GET", "/", 200, "This page is <code>content/index.md</code>"},
+		{"GET", "/", 200, `class="nav-link">Posts</a><a `},
+		{"GET", "/about", 200, "This page is <code>content/about.md</code>"},
 		{"GET", "/posts", 200, "Hello"},
+		{"GET", "/posts", 200, "What has been written here."},
+		{"GET", "/posts/index", 404, ""},
 		{"GET", "/posts/hello", 200, "Some words"},
 		{"GET", "/missing", 404, ""},
 	},
@@ -28,6 +32,7 @@ var checks = map[string][]check{
 		{"GET", "/posts", 200, "ridge"},
 		{"GET", "/posts/ridge", 200, "/_quire/img/"},
 		{"GET", "/posts/ridge", 200, "<video"},
+		{"GET", "/posts/ridge", 200, `class="btn-secondary"`},
 		{"GET", "/posts/plain", 200, "<svg"},
 		{"GET", "/missing", 404, ""},
 	},

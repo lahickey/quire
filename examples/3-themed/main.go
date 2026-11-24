@@ -52,19 +52,19 @@ func declare(s *site.Site) error {
 
 	// content/writing/*.md, with the default look's listing at /writing and an
 	// article for each document.
-	notes, err := s.Collection(model.Basic{ID: "writing", Title: "Writing", Tags: kinds})
+	notes, err := s.Collection(model.Spec{ID: "writing", Title: "Writing", Tags: kinds})
 	if err != nil {
 		return err
 	}
 	base.Pages(s, notes)
 	// content/projects/*.md, with an index of its own at /projects, a grid of
 	// cards, and the default article for each document.
-	projects, err := s.Collection(model.Basic{ID: "projects", Title: "Projects", Tags: kinds})
+	projects, err := s.Collection(model.Spec{ID: "projects", Title: "Projects", Tags: kinds})
 	if err != nil {
 		return err
 	}
 	s.AddPage(projects.Page(), projectsPage(projects))
-	s.AddDocumentPages(projects, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
+	s.AddDocumentPages(projects, func(d model.Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(projects, d), ui.Article(projects, d)
 	})
 	// A page is its head data and its body. This one takes the place of the

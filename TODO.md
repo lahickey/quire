@@ -7,7 +7,7 @@ The model as it is today is [the design page](./www/content/docs/architecture.md
 
 Quire's site, server, baker and bundle are parts with public interfaces, a feature is the one way to add to a site, and what it ships by default is the base pack.
 Services are plain values the server starts and stops, a group is a part of a site behind one gate, and a site can be placed at any path.
-A server holds several of them. A route cannot yet say how it is kept.
+A server holds several of them, and a route says whether what it answers is kept.
 The plan finishes separating the parts so that each has one job and a public interface, and so that nothing Quire ships is a special case.
 Quire is then the parts a static or live site is composed from, and a site engine in one binary is a helper over them.
 
@@ -27,7 +27,7 @@ The nouns:
 - **Baker.** A source that converts. It keeps the cache, the keys and the journal, runs the work and writes the bundle. It knows no formats: every conversion is a converter or a codec registered with it. It knows nothing of sites, routes or servers.
 - **Bundle.** A journal and the files it names. It is a source that only reads.
 - **Assets.** Stylesheets, scripts and fonts. They are embedded with the code, assembled and hashed at boot, and never baked.
-- **Font set.** The fonts a site uses, chosen once. A bake measures text with it and the browser draws with it, so both are handed the same set; only the file format differs.
+- **Font set.** The fonts a site uses, chosen once: the faces a browser draws with, and how wide their characters are, for whatever lays text out in a bake. The share card draws with faces of its own.
 - **Document.** One file of content, converted. It is not a page, which is an address, nor markdown, which is one format a document can come from. As a converter leaves it, it is a baked document: HTML with slots, its raw frontmatter and its headings.
 - **Slot.** A place in a baked document that something goes: a picture, or a named fence. The bake fills the fences it can, and the site fills the rest when the page is composed.
 - **Size.** How wide a picture is shown where it is placed: thumb, column, page, bleed.
@@ -216,7 +216,7 @@ Base is written against the interfaces any other pack uses, and a test holds it 
 Turning something off is not registering it, never a flag: what is not imported is not linked.
 A helper gives a site the standard set, so the smallest site stays as small as it is.
 
-What base weighs in a binary is mostly its fonts, 189KB, then Datastar at 36KB, which base asks for on every page because its theme toggle and copy buttons are written with it.
+What base weighs in a binary is mostly its fonts, 210KB with their widths, then Datastar at 36KB, which base asks for on every page because its theme toggle and copy buttons are written with it.
 Its stylesheets are 27KB and its templates less.
 
 ### One server, several sites
@@ -254,14 +254,8 @@ Each step leaves everything working and is worth having if nothing after it happ
 6. **Services and groups.** Done.
 7. **Place a site at a path.** Done.
 8. **Several sites in one server.** Done.
-9. **Let a route state its cache policy.**
-   Shared or none, on any route, and a way to drop what is kept.
-   A group has a cache of its own, inside its gate.
-10. **The helper layer.**
-   `Run`, `model.Basic` and the other shortcuts sit together in the root, and say which parts they compose.
-   A helper for each common pattern, so the smallest example is one call: base gives a whole site from a content folder, as the docs pack does for documentation, and the site names base once.
-   One for several sites: it bakes each and serves them all, where today `Run` is one site and several need a `main` of their own.
-   The top-level folders are looked at as a whole.
+9. **Let a route ask to be shared.** Done.
+10. **The helper layer.** Done.
 11. **Make the examples templates as well as tutorials.**
    A proper pass over every example once the parts and the helpers have settled, so each is written the way a site should be.
    Each is a kind of site somebody starts from with `quire new`: a simple site, a blog, documentation, a shop.
@@ -270,6 +264,7 @@ Each step leaves everything working and is worth having if nothing after it happ
 12. **Show the examples on the documentation site.**
    An Examples page with a screenshot of each, what it adds, its `quire new` line and its source.
    Then each example live, as an entry under `/examples/`.
+   Last, the portfolio is written again on the parts: it is on the API from before step 1.
 
 ## To decide
 
@@ -288,10 +283,6 @@ Each step leaves everything working and is worth having if nothing after it happ
 - **"Diagram" in the docs.**
   The pages say a `mermaid` fence is a diagram, and the section is `#diagrams`.
   Either that stays as plain English, or the docs say mermaid and leave the word for charts.
-- **Letting a site choose its font set.**
-  A feature sets one with `SetFonts`, and a bake written against the parts can build the card and mermaid converters over the same faces.
-  `Run` always bakes with base's faces, so a site on `Run` with another set fails its bake.
-  What is left is handing `Run` the set, as an option like the palette.
 - **How the documentation site imports the examples.**
   Each is a `package main`, which nothing can import.
   Either the site's build generates importable copies and the examples stay as they are, or the examples become a package with a small `main` beside it and `quire new` flattens the two.
@@ -309,9 +300,12 @@ These depend on none of the steps.
 
 - **Feeds** — RSS/Atom. `Collection` already holds everything required.
   It would live in base.
+- **Inputs a pack embeds.** The baker reads only the site's content folder, so a pack cannot ship a picture, and a font's widths are written into `fonts.json` by `quire fonts` and committed.
+  With a way for a pack to hand the baker files of its own, a pack's pictures are baked like a site's, and a TTF beside a set's woff2 is a bake input: widths are derived and hashed like anything else, and the tool and the committed widths go.
+  Until then a site with its own fonts that changes a woff2 and does not run `quire fonts` again gets diagrams laid out for the old one, with no error.
 - **A crash in Go's compiler**, [golang/go#81627](https://github.com/golang/go/issues/81627), open with a fix in review.
   A generic function from another package, with its type inferred, crashes the compiler as an element of a composite literal: a struct field, or a slice or map element.
-  Writing the type out, `ui.Listing[model.Meta]`, avoids it. Nothing in Quire needs the crashing form now; drop this note when a point release carries the fix.
+  Writing the type argument out avoids it. Nothing in Quire needs the crashing form now; drop this note when a point release carries the fix.
   Found 2026-11-20. Look once a month, next on 2026-12-20.
 - **Hand-written lexers for more of Lexis's languages.** [The benchmarks](./www/content/docs/benchmarks.md) list those run from rules slowest first; Java, Makefile and bash lead, and Rust and Lua are wanted.
 - **More languages in Lexis**, as they are wanted. Swift, Ruby and PHP have rules in Chroma to import, each needing more rewriting than those done.
@@ -342,7 +336,7 @@ These depend on none of the steps.
   Its queries are past a key-value store, so it brings a database of its own as a service.
   Its dashboards are in the `Admin` group.
   Between taking an event in and working on it is a queue, as Platoon had in NATS.
-  A flag changes what one visitor is shown, so flags wait on per-visitor caching in step 9, or fill the flagged part live.
+  A flag changes what one visitor is shown, so flags wait on per-visitor caching, or fill the flagged part live.
 - **Warnings.** The site, the baker and every service write to one logger. These are the gremlins to warn on.
   **A master in bad shape.** A bake reads whatever master content refers to and corrects it in memory, so nothing here breaks a page — it costs work on every changed master, and it costs the chance to copy rather than re-encode.
   Only `quire ingest` writes a master, so every one of these says the same thing: run it, or fix the file at the source.
@@ -358,18 +352,12 @@ These depend on none of the steps.
   - **A public-bucket URL for a variant the bucket does not hold.** Once the browser is sent to the bucket, Quire is out of the loop: the visitor gets a broken image. The bake did not run.
 - **Sign-in.** A service that knows who a visitor is beyond a cookie, with the gates `Members` and `Admin` need: has a token, and has a token with the admin flag.
   Its sign-in page and callback are a feature that is handed it.
+  With a gate, a group gets a cache of its own inside it, so what is kept for admins is never served to anyone else.
 - **Pre-rendered pages.** The bake runs the features, so after the make a server over the new bundle can render every page the page cache would render once for everyone into the bundle, as Astro's `dist/` and Hugo's `public/` do, and the shipped binary serves finished HTML. Plugin routes and anything per visitor stay live, the per-route split Astro and Next make. It is a third axis beside `quire_nobake` and the ship overlay: whether its pages are pre-rendered (a light site's would be). A site with no live routes at all needs no server, only its bundle on a static host. Documents are already converted in the bake, so the gain is boot time and static hosting rather than weight.
   A static host often serves under a path, which is what a place is for.
 - **Public-bucket URLs, in the markup.** Emit the URL of variants somebody else serves in `srcset` so the browser never asks the origin at all. Edge-cached, no egress charge. The constraint is unchanged: every referenced variant must be in the bucket before it is referenced.
   A picture's URL goes out through the same place every other address does.
 - **A site placed by host.** `shop.hiddenbridge.io` for one of several sites in a server. The mux already routes by host; what is the box's own today, the `www` redirect and `robots.txt`, becomes each host's.
 - **A group gathered above the sites.** `/admin/<site>/` behind the server's own gate, for a platform whose operator owns admin. A group travels with its site until something wants this.
-
-## Waiting on a step
-
-Each of these is easier, or only possible, once the step it names is done.
-
-- **After step 9: what is kept can be dropped.**
-
-  - **Dev re-bakes in-process.** A site already bakes before it serves; with `--dev` it could also re-bake when content or masters change, so a watcher is only for Go and templ. A CMS needs the same thing: re-bake after an upload and swap the bundle, rather than a second bundle beside the first.
-    Swapping a bundle is replacing an entry's and dropping what was kept from the old one.
+- **Dev re-bakes in-process.** A site already bakes before it serves; with `--dev` it could also re-bake when content or masters change, so a watcher is only for Go and templ. A CMS needs the same thing: re-bake after an upload and swap the bundle, rather than a second bundle beside the first.
+  Swapping a bundle is replacing an entry's and dropping what was kept from the old one, so a way to drop what the page cache keeps is built with it.

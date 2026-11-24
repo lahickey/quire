@@ -121,16 +121,16 @@ func tag(t model.Marker) templ.Component {
 	})
 }
 
-func DocCard[T model.Metadata](ctx context.Context, c *model.Collection[T], d model.Document[T]) CardData {
+func DocCard(ctx context.Context, c *model.Collection, d model.Document) CardData {
 	return CardData{
 		Href:        c.Href(d),
-		Kicker:      MonthYear(ctx, d.Meta.Base().Date),
-		Title:       d.Meta.Base().Title,
-		Description: d.Meta.Base().Summary,
-		Draft:       d.Meta.Base().Draft,
-		Featured:    d.Meta.Base().Featured,
+		Kicker:      MonthYear(ctx, d.Meta.Date),
+		Title:       d.Meta.Title,
+		Description: d.Meta.Summary,
+		Draft:       d.Meta.Draft,
+		Featured:    d.Meta.Featured,
 		Picture:     d.Picture,
-		Badges:      d.Meta.Badges(),
+		Badges:      c.Badges(d),
 		Tags:        c.Tags(d),
 	}
 }
@@ -977,7 +977,7 @@ func ForwardLink(text, href, variant string) templ.Component {
 	})
 }
 
-func Pager[T model.Metadata](c *model.Collection[T], d model.Document[T]) templ.Component {
+func Pager(c *model.Collection, d model.Document) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1018,9 +1018,9 @@ func Pager[T model.Metadata](c *model.Collection[T], d model.Document[T]) templ.
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var47 string
-			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(prev.Meta.Base().Title)
+			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(prev.Meta.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pack/base/ui/components.templ`, Line: 214, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pack/base/ui/components.templ`, Line: 214, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 			if templ_7745c5c3_Err != nil {
@@ -1050,9 +1050,9 @@ func Pager[T model.Metadata](c *model.Collection[T], d model.Document[T]) templ.
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var49 string
-			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(next.Meta.Base().Title)
+			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(next.Meta.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pack/base/ui/components.templ`, Line: 220, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pack/base/ui/components.templ`, Line: 220, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {

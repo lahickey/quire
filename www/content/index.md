@@ -58,20 +58,10 @@ import (
   "github.com/lahickey/quire"
   "github.com/lahickey/quire/model"
   "github.com/lahickey/quire/pack/base"
-  "github.com/lahickey/quire/site"
 )
 
 func main() {
-  quire.Run(
-    model.Identity{Name: "Example", BaseURL: "https://example.com"},
-    site.FeatureFunc(func(s *site.Site) error {
-      posts, err := s.Collection(model.Basic{ID: "posts"})
-      if err != nil {
-        return err
-      }
-      base.Pages(s, posts)
-      return nil
-    }))
+  quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.Content())
 }
 ```
 

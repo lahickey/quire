@@ -105,8 +105,8 @@ func (s *Site) Body(file string) ([]byte, error) { return s.from.Body(file) }
 // Baked says the site has a source behind it. One built over nothing has no converter's output to ask for.
 func (s *Site) Baked() bool { return s.baked }
 
-// FontSetID names the font set the site draws in, for a converter that measures text.
-func (s *Site) FontSetID() string { return s.fonts.ID }
+// FontSet is the font set the site draws in, for a converter that lays text out.
+func (s *Site) FontSet() model.FontSet { return s.fonts }
 
 // SetWidget fills every fence of that name, in any document of the site. The site's own wins over a pack's of the same name.
 func (s *Site) SetWidget(name string, w model.Widget) {

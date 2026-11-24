@@ -27,10 +27,6 @@ import (
 	"github.com/lahickey/quire/pack/base/convert/picture"
 )
 
-type note struct {
-	model.Meta `yaml:",inline"`
-}
-
 type testFeature struct {
 	name    string
 	declare func(*Site) error
@@ -110,12 +106,12 @@ func rungFile(r journal.Record, w int) string {
 }
 
 func posts(s *Site) error {
-	c, err := s.Collection(model.Basic{ID: "posts"})
+	c, err := s.Collection(model.Spec{ID: "posts"})
 	if err != nil {
 		return err
 	}
 	s.AddPage(c.Page(), body("index"))
-	s.AddDocumentPages(c, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
+	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(c, d), body("item")
 	})
 	return nil
@@ -146,9 +142,9 @@ func TestShareImages(t *testing.T) {
 		t.Errorf("the bake left .quire without its .gitignore: %v", err)
 	}
 	files := os.DirFS(spec.Bundle())
-	var col *model.Collection[model.Meta]
+	var col *model.Collection
 	if _, err := serveOver(files, site, FeatureFunc(func(s *Site) (err error) {
-		col, err = s.Collection(model.Basic{ID: "posts"})
+		col, err = s.Collection(model.Spec{ID: "posts"})
 		return err
 	})); err != nil {
 		t.Fatal(err)
@@ -166,9 +162,9 @@ func TestShareImages(t *testing.T) {
 func TestDraftsLoadOnlyWithTheFlag(t *testing.T) {
 	fsys := fstest.MapFS{"posts/d.md": {Data: []byte("---\ntitle: D\ndate: 2026-01-01\ndraft: true\n---\n")}}
 	for _, drafts := range []bool{false, true} {
-		var col *model.Collection[model.Meta]
+		var col *model.Collection
 		if _, err := served(t, fsys, model.Identity{}, func(s *Site) (err error) {
-			col, err = s.Collection(model.Basic{ID: "posts"})
+			col, err = s.Collection(model.Spec{ID: "posts"})
 			return err
 		}, WithDrafts(drafts)); err != nil {
 			t.Fatal(err)
@@ -209,12 +205,12 @@ func TestSitemapLeavesOutDrafts(t *testing.T) {
 		"d.md": &fstest.MapFile{Data: []byte("---\ntitle: D\ndate: 2026-02-01\ndraft: true\n---\nx\n")},
 	}
 	v, err := served(t, fsys, model.Identity{BaseURL: "https://example.com"}, func(s *Site) error {
-		c, err := s.Collection(model.Spec[note]{ID: "writing", Markdown: "*.md"})
+		c, err := s.Collection(model.Spec{ID: "writing", Markdown: "*.md"})
 		if err != nil {
 			return err
 		}
 		s.AddPage(c.Page(), body("index"))
-		s.AddDocumentPages(c, func(d model.Document[note]) (model.PageSpec, templ.Component) {
+		s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
 			return model.DocumentPage(c, d), body("item")
 		})
 		s.AddPage(model.PageSpec{Path: "/contact"}, body("contact"))
@@ -276,11 +272,11 @@ func TestAliases(t *testing.T) {
 }
 
 func TestFrontmatterFailsLoad(t *testing.T) {
-	if _, err := load[note]([]model.BakedDocument{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
+	if _, err := load([]model.BakedDocument{{Path: "x.md", Front: "title: A\nnope: 1"}}); err == nil {
 		t.Error("an unknown frontmatter field loaded")
 	}
 	docs := []model.BakedDocument{{Path: "a/intro.md", Front: "title: A"}, {Path: "b/intro.md", Front: "title: B"}}
-	if _, err := load[note](docs); err == nil || !strings.Contains(err.Error(), "intro") {
+	if _, err := load(docs); err == nil || !strings.Contains(err.Error(), "intro") {
 		t.Errorf("two documents with one slug loaded: %v", err)
 	}
 }

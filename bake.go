@@ -13,6 +13,7 @@ import (
 	"github.com/lahickey/quire/bake"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/convert"
+	"github.com/lahickey/quire/pack/base/convert/card"
 	"github.com/lahickey/quire/site"
 )
 
@@ -36,7 +37,8 @@ func init() { quire.Ship(bundles) }
 )
 
 var (
-	sets      = []bake.Tools{convert.Standard()}
+	shareCard bake.Converter
+	sets      []bake.Tools
 	bakedDirs []string
 )
 
@@ -57,6 +59,16 @@ func writeShip() error {
 	return os.WriteFile(src, fmt.Appendf(nil, shipGo, strings.Join(embeds, " ")), 0o644)
 }
 
+// CardFont is the faces the share card is drawn in, in place of Inter: a TTF for regular and one for bold.
+// Only a binary that can bake has it, so call it from a file with the build constraint !quire_nobake.
+func CardFont(regular, bold []byte) error {
+	c, err := card.With(regular, bold)
+	if err == nil {
+		shareCard = c
+	}
+	return err
+}
+
 // Converters adds to what a bake can convert, beyond base's own: a pack's converters, or a site's.
 // Only a binary that can bake has it, so call it from a file with the build constraint !quire_nobake.
 func Converters(more ...bake.Tools) { sets = append(sets, more...) }
@@ -68,7 +80,11 @@ func Bake(d *site.Description, spec model.BakeSpec) error {
 	if fi, err := os.Stat(spec.Content); err != nil || !fi.IsDir() {
 		spec.Content = ""
 	}
-	baker, err := bake.Start(spec, sets...)
+	base := convert.Standard()
+	if shareCard != nil {
+		base.Converters[slices.IndexFunc(base.Converters, func(c bake.Converter) bool { return c.Name() == "card" })] = shareCard
+	}
+	baker, err := bake.Start(spec, append([]bake.Tools{base}, sets...)...)
 	if err != nil {
 		return err
 	}

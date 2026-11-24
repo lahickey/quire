@@ -9,7 +9,7 @@ templ siteFooter(model.Chrome, model.PageSpec) {
 }
 
 // One default card per document: picture, title, summary, tags.
-templ cards(c *model.Collection[model.Meta]) {
+templ cards(c *model.Collection) {
 	for _, d := range c.Docs() {
 		@ui.Card(ui.DocCard(ctx, c, d))
 	}
@@ -17,7 +17,7 @@ templ cards(c *model.Collection[model.Meta]) {
 
 // A page is a body. The site puts it in the document and the frame, given its
 // head data where the page is added.
-templ homePage(notes, projects *model.Collection[model.Meta]) {
+templ homePage(notes, projects *model.Collection) {
 	<article class="page page--wide">
 		<h1>Writing</h1>
 		<p class="home-intro">Notes on building things, and the things built.</p>
@@ -38,7 +38,7 @@ templ notFoundPage() {
 
 // The projects index. Its signature is what a collection's Index takes, so
 // main.go names it directly.
-templ projectsPage(c *model.Collection[model.Meta]) {
+templ projectsPage(c *model.Collection) {
 	<article class="page page--wide">
 		<h1>{ c.Title() }</h1>
 		<div class="card-grid">

@@ -34,7 +34,7 @@ A site writes it as a function, and `site.FeatureFunc` makes it a feature:
 ```go
 func declare(s *site.Site) error {
   s.AddStylesheets(static, "site.css")
-  notes, err := s.Collection(model.Basic{ID: "writing", Title: "Writing"})
+  notes, err := s.Collection(model.Spec{ID: "writing", Title: "Writing"})
   if err != nil {
     return err
   }
@@ -56,8 +56,9 @@ func main() {
 - `AddDocumentPages(collection, page)` gives each of a collection's documents a page, drawn on its first request and kept.
 - `AddLivePage(path, page)` adds a page drawn for each request and never kept. It is handed the request and answers with the head data and the body.
 - `AddRoute(method, path, handler)` is the raw mux: nothing added, never kept.
+- `AddSharedRoute(path, handler)` is a `GET` whose answer is the same for every visitor, so it is drawn on the first request for a path and kept. See [Features](./features.md#a-route-that-is-kept).
 - `AddFile(path, fsys, name)` serves a file directly, so Range still works, and returns its URL with a content hash, which is cached for good. Link to that.
-- `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns it with its frontmatter. See [Content](./content.md#markdown-outside-a-collection).
+- `Markdown(name)` returns one baked markdown file as a component, and `Document[T](name)` returns its frontmatter read into `T`, and its body. See [Content](./content.md#markdown-outside-a-collection).
 - `Picture(name)` is a picture of the site's content, for a page of your own to place.
 - `Include(feature)` runs another [feature](./features.md) on the site: a pack, a basket, a search box.
 - `In(group)` is a [group](./features.md#groups) to add to, and `SetGroup(group, gate)` gives one its gate, which is what makes it served.
@@ -95,8 +96,8 @@ So a pack can be included before or after the site says its piece. Only one thin
 
 - `Identity()` is the identity the site was made with, `Chrome()` the site as a page sees it, with its scale and the palettes on offer, and `Palette()` its own palette.
 - `AddBaseCSS(name, css)` adds to the bottom layer of the stylesheet, beneath every feature, pack and the site: the look everything else is laid over. It takes the CSS itself, since some of it is made and not read, such as what a palette becomes.
-- `SetFonts(fsys)` is the font set the site draws in: a `fonts.json` and the faces it names. `UseDatastar()` links Datastar on every page.
-- `Converted(converter, body, args…)` is a converter's output for that input, as the bundle file to link to, and `Body(file)` reads one to inline it. `FontSetID()` is the font set a converter that measures text is to use.
+- `SetFonts(fsys)` is the font set a look draws in, unless the site chose one with `WithFonts`: a `fonts.json` and the faces it names. A site's own feature does not call it. `UseDatastar()` links Datastar on every page.
+- `Converted(converter, body, args…)` is a converter's output for that input, as the bundle file to link to, and `Body(file)` reads one to inline it. `FontSet()` is the font set, for a converter that lays text out by its widths.
 - `ShareCard()` is what the site's share card says, and `SetShareImage(file)` is the bundle file pages share. `Baked()` says there is a source to ask: a site built over nothing has no card.
 
 The methods take three forms. A plain noun asks for something: `Collection`, `Picture`, `Document`. `Add` is one more of many. `Set` is the one of its kind, where the site's word beats a pack's.
@@ -111,6 +112,7 @@ An `Option` is something that has to be known before a feature runs.
 
 - `WithTheme` is the colour scheme when the visitor has chosen none and the OS states none. The default is `ThemeLight`, and the visitor's own choice always wins.
 - `WithPalette`, `WithPalettePicker` and `WithScale` set the colours and the page grid. See [The look](./look.md).
+- `WithFonts(fsys)` is the font set the site draws in, in place of its look's. See [Fonts](./look.md#fonts).
 - `WithBrand(name)` is the name the header shows as the link home, in place of `Identity.Name`. `WithBrand("")` shows none, and the nav starts with a Home link instead.
 - `WithIcons(fsys, names…)` serves each file in `fsys` at `/{name}` and links it in the head as an icon, typed by its extension. A name starting `apple-touch-icon` is linked as one.
 - `WithSiteCard` changes the share card the bake draws.
@@ -254,7 +256,25 @@ The saved theme and palette are kept under the root, so two sites on one host do
 
 ### Several sites
 
-A server takes any number of placed sites:
+`quire.RunSites` is `Run` for several sites in one server:
+
+```go
+quire.RunSites(
+  quire.Site{Identity: model.Identity{Name: "Front"}, Feature: base.Content(), Content: "front"},
+  quire.Site{Identity: model.Identity{Name: "Notes"}, Feature: base.Content(), Content: "notes", Root: "/notes"},
+)
+```
+
+- `Root` is the path a site is served under. The first has none.
+- `Content` is the site's content folder, `content` if it names none, so each of several names its own.
+- `Options` are the site's own, as the last arguments of `Run` are.
+- Each site is baked into a bundle of its own: the first into `.quire`, and one at `/notes` into `.quire/sites/notes`. The one `ship.go` embeds them all, so shipping is the same two commands.
+- The flags are `Run`'s, and apply to every site. `--root` puts all of them under one path.
+- Every site has base beneath it. Sites with no pack beneath them are composed by hand.
+
+`examples/several` is two sites made this way.
+
+Beneath it, a server takes any number of placed sites:
 
 ```go
 v, err := server.New(
@@ -269,8 +289,6 @@ v, err := server.New(
 - **Two sites with a route at one address** fail when the server is made.
 - **Every site's services are started**, in the order the sites were given. One handed to several sites is started once, and told the environment of the first.
 
-`examples/several` is two sites in one server.
-`Run` is one site; a program with several is a `main` of its own, as that one is.
 
 ### A bake of your own
 

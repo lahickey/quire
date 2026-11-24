@@ -42,16 +42,16 @@ templ tag(t model.Marker) {
 	<span class={ "tag", templ.KV("tag-"+t.Kind, t.Kind != "") }>{ t.Text }</span>
 }
 
-func DocCard[T model.Metadata](ctx context.Context, c *model.Collection[T], d model.Document[T]) CardData {
+func DocCard(ctx context.Context, c *model.Collection, d model.Document) CardData {
 	return CardData{
 		Href:        c.Href(d),
-		Kicker:      MonthYear(ctx, d.Meta.Base().Date),
-		Title:       d.Meta.Base().Title,
-		Description: d.Meta.Base().Summary,
-		Draft:       d.Meta.Base().Draft,
-		Featured:    d.Meta.Base().Featured,
+		Kicker:      MonthYear(ctx, d.Meta.Date),
+		Title:       d.Meta.Title,
+		Description: d.Meta.Summary,
+		Draft:       d.Meta.Draft,
+		Featured:    d.Meta.Featured,
 		Picture:     d.Picture,
-		Badges:      d.Meta.Badges(),
+		Badges:      c.Badges(d),
 		Tags:        c.Tags(d),
 	}
 }
@@ -205,19 +205,19 @@ templ ForwardLink(text, href, variant string) {
 	}
 }
 
-templ Pager[T model.Metadata](c *model.Collection[T], d model.Document[T]) {
+templ Pager(c *model.Collection, d model.Document) {
 	{{ prev, next := c.Neighbours(d) }}
 	<nav class="pager" aria-label="Previous and next page">
 		if prev != nil {
 			<a class="pager-link" href={ c.Href(*prev) }>
 				<span class="kicker">Previous</span>
-				{ prev.Meta.Base().Title }
+				{ prev.Meta.Title }
 			</a>
 		}
 		if next != nil {
 			<a class="pager-link pager-link--next" href={ c.Href(*next) }>
 				<span class="kicker">Next</span>
-				{ next.Meta.Base().Title }
+				{ next.Meta.Title }
 			</a>
 		}
 	</nav>

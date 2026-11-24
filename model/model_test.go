@@ -78,16 +78,34 @@ func TestPalettes(t *testing.T) {
 
 func TestTags(t *testing.T) {
 	tags := Tags{"lang": {"go", "c"}, "gfx": {" Vulkan "}}
-	doc := func(tags ...string) []Document[Meta] { return []Document[Meta]{{Slug: "a", Meta: Meta{Tags: tags}}} }
-	col, err := Collect(Basic{ID: "x", Tags: tags}, doc("Go", "vulkan"), false)
+	doc := func(tags ...string) []Document { return []Document{{Slug: "a", Meta: Meta{Tags: tags}}} }
+	col, err := Collect(Spec{ID: "x", Tags: tags}, doc("Go", "vulkan"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := col.Tags(col.Docs()[0]); got[0].Kind != "lang" || got[1].Kind != "gfx" {
 		t.Errorf("kinds %v", got)
 	}
-	if _, err := Collect(Basic{ID: "x", Tags: tags}, doc("golang"), false); err == nil {
+	if _, err := Collect(Spec{ID: "x", Tags: tags}, doc("golang"), false); err == nil {
 		t.Error("a tag outside the vocabulary loaded")
+	}
+}
+
+func TestExtraIsReadStrictly(t *testing.T) {
+	type product struct {
+		Links []Link `yaml:"links"`
+	}
+	docs := []Document{{Slug: "a", Meta: Meta{Extra: map[string]any{"links": []any{map[string]any{"label": "Site", "url": "/x"}}}}}}
+	col, err := Collect(Spec{ID: "x"}, docs, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := col.Extra[product]()
+	if err != nil || len(got["a"].Links) != 1 || got["a"].Links[0].URL != "/x" {
+		t.Fatalf("extra %+v, %v", got, err)
+	}
+	if _, err := col.Extra[struct{}](); err == nil {
+		t.Error("a key the type does not have was read")
 	}
 }
 

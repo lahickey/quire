@@ -18,11 +18,6 @@ import (
 //go:embed *.css
 var css embed.FS
 
-type (
-	Collection = model.Collection[model.Meta]
-	Document   = model.Document[model.Meta]
-)
-
 // Section is one heading of the sidebar and the documents under it, by slug, in order.
 type Section struct {
 	Title string   `yaml:"title"`
@@ -46,23 +41,23 @@ type Landing struct {
 
 // Book is the documents, and the section index.md puts each in.
 type Book struct {
-	*Collection
+	*model.Collection
 	sections map[string]string
 }
 
 // Pack's fields each replace one page; nil is the default of the same name.
 type Pack struct {
-	Home  func(model.Identity, model.Document[Landing], *Book) templ.Component
+	Home  func(model.Identity, Landing, string, *Book) templ.Component
 	Index func(*Book) templ.Component
-	Item  func(*Book, Document) templ.Component
+	Item  func(*Book, model.Document) templ.Component
 }
 
 type group struct {
 	Title string
-	Docs  []Document
+	Docs  []model.Document
 }
 
-func (b *Book) Section(d Document) string { return b.sections[d.Slug] }
+func (b *Book) Section(d model.Document) string { return b.sections[d.Slug] }
 
 func groups(b *Book) []group {
 	var out []group
@@ -78,11 +73,10 @@ func groups(b *Book) []group {
 func (p *Pack) Name() string { return "" }
 
 func (p *Pack) Declare(s *site.Site) error {
-	landing, err := s.Document[Landing]("index.md")
+	l, body, err := s.Document[Landing]("index.md")
 	if err != nil {
 		return err
 	}
-	l := landing.Meta
 	order, sections := map[string]int{}, map[string]string{}
 	for _, s := range l.Docs.Sections {
 		for _, slug := range s.Pages {
@@ -102,11 +96,11 @@ func (p *Pack) Declare(s *site.Site) error {
 	if item == nil {
 		item = Item
 	}
-	c, err := s.Collection(model.Basic{
+	c, err := s.Collection(model.Spec{
 		ID:          "docs",
 		Title:       cmp.Or(l.Docs.Title, "Documentation"),
 		Description: l.Docs.Summary,
-		Sort:        func(a, b Document) int { return cmp.Compare(order[a.Slug], order[b.Slug]) },
+		Sort:        func(a, b model.Document) int { return cmp.Compare(order[a.Slug], order[b.Slug]) },
 	})
 	if err != nil {
 		return err
@@ -132,10 +126,10 @@ func (p *Pack) Declare(s *site.Site) error {
 	}
 	book := &Book{c, sections}
 	s.AddPage(c.Page(), index(book))
-	s.AddDocumentPages(c, func(d Document) (model.PageSpec, templ.Component) {
+	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(c, d), item(book, d)
 	})
-	s.AddPage(model.PageSpec{Title: s.Identity().Name, Path: "/"}, home(s.Identity(), landing, book))
+	s.AddPage(model.PageSpec{Title: s.Identity().Name, Path: "/"}, home(s.Identity(), l, body, book))
 	found := search.New("/search", searchui.Look())
 	found.Add(c)
 	return s.Include(found)

@@ -48,6 +48,12 @@ func WithPalettePicker(ps ...model.Palette) Option {
 	}
 }
 
+// WithFonts is the font set the site draws in, in place of its look's: a description, fonts.json, and the faces it names.
+// It is an option so that it is settled before any pack draws with it.
+func WithFonts(fsys fs.FS) Option {
+	return func(s *settings) { s.fontSet = fsys }
+}
+
 func WithScale(scale model.Scale) Option {
 	return func(s *settings) { s.chrome.Scale = scale }
 }

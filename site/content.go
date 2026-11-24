@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -14,22 +15,30 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-func load[T any](baked []model.BakedDocument) ([]model.Document[T], error) {
-	out := make([]model.Document[T], 0, len(baked))
+func front[T any](b model.BakedDocument) (T, error) {
+	var v T
+	dec := yaml.NewDecoder(strings.NewReader(b.Front))
+	dec.KnownFields(true)
+	if err := dec.Decode(&v); err != nil && !errors.Is(err, io.EOF) {
+		return v, fmt.Errorf("%s: frontmatter: %w", b.Path, err)
+	}
+	return v, nil
+}
+
+func load(baked []model.BakedDocument) ([]model.Document, error) {
+	out := make([]model.Document, 0, len(baked))
 	bySlug := map[string]string{}
 	for _, b := range baked {
-		var meta T
-		dec := yaml.NewDecoder(strings.NewReader(b.Front))
-		dec.KnownFields(true)
-		if err := dec.Decode(&meta); err != nil && !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("%s: frontmatter: %w", b.Path, err)
+		meta, err := front[model.Meta](b)
+		if err != nil {
+			return nil, err
 		}
 		slug := strings.TrimSuffix(path.Base(b.Path), path.Ext(b.Path))
 		if other, taken := bySlug[slug]; taken {
 			return nil, fmt.Errorf("%s and %s share the slug %q", other, b.Path, slug)
 		}
 		bySlug[slug] = b.Path
-		out = append(out, model.Document[T]{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: b.Headings})
+		out = append(out, model.Document{Slug: slug, Path: b.Path, Meta: meta, HTML: b.HTML, Words: b.Words, Headings: b.Headings})
 	}
 	return out, nil
 }
@@ -52,37 +61,39 @@ func (s *Site) documents(pattern string) ([]model.BakedDocument, error) {
 	return docs, nil
 }
 
-func (s *Site) Document[T any](name string) (model.Document[T], error) {
+// Names is the documents under the content root that match a pattern.
+func (s *Site) Names(pattern string) ([]string, error) { return s.from.Names(pattern) }
+
+// Document reads one file under the content root: its frontmatter into T, and its body as HTML.
+func (s *Site) Document[T any](name string) (T, string, error) {
 	baked, err := s.documents(name)
 	if err == nil && len(baked) != 1 {
 		err = fmt.Errorf("quire: markdown %s: no such file under the content root", name)
 	}
 	if err != nil {
-		return model.Document[T]{}, err
+		var none T
+		return none, "", err
 	}
-	docs, err := load[T](baked)
-	if err != nil {
-		return model.Document[T]{}, err
-	}
-	return docs[0], nil
+	v, err := front[T](baked[0])
+	return v, baked[0].HTML, err
 }
 
 func (s *Site) Markdown(name string) (templ.Component, error) {
-	d, err := s.Document[map[string]any](name)
-	return templ.Raw(d.HTML), err
+	_, html, err := s.Document[map[string]any](name)
+	return templ.Raw(html), err
 }
 
-func (s *Site) Collection[T model.Metadata](spec model.Spec[T]) (*model.Collection[T], error) {
+func (s *Site) Collection(spec model.Spec) (*model.Collection, error) {
 	baked, err := s.documents(cmp.Or(spec.Markdown, spec.ID+"/*.md"))
 	if err != nil {
 		return nil, err
 	}
-	docs, err := load[T](baked)
+	docs, err := load(slices.DeleteFunc(baked, func(b model.BakedDocument) bool { return path.Base(b.Path) == "index.md" }))
 	if err != nil {
 		return nil, err
 	}
 	for i, d := range docs {
-		name := d.Meta.Base().Picture
+		name := d.Meta.Picture
 		if name == "" {
 			continue
 		}
@@ -90,16 +101,12 @@ func (s *Site) Collection[T model.Metadata](spec model.Spec[T]) (*model.Collecti
 			return nil, fmt.Errorf("%s/%s: %w", spec.ID, d.Slug, err)
 		}
 	}
-	col, err := model.Collect(spec, docs, s.drafts)
-	if err != nil {
-		return nil, err
-	}
-	return col, nil
+	return model.Collect(spec, docs, s.drafts)
 }
 
 // AddDocumentPages gives each of a collection's documents a page at its address, with its aliases leading there and its place in the sitemap.
 // A page is drawn on its first request and kept.
-func (s *Site) AddDocumentPages[T model.Metadata](col *model.Collection[T], page func(model.Document[T]) (model.PageSpec, templ.Component)) {
+func (s *Site) AddDocumentPages(col *model.Collection, page func(model.Document) (model.PageSpec, templ.Component)) {
 	s.route("GET "+col.Path()+"/{slug}", s.owner, func(w http.ResponseWriter, r *http.Request) {
 		doc, ok := col.Get(r.PathValue("slug"))
 		if !ok {
@@ -116,7 +123,7 @@ func (s *Site) AddDocumentPages[T model.Metadata](col *model.Collection[T], page
 		if err := s.reserve("GET "+href, s.owner); err != nil {
 			s.fail("%w", err)
 		}
-		for _, alias := range d.Meta.Base().Aliases {
+		for _, alias := range d.Meta.Aliases {
 			if !strings.HasPrefix(alias, "/") {
 				s.fail("%s: alias %q must start with /", d.Path, alias)
 				continue
@@ -125,8 +132,8 @@ func (s *Site) AddDocumentPages[T model.Metadata](col *model.Collection[T], page
 				s.fail("%s: alias %w", d.Path, err)
 			}
 		}
-		if !d.Meta.Base().Draft {
-			s.sitemap = append(s.sitemap, Loc{Path: href, LastMod: d.Meta.Base().LastMod().ISO()})
+		if !d.Meta.Draft {
+			s.sitemap = append(s.sitemap, Loc{Path: href, LastMod: d.Meta.LastMod().ISO()})
 		}
 	}
 }

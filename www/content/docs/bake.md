@@ -53,6 +53,7 @@ It never encodes: a variant it was not given is a 404.
 
 `Run` bakes `content` into `.quire`, both relative to where it runs.
 `quire.Converters(sets…)` adds to what `Run`'s bake can convert, for a pack that brings a converter of its own. Only a binary that can bake has it, so the call goes in a file with the build constraint `!quire_nobake`.
+`quire.CardFont(regular, bold)` is the faces that bake draws the share card in, in place of Inter, and goes in the same file. See [Fonts](./look.md#fonts).
 
 A site that keeps its content elsewhere writes [a bake of its own](./wiring.md#a-bake-of-your-own) and says where:
 

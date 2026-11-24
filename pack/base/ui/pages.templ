@@ -2,19 +2,19 @@ package ui
 
 import "github.com/lahickey/quire/model"
 
-templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]) {
+templ Entries(c *model.Collection, docs []model.Document) {
 	<div class="entries-list">
 		for _, d := range docs {
 			<a href={ c.Href(d) } class="entry-item">
 				if d.Picture.Hash != "" {
 					<span class="entry-thumb">
-						@Img(d.Picture, model.SizeThumb, d.Meta.Base().Title)
+						@Img(d.Picture, model.SizeThumb, d.Meta.Title)
 					</span>
 				}
 				<span class="entry-body">
-					if k := MonthYear(ctx, d.Meta.Base().Date); k != "" || d.Meta.Base().Draft {
+					if k := MonthYear(ctx, d.Meta.Date); k != "" || d.Meta.Draft {
 						<span class="entry-kicker">
-							if d.Meta.Base().Draft {
+							if d.Meta.Draft {
 								<span class="entry-kicker--draft">Draft</span>
 								if k != "" {
 									{ " · " }
@@ -23,8 +23,8 @@ templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]
 							{ k }
 						</span>
 					}
-					<h3 class="entry-title">{ d.Meta.Base().Title }</h3>
-					if s := d.Meta.Base().Summary; s != "" {
+					<h3 class="entry-title">{ d.Meta.Title }</h3>
+					if s := d.Meta.Summary; s != "" {
 						<p class="entry-context">{ s }</p>
 					}
 				</span>
@@ -34,7 +34,7 @@ templ Entries[T model.Metadata](c *model.Collection[T], docs []model.Document[T]
 }
 
 // Listing is the body of a collection's index: its title and a row for each document.
-templ Listing[T model.Metadata](c *model.Collection[T]) {
+templ Listing(c *model.Collection) {
 	<article class="page">
 		<header class="page-head">
 			<h1>{ c.Title() }</h1>
@@ -47,26 +47,51 @@ templ Listing[T model.Metadata](c *model.Collection[T]) {
 }
 
 // Article is the body of a document's own page.
-templ Article[T model.Metadata](c *model.Collection[T], d model.Document[T]) {
+templ Article(c *model.Collection, d model.Document) {
 	<article class="page">
 		<header class="page-head">
-			if d.Meta.Base().Draft {
+			if d.Meta.Draft {
 				<div class="header-badges">
 					@DraftBadge()
 				</div>
 			}
-			<h1>{ d.Meta.Base().Title }</h1>
-			if date := d.Meta.Base().Date; !date.IsZero() {
+			<h1>{ d.Meta.Title }</h1>
+			if date := d.Meta.Date; !date.IsZero() {
 				<p class="page-meta">{ LongDate(ctx, date) }</p>
 			}
 			@Tags(c.Tags(d))
+			if len(d.Meta.Links) > 0 {
+				<div class="btn-row">
+					for _, l := range d.Meta.Links {
+						@Link(l, "btn-secondary")
+					}
+				</div>
+			}
 		</header>
-		@HeroFigure(d.Picture, model.SizePage, d.Meta.Base().Title, "")
+		@HeroFigure(d.Picture, model.SizePage, d.Meta.Title, "")
 		@Contents(d.Headings)
 		<div class="prose">
 			@templ.Raw(d.HTML)
 		</div>
 		@BackLink(c.Path(), c.Title())
+	</article>
+}
+
+// Page is the body of a page written as one document.
+templ Page(d model.Document) {
+	<article class="page">
+		if d.Meta.Title != "" {
+			<header class="page-head">
+				<h1>{ d.Meta.Title }</h1>
+				if s := d.Meta.Summary; s != "" {
+					<p class="page-intro">{ s }</p>
+				}
+			</header>
+		}
+		@HeroFigure(d.Picture, model.SizePage, d.Meta.Title, "")
+		<div class="prose">
+			@templ.Raw(d.HTML)
+		</div>
 	</article>
 }
 

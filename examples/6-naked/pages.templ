@@ -2,7 +2,7 @@ package main
 
 import "github.com/lahickey/quire/model"
 
-templ index(posts *model.Collection[model.Meta]) {
+templ index(posts *model.Collection) {
 	<h1>Naked</h1>
 	<ul>
 		for _, d := range posts.Docs() {
@@ -11,7 +11,7 @@ templ index(posts *model.Collection[model.Meta]) {
 	</ul>
 }
 
-templ post(d model.Document[model.Meta]) {
+templ post(d model.Document) {
 	<h1>{ d.Meta.Title }</h1>
 	@templ.Raw(d.HTML)
 	<p><a href="/">Back</a></p>

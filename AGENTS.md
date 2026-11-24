@@ -14,11 +14,11 @@ Rules for coding agents working on Quire.
 | `*.go` at the root | The helpers: `Run` |
 | `site/`, `server/` | What a feature declares on; what serves it |
 | `model/` | Data |
-| `feature/` | Named features Quire ships: search, reload |
+| `feature/` | Features with no look, each handed one: content, search, reload |
 | `service/` | Services Quire ships: a store, sessions |
 | `bundle/` | Opens what a bake left |
-| `pack/` | Whole kinds of site, such as `pack/docs` |
-| `pack/base/` | The default kind of site: `ui`, stylesheets, fonts, widgets |
+| `pack/` | What has a look, shipped together: `pack/docs` |
+| `pack/base/` | The default look: `ui`, stylesheets, fonts, widgets |
 | `libs/` | Packages for use outside Quire: `libs/lexis`, `libs/streams` |
 | `bake/` | The baker: cache, keys, journal |
 | `pack/base/convert/` | The converters: markdown, mermaid, card, picture |

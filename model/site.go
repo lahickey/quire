@@ -42,6 +42,15 @@ type Link struct {
 	Badge string `yaml:"-"`
 }
 
+// ShareCard is what the picture a page shares says.
+type ShareCard struct {
+	Kicker  string
+	Title   string
+	Lines   []string
+	Domain  string
+	Palette Palette
+}
+
 type NavItem struct {
 	Label string
 	Href  string

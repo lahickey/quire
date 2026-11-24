@@ -1,8 +1,9 @@
-// Package card draws a share card as a PNG, in the site's font set.
+// Package card draws a share card as a PNG, in Inter or in the two faces it is handed.
 package card
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json/v2"
 	"fmt"
 	"image"
@@ -19,7 +20,6 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/lahickey/quire/bake"
-	"github.com/lahickey/quire/bake/measure"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/model/radix"
 )
@@ -34,7 +34,14 @@ type pen struct {
 	font *sfnt.Font
 }
 
-type Converter struct{ faces *measure.Faces }
+type Converter struct{ regular, bold *sfnt.Font }
+
+var (
+	//go:embed fonts/inter-400.ttf
+	inter400 []byte
+	//go:embed fonts/inter-700.ttf
+	inter700 []byte
+)
 
 func hexColor(s string) (color.Color, error) {
 	s = strings.TrimPrefix(s, "#")
@@ -93,7 +100,7 @@ func (p pen) text(s string, size float64, c color.Color, x, y int, track float64
 	return nil
 }
 
-func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
+func draw(c model.ShareCard, plain, heavy *sfnt.Font) (image.Image, error) {
 	const margin, width = 96, model.ShareWidth - 2*96
 	ink := map[string]color.Color{}
 	n := radix.Scales[c.Palette.Neutral].Dark
@@ -106,7 +113,7 @@ func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
 	}
 	img := image.NewRGBA(image.Rect(0, 0, model.ShareWidth, height))
 	imgdraw.Draw(img, img.Bounds(), image.NewUniform(ink["bg"]), image.Point{}, imgdraw.Src)
-	bold, regular := pen{img, faces.Face(false, 700)}, pen{img, faces.Face(false, 400)}
+	bold, regular := pen{img, heavy}, pen{img, plain}
 
 	y := 150
 	if c.Kicker != "" {
@@ -149,22 +156,39 @@ func draw(c model.ShareCard, faces *measure.Faces) (image.Image, error) {
 	return img, nil
 }
 
-func New(faces *measure.Faces) Converter { return Converter{faces} }
+// With is the converter drawing in a regular and a bold face, each a TTF.
+func With(regular, bold []byte) (Converter, error) {
+	var c Converter
+	var err error
+	if c.regular, err = sfnt.Parse(regular); err != nil {
+		return c, fmt.Errorf("card: regular face: %w", err)
+	}
+	if c.bold, err = sfnt.Parse(bold); err != nil {
+		return c, fmt.Errorf("card: bold face: %w", err)
+	}
+	return c, nil
+}
+
+// New is the converter drawing in Inter.
+func New() Converter {
+	c, err := With(inter400, inter700)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
 
 func (Converter) Name() string { return "card" }
 
 func (Converter) Version() int { return Version }
 
-// Convert takes a model.ShareCard as JSON, and the font set's id as its one argument.
+// Convert takes a model.ShareCard as JSON.
 func (c Converter) Convert(in bake.Input) (bake.Output, error) {
-	if len(in.Args) != 1 || in.Args[0] != c.faces.Set.ID {
-		return bake.Output{}, fmt.Errorf("asked for in fonts %q, and the bake has %s", in.Args, c.faces.Set.ID)
-	}
 	var card model.ShareCard
 	if err := json.Unmarshal(in.Body, &card); err != nil {
 		return bake.Output{}, err
 	}
-	img, err := draw(card, c.faces)
+	img, err := draw(card, c.regular, c.bold)
 	if err != nil {
 		return bake.Output{}, err
 	}

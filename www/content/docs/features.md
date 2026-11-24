@@ -122,6 +122,7 @@ These are what a named one uses most.
 - `s.URL(path)` is an address in the feature's namespace: `/_basket/add`.
 - `s.AddRoute(method, s.URL(path), h)` is an endpoint there.
 - `s.AddLivePage(path, page)` is a page drawn for each request: it is given the request and answers with the page's head data and its body.
+- `s.AddSharedRoute(path, h)` is a `GET` that is [drawn once and kept](#a-route-that-is-kept).
 
 ```go
 func (p *Feature) livePage(r *http.Request) (model.PageSpec, templ.Component) {
@@ -130,6 +131,24 @@ func (p *Feature) livePage(r *http.Request) (model.PageSpec, templ.Component) {
 ```
 
 The site draws the document and the frame round the body, so a feature's page is a site page like any other, and the body alone is what a stream patches.
+
+### A route that is kept
+
+A route whose answer is the same for every visitor says so, and the server keeps what it sent.
+
+```go
+s.AddSharedRoute("/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
+  tag := r.PathValue("tag")
+  w.Header().Set("Content-Type", "text/html; charset=utf-8")
+  _ = s.Page(model.PageSpec{Title: tag, Path: r.URL.Path}, p.tagged(tag)).Render(r.Context(), w)
+})
+```
+
+- The handler runs on the first request for a path, and every later one is sent what it wrote, compressed and with an `ETag`.
+- What is kept is filed under the path alone, so the handler must not read the query, a cookie or the session.
+- Only a `200` is kept, and nothing is kept in dev.
+- It lasts as long as the server runs, in the same budget as the pages of a collection.
+- A group has no shared route, because what is kept sits in front of every gate.
 
 ### Live updates
 

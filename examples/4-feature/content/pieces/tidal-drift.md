@@ -3,7 +3,8 @@ title: Tidal Drift
 date: 2026-09-04
 summary: Fourteen passes of the same wave, each a little further out of step with the last.
 picture: tidal-drift.jpg
-medium: Screenprint on Somerset, 50 × 62 cm
+extra:
+  medium: Screenprint on Somerset, 50 × 62 cm
 ---
 
 The plate was cut once and pulled fourteen times, rotating a fraction between

@@ -39,7 +39,7 @@ func siteFooter(model.Chrome, model.PageSpec) templ.Component {
 }
 
 // One default card per document: picture, title, summary, tags.
-func cards(c *model.Collection[model.Meta]) templ.Component {
+func cards(c *model.Collection) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -68,7 +68,7 @@ func cards(c *model.Collection[model.Meta]) templ.Component {
 
 // A page is a body. The site puts it in the document and the frame, given its
 // head data where the page is added.
-func homePage(notes, projects *model.Collection[model.Meta]) templ.Component {
+func homePage(notes, projects *model.Collection) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -133,7 +133,7 @@ func notFoundPage() templ.Component {
 
 // The projects index. Its signature is what a collection's Index takes, so
 // main.go names it directly.
-func projectsPage(c *model.Collection[model.Meta]) templ.Component {
+func projectsPage(c *model.Collection) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

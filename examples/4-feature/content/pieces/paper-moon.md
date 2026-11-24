@@ -3,7 +3,8 @@ title: Paper Moon
 date: 2026-08-21
 summary: Two discs, one of them the absence of the other, over a horizon that will not settle.
 picture: paper-moon.jpg
-medium: Screenprint on Somerset, 50 × 62 cm
+extra:
+  medium: Screenprint on Somerset, 50 × 62 cm
 ---
 
 A crescent made by subtraction rather than by drawing. The second disc is the

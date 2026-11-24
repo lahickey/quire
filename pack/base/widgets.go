@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"html"
@@ -9,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/a-h/templ"
 	"github.com/lahickey/quire/model"
@@ -97,8 +99,13 @@ func palette(name, body string) (string, error) {
 }
 
 func mermaid(s *site.Site) model.Widget {
+	fonts := sync.OnceValues(func() ([]byte, error) { return json.Marshal(s.FontSet(), json.Deterministic(true)) })
 	return func(_, body string) (string, error) {
-		file, err := s.Converted("mermaid", []byte(strings.TrimSpace(body)), s.FontSetID())
+		set, err := fonts()
+		if err != nil {
+			return "", err
+		}
+		file, err := s.Converted("mermaid", []byte(strings.TrimSpace(body)), string(set))
 		if err != nil {
 			return "", err
 		}

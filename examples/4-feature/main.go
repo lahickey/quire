@@ -23,13 +23,6 @@ import (
 //go:embed site.css
 var css embed.FS
 
-// Piece is the frontmatter of a print: the stock fields, plus a medium.
-// Embedding model.Meta keeps title, date, picture and the rest working.
-type Piece struct {
-	model.Meta `yaml:",inline"`
-	Medium     string `yaml:"medium"`
-}
-
 // password is a gate: it lets a request through only with the password, by HTTP basic auth.
 func password(want string) site.Gate {
 	return func(next http.Handler) http.Handler {
@@ -50,7 +43,7 @@ func declare(s *site.Site, carts *store.Memory, visitors *sessions.Sessions) err
 	// Every service is added, so whatever serves the site starts and stops it.
 	s.AddServices(carts, visitors)
 	s.AddStylesheets(css, "site.css")
-	pieces, err := s.Collection(model.Spec[Piece]{ID: "pieces", Title: "Pieces"})
+	pieces, err := s.Collection(model.Spec{ID: "pieces", Title: "Pieces"})
 	if err != nil {
 		return err
 	}
@@ -73,7 +66,7 @@ func declare(s *site.Site, carts *store.Memory, visitors *sessions.Sessions) err
 
 	// A collection is its documents and nothing more; these are its pages.
 	s.AddPage(pieces.Page(), wall(pieces))
-	s.AddDocumentPages(pieces, func(d model.Document[Piece]) (model.PageSpec, templ.Component) {
+	s.AddDocumentPages(pieces, func(d model.Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(pieces, d), piecePage(b, pieces, d)
 	})
 	s.AddPage(model.PageSpec{Title: "Prints", Path: "/"}, home(pieces))

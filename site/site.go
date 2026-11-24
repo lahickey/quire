@@ -66,6 +66,7 @@ type settings struct {
 	log      *slog.Logger
 	siteCard *model.ShareCard
 	icons    []assets.File
+	fontSet  fs.FS
 	features []Feature
 }
 
@@ -155,6 +156,9 @@ func (d *Description) site(from Source) *Site {
 	s.frame.v, s.notFound.v, s.placePicture.v, s.placeVideo.v = bareFrame, notFoundBody(), s.barePicture, s.bareVideo
 	if from == nil {
 		s.from = &bundle.Bundle{}
+	}
+	if s.fontSet != nil {
+		s.useFonts(s.fontSet)
 	}
 	return s
 }

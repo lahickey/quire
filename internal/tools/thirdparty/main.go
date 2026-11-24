@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lahickey/quire/internal/journal"
+	"github.com/lahickey/quire/internal/measure"
 	"github.com/lahickey/quire/model"
 )
 
@@ -24,7 +24,7 @@ const (
 	text         = "Inter:wght@100..900"
 	mono         = "JetBrains Mono:wght@100..800"
 	webDir       = "pack/base/fonts/web"
-	measureDir   = "pack/base/convert/faces/fonts"
+	cardDir      = "pack/base/convert/card/fonts"
 	datastarFile = "internal/assets/datastar.js"
 )
 
@@ -82,13 +82,15 @@ func fetchTo(u, ua, dest string) error {
 	return os.WriteFile(dest, b, 0o644)
 }
 
-func fetchFamily(spec string, subsets []string, webDir, measureDir string) (model.FontFamily, []byte, error) {
+// fetchFamily fetches a family's browser faces into webDir and reads its widths from a TTF of each weight, which it keeps in ttfDir if that is named.
+func fetchFamily(spec string, subsets []string, webDir, ttfDir string) (model.FontFamily, error) {
 	name, _, _ := strings.Cut(spec, ":")
-	f := model.FontFamily{Name: name, Measure: map[int]string{}}
+	f := model.FontFamily{Name: name, Widths: map[int]model.FontWidths{}}
 	css, err := googleCSS(spec, modernUA)
 	if err != nil {
-		return f, nil, err
+		return f, err
 	}
+	var ranges []string
 	for _, m := range faceBlock.FindAllStringSubmatch(string(css), -1) {
 		subset, p := m[1], props(m[2])
 		if !slices.Contains(subsets, subset) {
@@ -96,7 +98,7 @@ func fetchFamily(spec string, subsets []string, webDir, measureDir string) (mode
 		}
 		u := srcURL.FindStringSubmatch(p["src"])
 		if u == nil {
-			return f, nil, fmt.Errorf("%s %s: no src", name, subset)
+			return f, fmt.Errorf("%s %s: no src", name, subset)
 		}
 		face := model.FontFace{
 			File:   slug(name) + "-" + subset + ".woff2",
@@ -106,36 +108,38 @@ func fetchFamily(spec string, subsets []string, webDir, measureDir string) (mode
 			Range:  p["unicode-range"],
 		}
 		if err := fetchTo(u[1], modernUA, filepath.Join(webDir, face.File)); err != nil {
-			return f, nil, err
+			return f, err
 		}
 		f.Faces = append(f.Faces, face)
+		ranges = append(ranges, face.Range)
 	}
 	if len(f.Faces) == 0 {
-		return f, nil, fmt.Errorf("%s: none of %v offered", name, subsets)
+		return f, fmt.Errorf("%s: none of %v offered", name, subsets)
 	}
 
-	var measured []byte
 	for _, w := range []int{400, 700} {
 		css, err := googleCSS(name+":wght@"+strconv.Itoa(w), oldUA)
 		if err != nil {
-			return f, nil, err
+			return f, err
 		}
 		u := srcURL.FindStringSubmatch(string(css))
 		if u == nil {
-			return f, nil, fmt.Errorf("%s %d: no TTF", name, w)
+			return f, fmt.Errorf("%s %d: no TTF", name, w)
 		}
-		file := slug(name) + "-" + strconv.Itoa(w) + ".ttf"
 		ttf, err := get(u[1], oldUA)
 		if err != nil {
-			return f, nil, err
+			return f, err
 		}
-		if err := os.WriteFile(filepath.Join(measureDir, file), ttf, 0o644); err != nil {
-			return f, nil, err
+		if ttfDir != "" {
+			if err := os.WriteFile(filepath.Join(ttfDir, slug(name)+"-"+strconv.Itoa(w)+".ttf"), ttf, 0o644); err != nil {
+				return f, err
+			}
 		}
-		f.Measure[w] = file
-		measured = append(measured, ttf...)
+		if f.Widths[w], err = measure.Widths(ttf, ranges...); err != nil {
+			return f, err
+		}
 	}
-	return f, measured, nil
+	return f, nil
 }
 
 func fetchLicence(name, dest string) error {
@@ -151,34 +155,35 @@ func fetchLicence(name, dest string) error {
 }
 
 func refreshFonts() error {
-	for _, d := range []string{webDir, measureDir} {
+	for _, d := range []string{webDir, cardDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return err
 		}
 	}
 
 	var set model.FontSet
-	var measured bytes.Buffer
 	for _, f := range []struct {
-		spec string
-		into *model.FontFamily
-	}{{text, &set.Text}, {mono, &set.Mono}} {
-		fam, ttfs, err := fetchFamily(f.spec, subsets, webDir, measureDir)
+		spec   string
+		into   *model.FontFamily
+		ttfDir string
+	}{{text, &set.Text, cardDir}, {mono, &set.Mono, ""}} {
+		fam, err := fetchFamily(f.spec, subsets, webDir, f.ttfDir)
 		if err != nil {
 			return err
 		}
 		*f.into = fam
-		measured.Write(ttfs)
 
 		lic := "LICENSE-" + slug(fam.Name) + ".txt"
-		for _, d := range []string{webDir, measureDir} {
+		for _, d := range []string{webDir, f.ttfDir} {
+			if d == "" {
+				continue
+			}
 			if err := fetchLicence(fam.Name, filepath.Join(d, lic)); err != nil {
 				return err
 			}
 		}
-		log.Printf("%-16s %d faces, measured at %v", fam.Name, len(fam.Faces), slices.Sorted(maps.Keys(fam.Measure)))
+		log.Printf("%-16s %d faces, measured at %v", fam.Name, len(fam.Faces), slices.Sorted(maps.Keys(fam.Widths)))
 	}
-	set.ID = journal.Hash(measured.Bytes())
 	b, err := json.Marshal(set, json.Deterministic(true))
 	if err != nil {
 		return err

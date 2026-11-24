@@ -1,4 +1,4 @@
-// Package base is Quire's default kind of site: what a document's fences and pictures become, how they look, and the card a page shares.
+// Package base is Quire's default look: what a document's fences and pictures become, how they look, and the card a page shares.
 package base
 
 import (
@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/a-h/templ"
+	"github.com/lahickey/quire/feature/content"
 	"github.com/lahickey/quire/model"
 	"github.com/lahickey/quire/pack/base/assets"
 	"github.com/lahickey/quire/pack/base/fonts"
@@ -24,7 +25,7 @@ func shareCard(s *site.Site) error {
 	if err != nil {
 		return err
 	}
-	file, err := s.Converted("card", body, s.FontSetID())
+	file, err := s.Converted("card", body)
 	if err != nil {
 		return fmt.Errorf("share card: %w", err)
 	}
@@ -60,14 +61,19 @@ func (Pack) Declare(s *site.Site) error {
 	return shareCard(s)
 }
 
+// Content is a whole site from the content folder, in the default look: index.md is the home page, a file beside it is a page, and a folder is a collection.
+func Content() site.Feature {
+	return content.Pages{Page: ui.Page, Listing: ui.Listing, Document: ui.Article}
+}
+
 // Pages gives a collection the default look's two pages: a listing at its address and an article for each document.
 // A collection with nothing in it, as when every document is a draft, gets neither.
-func Pages[T model.Metadata](s *site.Site, c *model.Collection[T]) {
+func Pages(s *site.Site, c *model.Collection) {
 	if c.Len() == 0 {
 		return
 	}
 	s.AddPage(c.Page(), ui.Listing(c))
-	s.AddDocumentPages(c, func(d model.Document[T]) (model.PageSpec, templ.Component) {
+	s.AddDocumentPages(c, func(d model.Document) (model.PageSpec, templ.Component) {
 		return model.DocumentPage(c, d), ui.Article(c, d)
 	})
 }

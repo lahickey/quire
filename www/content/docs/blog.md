@@ -8,15 +8,7 @@ A blog is the site Quire makes with nothing added: one collection of dated docum
 
 ```go
 func main() {
-  quire.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"},
-    site.FeatureFunc(func(s *site.Site) error {
-      posts, err := s.Collection(model.Basic{ID: "posts"})
-      if err != nil {
-        return err
-      }
-      base.Pages(s, posts)
-      return nil
-    }))
+  quire.Run(model.Identity{Name: "Pictures", BaseURL: "https://example.com"}, base.Content())
 }
 ```
 
@@ -46,9 +38,21 @@ Each field shows up somewhere, and none of it needs a template.
 
 ## The post's page
 
-`/posts/{name}` is the post: its title and date, its `picture` as the hero, then the body.
+`/posts/{name}` is the post: its title and date, its `links`, its `picture` as the hero, then the body.
 
-![A post's page, with its date under the title and its picture as the hero](shots/article.jpg "A post: date, hero, body")
+![A post's page, with its date and two link buttons under the title and its picture as the hero](shots/article.jpg "A post: date, links, hero, body")
+
+`links` are buttons under the date, for where the thing a post is about can be found:
+
+```yaml
+links:
+  - label: The route
+    url: https://example.com/ridge
+  - label: More posts
+    url: /posts
+```
+
+A link to another site opens in a new tab.
 
 Tags sit under the date, and a post with headings gets a table of contents.
 
@@ -79,7 +83,7 @@ The draft's own page carries the badge too:
 A `tag` is free text until the site declares its vocabulary, and then a tag outside it fails the load:
 
 ```go
-model.Basic{ID: "posts", Tags: model.Tags{"lang": {"Go"}, "topic": {"Design"}}}
+model.Spec{ID: "posts", Tags: model.Tags{"lang": {"Go"}, "topic": {"Design"}}}
 ```
 
 Each tag is drawn with a class for its kind, so a language and a topic can look different. See [Content](./content.md#tags).

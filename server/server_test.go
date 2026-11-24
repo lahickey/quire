@@ -94,11 +94,15 @@ func TestRobotsAndSitemap(t *testing.T) {
 }
 
 func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
-	var live, posts atomic.Int32
+	var live, shared, posts atomic.Int32
 	h, err := bare(model.Identity{BaseURL: "https://example.com"}, func(l *site.Site) error {
 		l.AddRoute("GET", "/live", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = fmt.Fprintf(w, "<html>%d</html>", live.Add(1))
+		})
+		l.AddSharedRoute("/shared/{name}", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = fmt.Fprintf(w, "<html>%s %d</html>", r.PathValue("name"), shared.Add(1))
 		})
 		l.AddRoute("POST", "/act", func(w http.ResponseWriter, r *http.Request) {
 			posts.Add(1)
@@ -127,6 +131,13 @@ func TestOnlyPathDependentRoutesAreCached(t *testing.T) {
 	}
 	if h.pages.Len() != 0 {
 		t.Errorf("%d entries in the page cache; neither route may be stored", h.pages.Len())
+	}
+
+	if a, b := get("/shared/a"), get("/shared/a?q=1"); a != b {
+		t.Errorf("AddSharedRoute drew one path twice: %q then %q", a, b)
+	}
+	if a, b := get("/shared/a"), get("/shared/b"); a == b {
+		t.Errorf("AddSharedRoute served %q for two paths", a)
 	}
 }
 

@@ -107,12 +107,18 @@ Every custom property is `--qr-*`. A named feature uses its own prefix. Overridi
 
 A palette is roles. Sheets read the role, never a hue, and do not mix tints. The scales are Radix, because the light and dark pairs are already tuned. A test holds text contrast.
 
-A browser face is woff2. Measuring text needs TTF, and only a bake measures, so the two files stay apart. Quire writes `--qr-font` and `--qr-font-mono`.
+A browser face is woff2. A diagram is laid out in the bake, where there is no browser, so a font set carries how wide its characters are, read once from a TTF by `quire fonts`. The site hands the set to the converter, and no bake needs a font file to measure with. The share card is different: it draws glyphs, so it has two TTF faces of its own, and they need not be the site's. Quire writes `--qr-font` and `--qr-font-mono`.
 The font files are the base pack's, and the machinery is `site`'s: reading a set's description, writing its rules, preloading and serving. A site with no font set draws in the system's.
 
-Mermaid is the diagram format editors already preview. The renderer is heavy, so it lives on the bake side. A diagram is inlined so it can see the page's custom properties. The site asks for it by its source and the font set, so a bake and a site on different fonts fail the load.
+Mermaid is the diagram format editors already preview. The renderer is heavy, so it lives on the bake side. A diagram is inlined so it can see the page's custom properties. The site asks for it by its source and the font set, so it is laid out for the fonts the site serves.
 
 ## Layers
+
+A look's vocabulary is the site's: the palette and its default, the theme, the palette picker, the scale and what the share card says, each an option.
+They are data that any look reads, as it reads the navigation and the footer's links, and they are options because they have to be settled before a feature runs.
+How any of it is drawn is a pack's, and none of that is in `site`.
+
+A feature with no look is handed one. Search is handed its box and its results, and the feature that makes a site from the content folder is handed how a page, a listing and a document are drawn. The base pack does the handing for the default look, and a pack may bring features of its own.
 
 The default look is the base pack, and nothing of it is in `site`: its components, its stylesheets and scripts, its fonts, its frame, its pages and its widgets. `Run` puts it beneath every site, and `examples/1-minimal` is the proof. A site built without it has a correct document and nothing else. A site is not a pack.
 
@@ -142,6 +148,6 @@ What fails while a site is built is returned, not panicked: a route two patterns
 
 What happens to a response follows the response, not the mode.
 
-A fixed page is rendered once when the site is built. A collection item is cached under its path and coding. Anything else goes straight to its handler. The cache key has no method and no cookie, so a stored body is the same for every visitor.
+A fixed page is rendered once when the site is built. A collection item is cached under its path and coding, and so is a route that asks to be shared. Anything else goes straight to its handler. The cache key has no method and no cookie, so a stored body is the same for every visitor.
 
 Building closes the site. A route added after it panics.

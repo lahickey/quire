@@ -168,13 +168,13 @@ func New(at string, look Look) *Feature { return &Feature{at: at, look: look} }
 
 // Add gives the search a collection to find things in: one section for each document's opening, and one for each H2 and H3.
 // An element marked data-nosearch is left out. The indexing waits for the first search, so a bake does none of it.
-func (p *Feature) Add[T model.Metadata](c *model.Collection[T]) {
+func (p *Feature) Add(c *model.Collection) {
 	p.pending = append(p.pending, func() { index(p, c) })
 }
 
-func index[T model.Metadata](p *Feature, c *model.Collection[T]) {
+func index(p *Feature, c *model.Collection) {
 	for _, d := range c.Docs() {
-		m := d.Meta.Base()
+		m := d.Meta
 		body, at := m.Summary+"\n"+listed(d.HTML), 0
 		sec := section{page: m.Title, url: c.Href(d)}
 		for _, h := range heading.FindAllStringSubmatchIndex(body, -1) {

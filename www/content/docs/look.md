@@ -153,7 +153,7 @@ The default pages are `Home`, `Listing`, `Article`, `NotFound` and `Footer`, in 
 A page of your own is a body. The site supplies the document, navigation and footer:
 
 ```templ
-templ projectsPage(c *model.Collection[model.Meta]) {
+templ projectsPage(c *model.Collection) {
   <article class="page page--wide">
     <h1>{ c.Title() }</h1>
     <div class="card-grid">
@@ -201,6 +201,51 @@ s.AddFooterLinks(model.BuiltWithQuire)
 
 Inter for text and JetBrains Mono for code by default, served as woff2 split by unicode subset. The latin text face is preloaded.
 Sheets read `--qr-font` and `--qr-font-mono`.
+
+A site with fonts of its own names the set once:
+
+```go
+//go:embed fonts
+var fonts embed.FS // fonts.json and the woff2 files it names
+
+quire.Run(identity, feature, site.WithFonts(fonts))
+```
+
+`fonts.json` describes the set: for `text` and for `mono`, a `name`, the woff2 `faces` a browser is sent, and `widths`.
+Base's own, in `pack/base/fonts/web`, is the one to copy.
+
+`widths` is how wide each character is, so a diagram can be laid out in the bake to fit the text the browser will draw.
+`quire fonts` writes it from a TTF of each weight, which then need not be kept:
+
+```sh
+go run github.com/lahickey/quire/cmd/quire fonts fonts \
+  text:400=Body-Regular.ttf text:700=Body-Bold.ttf \
+  mono:400=Code-Regular.ttf mono:700=Code-Bold.ttf
+```
+
+- It reads the characters in the unicode ranges of the set's `faces`, so write those first.
+- A set with no widths at weight 400 fails the bake of any diagram, and says to run it.
+- A site's own feature does not call `SetFonts`: the choice is an option, so it is settled before anything is drawn.
+
+The share card is a picture, so it is drawn from font files of its own, and those are Inter unless the bake is told otherwise:
+
+```go
+//go:build !quire_nobake
+
+//go:embed card/Body-Regular.ttf
+var regular []byte
+
+//go:embed card/Body-Bold.ttf
+var bold []byte
+
+func init() {
+  if err := quire.CardFont(regular, bold); err != nil {
+    log.Fatal(err)
+  }
+}
+```
+
+That file is only in a binary that bakes, so a shipped site carries no TTF.
 
 ### Scale
 

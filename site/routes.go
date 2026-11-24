@@ -114,6 +114,11 @@ func (s *Site) AddRoute(method, path string, h http.HandlerFunc) {
 	s.route(method+" "+path, s.owner, h)
 }
 
+// AddSharedRoute answers every visitor alike, so its response is kept on the first request for a path, whatever its query.
+func (s *Site) AddSharedRoute(path string, h http.HandlerFunc) {
+	s.route("GET "+path, s.owner, h).Shared = true
+}
+
 func (s *Site) AddFile(urlPath string, fsys fs.FS, name string) string {
 	body, err := fs.ReadFile(fsys, name)
 	if err != nil {

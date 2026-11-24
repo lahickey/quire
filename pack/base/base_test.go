@@ -65,7 +65,7 @@ func served(t *testing.T, files fs.FS, declare func(*site.Site) error) (*site.Si
 }
 
 func posts(s *site.Site) error {
-	_, err := s.Collection(model.Basic{ID: "posts"})
+	_, err := s.Collection(model.Spec{ID: "posts"})
 	return err
 }
 
@@ -75,9 +75,9 @@ func TestBodyMarkdownImages(t *testing.T) {
 		"posts/hello.md":   {Data: []byte("---\ntitle: Hello\ndate: 2026-02-01\n---\n\nA ridge.\n\n![the ridge](../images/ridge.png \"Dawn\")\n\nSee ![it](../images/ridge.png) here.\n\n![The ridge at dusk](/images/ridge.png)\n\n![away](https://example.com/x.jpg)\n")},
 		"images/ridge.png": {Data: body},
 	}
-	var col *model.Collection[model.Meta]
+	var col *model.Collection
 	built, _, err := served(t, fsys, func(s *site.Site) (err error) {
-		col, err = s.Collection(model.Basic{ID: "posts"})
+		col, err = s.Collection(model.Spec{ID: "posts"})
 		return err
 	})
 	if err != nil {
@@ -126,9 +126,9 @@ func TestBodyVideo(t *testing.T) {
 			"posts/clip.png":  {Data: testkit.Photo(t, 600, 400, false)},
 		}
 	}
-	var col *model.Collection[model.Meta]
+	var col *model.Collection
 	built, baked, err := served(t, page(`![a clip](clip.webm "Caption")`), func(s *site.Site) (err error) {
-		col, err = s.Collection(model.Basic{ID: "posts"})
+		col, err = s.Collection(model.Spec{ID: "posts"})
 		return err
 	})
 	if err != nil {
@@ -158,9 +158,9 @@ func TestBodyVideo(t *testing.T) {
 
 func TestMermaid(t *testing.T) {
 	post := "---\ntitle: A\ndate: 2026-02-01\n---\n\n```mermaid\nflowchart LR\n  a[client] --> b[(store)]\n```\n"
-	var col *model.Collection[model.Meta]
+	var col *model.Collection
 	read := func(s *site.Site) (err error) {
-		col, err = s.Collection(model.Basic{ID: "posts"})
+		col, err = s.Collection(model.Spec{ID: "posts"})
 		return err
 	}
 	if _, _, err := served(t, fstest.MapFS{"posts/a.md": {Data: []byte(post)}}, read); err != nil {
@@ -234,7 +234,7 @@ func TestShareCard(t *testing.T) {
 func TestPagesSkipACollectionWithNothingIn(t *testing.T) {
 	draft := fstest.MapFS{"posts/d.md": {Data: []byte("---\ntitle: D\ndate: 2026-01-01\ndraft: true\n---\n")}}
 	built, _, err := served(t, draft, func(s *site.Site) error {
-		c, err := s.Collection(model.Basic{ID: "posts"})
+		c, err := s.Collection(model.Spec{ID: "posts"})
 		if err != nil {
 			return err
 		}

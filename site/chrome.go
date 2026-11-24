@@ -208,15 +208,24 @@ func (s *Site) AddScripts(fsys fs.FS, names ...string) {
 	}
 }
 
-// SetFonts is the font set the site draws in: a description, fonts.json, and the faces it names.
-func (s *Site) SetFonts(fsys fs.FS) {
-	s.own("the fonts")
+func (s *Site) useFonts(fsys fs.FS) {
 	set, err := model.ReadFontSet(fsys)
 	if err != nil {
 		s.fail("fonts: %w", err)
 		return
 	}
 	s.fonts, s.fontFiles = set, fsys
+}
+
+// SetFonts is the font set a look draws in, unless the site chose one with WithFonts: a description, fonts.json, and the faces it names.
+// A site's own feature does not set one, since a pack beneath it has drawn by then.
+func (s *Site) SetFonts(fsys fs.FS) {
+	switch {
+	case s.own("the fonts"):
+		s.fail("the site's own fonts are the option WithFonts, so that every pack draws in them")
+	case s.fontSet == nil:
+		s.useFonts(fsys)
+	}
 }
 
 // UseDatastar links Datastar on every page, for markup that needs it. A site with streams has it anyway.

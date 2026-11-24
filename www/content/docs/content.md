@@ -36,22 +36,39 @@ The stock fields are `model.Meta`:
 - `draft`: leaves the document out unless the site runs with `--drafts`.
 - `featured`: marks the document so a page can select and badge it.
 - `aliases`: other addresses that redirect here. See [Aliases](#aliases).
+- `links`: a list of `label` and `url`, shown as buttons under the title. See [A blog](./blog.md#the-posts-page).
+- `extra`: [fields of your own](#fields-of-your-own).
 
 An unknown key is a load error, so a typo cannot pass silently.
 A `---` in the body is an ordinary rule.
 
 ### Fields of your own
 
-A site that needs more fields declares a type that embeds `Meta`:
+Anything a site or a feature keeps in a document beyond the stock fields goes under `extra`:
 
-```go
-type Piece struct {
-  model.Meta `yaml:",inline"`
-  Medium     string `yaml:"medium"`
-}
+```yaml
+title: Paper Moon
+picture: paper-moon.jpg
+extra:
+  medium: Screenprint on Somerset, 50 × 62 cm
 ```
 
-and adds the collection as `model.Spec[Piece]` instead of `model.Basic`.
+`d.Meta.Extra` is that map, and `d.Meta.Text("medium")` is one of its values when it is a string.
+`examples/4-feature` shows a print's medium that way.
+
+Fields with more shape than a string are read into a type of the site's own, once, when the site is built:
+
+```go
+type Product struct {
+  Status string       `yaml:"status"`
+  Links  []model.Link `yaml:"links"`
+}
+
+products, err := s.Collection(model.Spec{ID: "products"})
+extra, err := products.Extra[Product]() // by slug: extra[d.Slug].Links
+```
+
+A key under `extra` that the type does not have fails the build, as an unknown stock key does.
 
 ### Dates
 
@@ -63,7 +80,7 @@ A custom formatter takes a parsed `Date`, so it only formats.
 ### Drafts, featured and other state
 
 `draft` and `featured` are the two states Quire acts on. Drafts are filtered from the build and the sitemap unless `WithDrafts`. Featured is only ever selected and badged.
-Anything else a document says about its own state is the site's vocabulary: override `Badges() []Marker` on the site's type and Quire renders what it is handed, knowing none of the words.
+Anything else a document says about its own state is the site's vocabulary: give the collection's spec a `Badges` function, from a document to its markers, and Quire renders what it is handed, knowing none of the words.
 
 ### Aliases
 
@@ -175,7 +192,7 @@ flowchart LR
   ok[baked]:::green --> warn[stale]:::amber --> bad[missing]:::red
   ok --> plain[default]
 ```
-A diagram the bundle does not hold fails the load, as does one measured in other fonts than the site serves.
+A diagram the bundle does not hold fails the load.
 
 ### Cards
 
@@ -302,12 +319,51 @@ accent spot tone1 tone2 ok warn error
 - A pack adds a widget the same way, and the site's own wins over a pack's of the same name, whichever came first.
 - A widget that returns an error fails the load, the same as bad frontmatter.
 
+## A site from the folder
+
+`base.Content()` makes a whole site from the content folder, with no Go beyond the call:
+
+```go
+quire.Run(model.Identity{Name: "Example", BaseURL: "https://example.com"}, base.Content())
+```
+
+| In `content/` | Becomes |
+|-|-|
+| `index.md` | The home page |
+| `about.md` | A page at `/about` |
+| `posts/` | A listing at `/posts`, and a page for each file |
+| `posts/index.md` | The collection's title and summary |
+
+- Each page and each folder is in the navigation. `nav` in `index.md` puts them in order, and whatever it leaves out follows in alphabetical order:
+
+  ```yaml
+  title: Example
+  nav: [posts, about]
+  ```
+
+- A name in `nav` that is neither a page nor a folder fails the build.
+- A folder with no documents, as when every one is a draft, has no pages and is not in the navigation.
+- With no `index.md` the home page is the default one: the site's name, its description and its sections.
+- A folder with no markdown in it, such as one of pictures, is left alone.
+- `index.md` is never a document of a collection, here or in one a site adds itself.
+
+`examples/1-minimal` is a site made this way.
+
+It is the feature `content.Pages`, from `feature/content`, handed the default look's drawings: `ui.Page`, `ui.Listing` and `ui.Article`.
+A site with another look hands it its own:
+
+```go
+s.Include(content.Pages{Page: page, Listing: listing, Document: article})
+```
+
+A site that wants pages of its own for a collection does not use it, and adds its collections as below.
+
 ## Collections
 
 `Collection` loads the documents matching a glob. A collection is its documents and nothing else: it has no pages until something draws them.
 
 ```go
-notes, err := s.Collection(model.Basic{ID: "writing", Title: "Writing"})
+notes, err := s.Collection(model.Spec{ID: "writing", Title: "Writing"})
 if err != nil {
   return err
 }
@@ -321,7 +377,7 @@ Pages of your own are two calls on the site:
 
 ```go
 s.AddPage(notes.Page(), index(notes))
-s.AddDocumentPages(notes, func(d model.Document[model.Meta]) (model.PageSpec, templ.Component) {
+s.AddDocumentPages(notes, func(d model.Document) (model.PageSpec, templ.Component) {
   return model.DocumentPage(notes, d), article(notes, d)
 })
 ```
@@ -340,7 +396,7 @@ The fields of a `Spec`:
 
 Other things to know:
 
-- `model.Basic` is `Spec[Meta]`, the spec for stock frontmatter.
+- `ui.Page` is a page written as one document: its title, summary, picture and body.
 - `ui.Listing` and `ui.Article` are the pages `base.Pages` adds. They show the title, date, tags, hero, contents and body, and link back to the index. `ui.Entries(c, docs)` renders the listing's rows anywhere, each labelled with its month and year.
 - Drafts are dropped unless `WithDrafts`. `base.Pages` gives a collection that is empty after that no pages.
 - A missing slug is the site's 404. Two documents with one slug fail the load.
@@ -373,7 +429,7 @@ sample, err := s.Markdown("home/sample.md")
 
 The file is an ordinary document. Everything on this page works in it: highlighted code, pictures and diagrams.
 
-`s.Document[T](name)` returns the same file with its frontmatter read into `T`, so a page's copy can sit in content rather than in Go. An unknown field fails the load.
+`s.Document[T](name)` returns the same file's frontmatter read into `T`, and its body as HTML, so a page's copy can sit in content rather than in Go. An unknown field fails the load.
 The [docs pack](./packs.md) reads this site's landing page that way.
 
 ## In depth

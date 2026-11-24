@@ -3,6 +3,11 @@ title: The ridge at first light
 date: 2026-02-01
 summary: One line of frontmatter is the whole of it.
 picture: ridge.jpg
+links:
+  - label: The route
+    url: https://example.com/ridge
+  - label: More posts
+    url: /posts
 ---
 
 The `picture:` above is the listing thumbnail and the article hero.

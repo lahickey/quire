@@ -15,14 +15,6 @@ type BakeSpec struct {
 	Log     *slog.Logger
 }
 
-type ShareCard struct {
-	Kicker  string
-	Title   string
-	Lines   []string
-	Domain  string
-	Palette Palette
-}
-
 func (s BakeSpec) WithDefaults() BakeSpec {
 	s.Content = cmp.Or(s.Content, "content")
 	s.Dir = cmp.Or(s.Dir, QuireDir)
