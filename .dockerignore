@@ -1,4 +1,5 @@
 .git
 vendor
 **/.quire/cache
-examples
+examples/*/.quire
+examples/*/content
